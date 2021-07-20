@@ -1,0 +1,132 @@
+classdef MLB_SM < SeqMem
+    properties % Analysis Variables
+        binSize
+        dsRate
+    end
+    properties % Data Structures
+        fiscTrials
+    end
+    methods
+        function obj = MLB_SM(fileDir)
+            if nargin == 0 
+                fileDir = uigetdir;
+            end
+            obj@SeqMem(fileDir);
+            obj.PP_IdentifyFISCseqs
+        end
+    end
+    methods % Data Pre-Processing Methods
+        %% Pre-Process Trial Data
+        function [dataMtx, timeVect] = PP_TrialMatrix(obj, window, alignment)
+            if isempty(obj.binSize)
+                error('Define binSize');
+            elseif isempty(obj.dsRate)
+                error('Define dsRate');
+            end
+            paddedWindow = [window(1)-(obj.binSize/2) window(2)+(obj.binSize/2)];
+            trialTime = obj.ExtractTrialMatrix(obj.tsVect, paddedWindow, alignment);
+            tempMtx = obj.ExtractTrialMatrix(obj.ensembleMatrix, paddedWindow, alignment);
+            firstValid = 1;
+            switch alignment
+                case 'Odor'
+                    firstAlignNdx = obj.tsVect(obj.trialInfo(firstValid).OdorIndex);
+                case 'PokeIn'
+                    firstAlignNdx = obj.tsVect(obj.trialInfo(firstValid).PokeInIndex);
+                case 'PokeOut'
+                    firstAlignNdx = obj.tsVect(obj.trialInfo(firstValid).PokeOutIndex);
+                case 'FrontReward'
+                    firstValid = find(~isnan([obj.trialInfo.RewardIndex]), 'first');
+                    firstAlignNdx = obj.tsVect(obj.trialInfo(firstValid).RewardIndex);
+                case 'RewardSignal'
+                    firstValid = find(~isnan([obj.trialInfo.RewardSignalIndex]), 'first');
+                    firstAlignNdx = obj.tsVect(obj.trialInfo(firstValid).RewardSignalIndex);
+                case 'RearReward'
+                    firstValid = find(~isnan([obj.trialInfo.RearRewardIndex]), 'first');
+                    firstAlignNdx = obj.tsVect(obj.trialInfo(firstValid).RearRewardIndex);
+                case 'ErrorSignal'
+                    firstValid = find(~isnan([obj.trialInfo.ErrorIndex]), 'first');
+                    firstAlignNdx = obj.tsVect(obj.trialInfo(firstValid).ErrorIndex);
+            end
+            tempTS = trialTime(:,1,firstValid) - firstAlignNdx;
+            binnedMtx = nan(size(tempMtx));
+            for t = 1:size(tempMtx,3)
+                for u = 1:size(tempMtx,2)
+                    binnedMtx(:,u,t) = conv(tempMtx(:,u,t),ones(1,obj.binSize)./(obj.binSize/obj.sampleRate), 'same');
+                end
+            end
+            unpaddedBinnedMtx = binnedMtx((obj.binSize/2)+1:end-(obj.binSize/2),:,:);
+            unpaddedTS = tempTS((obj.binSize/2)+1:end-(obj.binSize/2));
+            dsVect = downsample(1:size(unpaddedBinnedMtx,1),obj.dsRate);
+            dataMtx = unpaddedBinnedMtx(dsVect,:,:);
+            timeVect = unpaddedTS(dsVect);
+        end
+        %% Identify Fully InSeq Correct Sequences
+        function PP_IdentifyFISCseqs(obj)
+            odrVect = [obj.trialInfo.Odor];
+            posVect = [obj.trialInfo.Position];
+            
+            pos1 = find(posVect==1);
+            potentialSeqs = repmat(pos1,[obj.seqLength,1])+ repmat((0:obj.seqLength-1)', [1,length(pos1)]);
+            fiscLog = false(1,size(potentialSeqs,2));
+            for seq = 1:size(potentialSeqs,2)
+                if potentialSeqs(end,seq) <= length(obj.trialInfo)
+                    if sum(odrVect(potentialSeqs(:,seq)) == posVect(potentialSeqs(:,seq))) == obj.seqLength ...
+                        && sum([obj.trialInfo(potentialSeqs(:,seq)).Performance]) == obj.seqLength
+                        fiscLog(seq) = true;
+                    elseif sum(odrVect(potentialSeqs(:,seq))-10 == posVect(potentialSeqs(:,seq))) == obj.seqLength ...
+                        && sum([obj.trialInfo(potentialSeqs(:,seq)).Performance]) == obj.seqLength
+                        fiscLog(seq) = true;
+                    end
+                end
+            end
+            obj.fiscTrials = potentialSeqs(:,fiscLog);            
+        end
+    end
+    methods % MLB Analysis Methods
+        %% Calculate MLB
+        function post = CalcStaticBayesPost(obj,likely, obsv)
+            post = nan(size(obsv,1), size(likely,1), size(obsv,3));
+            for trl = 1:size(obsv,3)
+                for t = 1:size(obsv,1)
+                    p = nan(size(likely));
+                    curPopVect = floor(obsv(t,:,trl)*(obj.binSize/1000));
+                    curPopFact = factorial(curPopVect);
+                    for u = 1:size(likely,2)
+                        curAvgUniFR = likely(:,u);
+                        p(:,u) = (((obj.binSize/1000).*curAvgUniFR).^curPopVect(u))./curPopFact(u);
+                    end
+                    pp = prod(p,2);
+                    ee = exp(-((obj.binSize/1000)*sum(likely,2)));
+                    tempPost = pp.*ee;
+                    post(t,:,trl) = tempPost./sum(tempPost);
+                end
+            end
+        end
+        %% Decode MLB
+        function [decode, maxPost] = DecodeBayesPost(~, post, id)
+            % Assumes post is in the structure of ObservTime X LikelyTime X Trial
+            decode = nan(size(post,1),size(post,3));
+            maxPost = nan(size(post,1),size(post,3));
+            for o = 1:size(post,3)
+                for d = 1:size(post,1)
+                    if ~isnan(post(d,1,o))
+                        maxPost(d,o) = max(post(d,:,o));
+                        decode(d,o) = id(find(post(d,:,o)==maxPost(d,o),1,'first'));
+                    end
+                end
+            end
+        end
+        %% Tabluate MLB
+        function decode = TabulateBayesPost(~, post, id)
+            idS = unique(id);
+            decode = nan(size(post,1), size(post,3), length(idS));
+            for trl = 1:size(post,3)
+                for t = 1:size(post,1)
+                    for iD = 1:length(idS)
+                        decode(t,trl,iD) = sum(post(t,id==idS(iD),trl));
+                    end
+                end
+            end
+        end
+    end
+end
