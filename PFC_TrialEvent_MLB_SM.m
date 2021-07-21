@@ -1,18 +1,20 @@
 classdef PFC_TrialEvent_MLB_SM < MLB_SM
     %% Properties
     properties % Parameters
-        pokeInWindow = [-500 500]
-        pokeOutWindow = [-500 500]
+        beginTrialAlignment = 'PokeIn'
+        endTrialAlignment = 'PokeOut'
+        beginTrialWindow = [-500 500]
+        endTrialWindow = [-500 500]
     end
     properties % Organized Spiking Data
-        pokeInTrialMtx
-        pokeOutTrialMtx
+        beginTrialMtx
+        endTrialMtx
         trialSpikeMtx
         fisSeqSpikeMtx
     end
     properties % Data Organization Vectors
-        pokeInTrialTime
-        pokeOutTrialTime
+        beginTrialTime
+        endTrialTime
         fisSeqTrlNums
         osTrlNums
         skpTrlNums
@@ -70,7 +72,7 @@ classdef PFC_TrialEvent_MLB_SM < MLB_SM
     methods
         %% Object Creation
         %#ok<*EXIST>
-        function obj = PFC_TrialEvent_MLB_SM(fileDir, binSize, dsRate, piWindow, poWindow)
+        function obj = PFC_TrialEvent_MLB_SM(fileDir, binSize, dsRate, beginWindow, endWindow)
             if nargin == 0
                 fileDir = uigetdir;
             end
@@ -82,14 +84,14 @@ classdef PFC_TrialEvent_MLB_SM < MLB_SM
                 if exist('dsRate')==1
                     obj.dsRate = dsRate;
                 end
-                if exist('piWindow')==1
-                    obj.pokeInWindow = piWindow;
+                if exist('beginWindow')==1
+                    obj.beginTrialWindow = beginWindow;
                 end
-                if exist('poWindow')==1
-                    obj.pokeOutWindow = poWindow;
+                if exist('endWindow')==1
+                    obj.endTrialWindow = endWindow;
                 end
-                obj.CompileMLBmtx('PokeIn');
-                obj.CompileMLBmtx('PokeOut');
+                obj.CompileMLBmtx(obj.beginTrialAlignment);
+                obj.CompileMLBmtx(obj.endTrialAlignment);
                 obj.CompileTrialObsvs;
                 obj.CompileFISlikes;
                 obj.DecodeFIS_L1O;
@@ -104,8 +106,8 @@ classdef PFC_TrialEvent_MLB_SM < MLB_SM
         %% Recompile the data
         function RunAnalysis(obj)
             fprintf('Analyzing\n');
-            obj.CompileMLBmtx('PokeIn');
-            obj.CompileMLBmtx('PokeOut');
+            obj.CompileMLBmtx(obj.beginTrialAlignment);
+            obj.CompileMLBmtx(obj.endTrialAlignment);
             obj.CompileTrialObsvs;
             obj.CompileFISlikes;
             obj.DecodeFIS_L1O;
@@ -240,13 +242,13 @@ classdef PFC_TrialEvent_MLB_SM < MLB_SM
         end
         %% Compile Trial Observations (Combine PokeIn and PokeOut across trials)
         function CompileTrialObsvs(obj)
-            obj.trialPeriodTimeLog = [[obj.pokeInTrialTime<0; false(size(obj.pokeOutTrialTime))],...
-                [obj.pokeInTrialTime>0; false(size(obj.pokeOutTrialTime))],...
-                [false(size(obj.pokeInTrialTime)); obj.pokeOutTrialTime<0],...
-                [false(size(obj.pokeInTrialTime)); obj.pokeOutTrialTime>0]];
+            obj.trialPeriodTimeLog = [[obj.beginTrialTime<0; false(size(obj.endTrialTime))],...
+                [obj.beginTrialTime>0; false(size(obj.endTrialTime))],...
+                [false(size(obj.beginTrialTime)); obj.endTrialTime<0],...
+                [false(size(obj.beginTrialTime)); obj.endTrialTime>0]];
             obj.trialPeriodTimeLog = obj.trialPeriodTimeLog*(1:4)';
             obj.trialPeriodTimeLog(obj.trialPeriodTimeLog==0) = nan;
-            obj.trialTimeLog = [obj.pokeInTrialTime; obj.pokeOutTrialTime+1+obj.dsRate/obj.sampleRate];
+            obj.trialTimeLog = [obj.beginTrialTime; obj.endTrialTime+1+obj.dsRate/obj.sampleRate];
             obj.osTrlNums = [obj.trialInfo([obj.trialInfo.TranspositionDistance]~=0).TrialNum];
             obj.osTrlNums([obj.trialInfo(obj.osTrlNums).Performance]==0) = [];
             obj.skpTrlNums = obj.osTrlNums([obj.trialInfo(obj.osTrlNums).TranspositionDistance]<0);
@@ -261,14 +263,14 @@ classdef PFC_TrialEvent_MLB_SM < MLB_SM
                 & [obj.trialInfo(obj.osTrlNums).TranspositionDistance]<0)+1;
             obj.trialSpikeMtx = cell(size(obj.trialInfo));
             for t = 1:length(obj.trialInfo)
-                obj.trialSpikeMtx{t} = [obj.pokeInTrialMtx(:,:,t); obj.pokeOutTrialMtx(:,:,t)];
+                obj.trialSpikeMtx{t} = [obj.beginTrialMtx(:,:,t); obj.endTrialMtx(:,:,t)];
             end
         end
         %% Compile Fully InSeq Likelihoods (trial PSTHs)
         function CompileFISlikes(obj)
-            if isempty(obj.pokeInTrialMtx)
+            if isempty(obj.beginTrialMtx)
                 error('Compile Poke In data');
-            elseif isempty(obj.pokeOutTrialMtx)
+            elseif isempty(obj.endTrialMtx)
                 error('Complie Poke Out data');
             end
             if isempty(obj.trialPeriodTimeLog)
@@ -284,27 +286,27 @@ classdef PFC_TrialEvent_MLB_SM < MLB_SM
                 obj.fisSeqTrlNums(3,iS) = fisStarts(iS) + 2;
                 obj.fisSeqTrlNums(4,iS) = fisStarts(iS) + 3;
             end
-            obj.fisSeqSpikeMtx = nan((size(obj.pokeInTrialMtx,1) + size(obj.pokeOutTrialMtx,1))*4, size(obj.pokeInTrialMtx,2), length(fisStarts));
+            obj.fisSeqSpikeMtx = nan((size(obj.beginTrialMtx,1) + size(obj.endTrialMtx,1))*4, size(obj.beginTrialMtx,2), length(fisStarts));
             for seq = 1:length(fisStarts)
-                obj.fisSeqSpikeMtx(:,:,seq) = [obj.pokeInTrialMtx(:,:,obj.fisSeqTrlNums(1,seq)); obj.pokeOutTrialMtx(:,:,obj.fisSeqTrlNums(1,seq));...
-                    obj.pokeInTrialMtx(:,:,obj.fisSeqTrlNums(2,seq)); obj.pokeOutTrialMtx(:,:,obj.fisSeqTrlNums(2,seq));...
-                    obj.pokeInTrialMtx(:,:,obj.fisSeqTrlNums(3,seq)); obj.pokeOutTrialMtx(:,:,obj.fisSeqTrlNums(3,seq));...
-                    obj.pokeInTrialMtx(:,:,obj.fisSeqTrlNums(4,seq)); obj.pokeOutTrialMtx(:,:,obj.fisSeqTrlNums(4,seq))];
+                obj.fisSeqSpikeMtx(:,:,seq) = [obj.beginTrialMtx(:,:,obj.fisSeqTrlNums(1,seq)); obj.endTrialMtx(:,:,obj.fisSeqTrlNums(1,seq));...
+                    obj.beginTrialMtx(:,:,obj.fisSeqTrlNums(2,seq)); obj.endTrialMtx(:,:,obj.fisSeqTrlNums(2,seq));...
+                    obj.beginTrialMtx(:,:,obj.fisSeqTrlNums(3,seq)); obj.endTrialMtx(:,:,obj.fisSeqTrlNums(3,seq));...
+                    obj.beginTrialMtx(:,:,obj.fisSeqTrlNums(4,seq)); obj.endTrialMtx(:,:,obj.fisSeqTrlNums(4,seq))];
             end
-            obj.fisSeqSpikeOdorLog = [ones(1,size(obj.pokeInTrialMtx,1)+size(obj.pokeOutTrialMtx,1))*1,...
-                ones(1,size(obj.pokeInTrialMtx,1)+size(obj.pokeOutTrialMtx,1))*2,...
-                ones(1,size(obj.pokeInTrialMtx,1)+size(obj.pokeOutTrialMtx,1))*3,...
-                ones(1,size(obj.pokeInTrialMtx,1)+size(obj.pokeOutTrialMtx,1))*4]';
-            obj.fisSeqSpikeTimeLog = repmat([obj.pokeInTrialTime; obj.pokeOutTrialTime+1+obj.dsRate/obj.sampleRate], [4,1]);
+            obj.fisSeqSpikeOdorLog = [ones(1,size(obj.beginTrialMtx,1)+size(obj.endTrialMtx,1))*1,...
+                ones(1,size(obj.beginTrialMtx,1)+size(obj.endTrialMtx,1))*2,...
+                ones(1,size(obj.beginTrialMtx,1)+size(obj.endTrialMtx,1))*3,...
+                ones(1,size(obj.beginTrialMtx,1)+size(obj.endTrialMtx,1))*4]';
+            obj.fisSeqSpikeTimeLog = repmat([obj.beginTrialTime; obj.endTrialTime+1+obj.dsRate/obj.sampleRate], [4,1]);
             obj.fisSeqSpikeTrialPeriodLog = repmat(obj.trialPeriodTimeLog, [4,1]);
         end
         %% Extract Matrix
         function CompileMLBmtx(obj, alignment)
             switch alignment
-                case 'PokeIn'
-                    [obj.pokeInTrialMtx, obj.pokeInTrialTime] = obj.PP_TrialMatrix(obj.pokeInWindow, 'PokeIn');
-                case 'PokeOut'
-                    [obj.pokeOutTrialMtx, obj.pokeOutTrialTime] = obj.PP_TrialMatrix(obj.pokeOutWindow, 'PokeOut');
+                case obj.beginTrialAlignment
+                    [obj.beginTrialMtx, obj.beginTrialTime] = obj.PP_TrialMatrix(obj.beginTrialWindow, alignment);
+                case obj.endTrialAlignment
+                    [obj.endTrialMtx, obj.endTrialTime] = obj.PP_TrialMatrix(obj.endTrialWindow, alignment);
             end
         end
     end
