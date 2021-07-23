@@ -91,7 +91,7 @@ classdef MLB_SM < SeqMem
                     p = nan(size(likely));
                     curPopVect = floor(obsv(t,:,trl)*(obj.binSize/1000));
                     curPopFact = factorial(curPopVect);
-                    parfor u = 1:size(likely,2)
+                    for u = 1:size(likely,2)
                         curAvgUniFR = likely(:,u);
                         p(:,u) = (((obj.binSize/1000).*curAvgUniFR).^curPopVect(u))./curPopFact(u);
                     end
