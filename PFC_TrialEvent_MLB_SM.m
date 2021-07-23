@@ -30,6 +30,7 @@ classdef PFC_TrialEvent_MLB_SM < MLB_SM
     end
     properties % Trial Logicals
         trialPeriodTimeLog
+        trialPeriodSize
         trialTimeLog
     end
     properties % Posterior Distributions
@@ -123,13 +124,13 @@ classdef PFC_TrialEvent_MLB_SM < MLB_SM
             obj.taRepPosts = nan(size(obj.trialSpikeMtx{1},1), size(obj.fisSeqSpikeMtx,1), length(obj.taRepTrlNums));
             obj.taSkpPosts = nan(size(obj.trialSpikeMtx{1},1), size(obj.fisSeqSpikeMtx,1), length(obj.taSkpTrlNums));
             obj.taoDecode = nan(size(obj.trialSpikeMtx{1},1), length(obj.taoTrlNums));
-            obj.taoDecode_TrlPrd = nan((size(obj.trialSpikeMtx{1},1)-2)/4, length(obj.taoTrlNums), 4);
+            obj.taoDecode_TrlPrd = nan(max(obj.trialPeriodSize), length(obj.taoTrlNums), 4);
             obj.taRepDecode = nan(size(obj.trialSpikeMtx{1},1), length(obj.taRepTrlNums));
-            obj.taRepDecode_TrlPrd = nan((size(obj.trialSpikeMtx{1},1)-2)/4, length(obj.taRepTrlNums), 4);
+            obj.taRepDecode_TrlPrd = nan(max(obj.trialPeriodSize), length(obj.taRepTrlNums), 4);
             obj.taSkpDecode = nan(size(obj.trialSpikeMtx{1},1), length(obj.taSkpTrlNums));
-            obj.taSkpDecode_TrlPrd = nan((size(obj.trialSpikeMtx{1},1)-2)/4, length(obj.taSkpTrlNums), 4);
+            obj.taSkpDecode_TrlPrd = nan(max(obj.trialPeriodSize), length(obj.taSkpTrlNums), 4);
             obj.taoDecodeTime = nan(size(obj.trialSpikeMtx{1},1), length(obj.taoTrlNums));
-            obj.taoDecodeTime_TrlPrd = nan((size(obj.trialSpikeMtx{1},1)-2)/4, length(obj.taoTrlNums), 4);
+            obj.taoDecodeTime_TrlPrd = nan(max(obj.trialPeriodSize), length(obj.taoTrlNums), 4);
             for taO = 1:length(obj.taoTrlNums)
                 curObsv = obj.trialSpikeMtx{obj.taoTrlNums(taO)};
                 obj.taoPosts(:,:,taO) = obj.CalcStaticBayesPost(mean(obj.fisSeqSpikeMtx,3), curObsv);
@@ -143,8 +144,8 @@ classdef PFC_TrialEvent_MLB_SM < MLB_SM
                 
                 obj.taoDecodeTime(:,taO) = obj.DecodeBayesPost(obj.taoPosts(:,:,taO), obj.fisSeqSpikeTimeLog) - obj.trialTimeLog;
                 for prd = 1:4
-                    obj.taoDecode_TrlPrd(:,taO,prd) = tempDecodeOdr(obj.trialPeriodTimeLog==prd);
-                    obj.taoDecodeTime_TrlPrd(:,taO,prd) = obj.taoDecodeTime(obj.trialPeriodTimeLog==prd,taO);
+                    obj.taoDecode_TrlPrd(1:obj.trialPeriodSize(prd),taO,prd) = tempDecodeOdr(obj.trialPeriodTimeLog==prd);
+                    obj.taoDecodeTime_TrlPrd(1:obj.trialPeriodSize(prd),taO,prd) = obj.taoDecodeTime(obj.trialPeriodTimeLog==prd,taO);
                 end
                 
                 if sum(obj.taoTrlNums(taO)==obj.taSkpTrlNums)==1
@@ -165,13 +166,13 @@ classdef PFC_TrialEvent_MLB_SM < MLB_SM
             end
             obj.osPosts = nan(size(obj.trialSpikeMtx{1},1), size(obj.fisSeqSpikeMtx,1), length(obj.osTrlNums));
             obj.osDecode = nan(size(obj.trialSpikeMtx{1},1), length(obj.osTrlNums));
-            obj.osDecode_TrlPrd = nan((size(obj.trialSpikeMtx{1},1)-2)/4, length(obj.osTrlNums), 4);
+            obj.osDecode_TrlPrd = nan(max(obj.trialPeriodSize), length(obj.osTrlNums), 4);
             obj.skpPosts = nan(size(obj.trialSpikeMtx{1},1), size(obj.fisSeqSpikeMtx,1), length(obj.skpTrlNums));
             obj.skpDecode = nan(size(obj.trialSpikeMtx{1},1), length(obj.skpTrlNums));
-            obj.skpDecode_TrlPrd = nan((size(obj.trialSpikeMtx{1},1)-2)/4, length(obj.skpTrlNums), 4);
+            obj.skpDecode_TrlPrd = nan(max(obj.trialPeriodSize), length(obj.skpTrlNums), 4);
             obj.repPosts = nan(size(obj.trialSpikeMtx{1},1), size(obj.fisSeqSpikeMtx,1), length(obj.repTrlNums));
             obj.repDecode = nan(size(obj.trialSpikeMtx{1},1), length(obj.repTrlNums));
-            obj.repDecode_TrlPrd = nan((size(obj.trialSpikeMtx{1},1)-2)/4, length(obj.repTrlNums), 4);
+            obj.repDecode_TrlPrd = nan(max(obj.trialPeriodSize), length(obj.repTrlNums), 4);
             for osT = 1:length(obj.osTrlNums)
                 curObsv = obj.trialSpikeMtx{obj.osTrlNums(osT)};
                 obj.osPosts(:,:,osT) = obj.CalcStaticBayesPost(mean(obj.fisSeqSpikeMtx,3), curObsv);
@@ -182,7 +183,7 @@ classdef PFC_TrialEvent_MLB_SM < MLB_SM
                 
                 obj.osDecode(:,osT) = tempDecode;
                 for prd = 1:4
-                    obj.osDecode_TrlPrd(:,osT,prd) = tempDecode(obj.trialPeriodTimeLog==prd);
+                    obj.osDecode_TrlPrd(1:obj.trialPeriodSize(prd),osT,prd) = tempDecode(obj.trialPeriodTimeLog==prd);
                 end
                 
                 if sum(obj.osTrlNums(osT)==obj.skpTrlNums)==1
@@ -248,6 +249,11 @@ classdef PFC_TrialEvent_MLB_SM < MLB_SM
                 [false(size(obj.beginTrialTime)); obj.endTrialTime>0]];
             obj.trialPeriodTimeLog = obj.trialPeriodTimeLog*(1:4)';
             obj.trialPeriodTimeLog(obj.trialPeriodTimeLog==0) = nan;
+            obj.trialPeriodSize = nan(1,4);
+            for prd = 1:4
+                obj.trialPeriodSize(prd) = sum(obj.trialPeriodTimeLog==prd);
+            end
+                
             obj.trialTimeLog = [obj.beginTrialTime; obj.endTrialTime+1+obj.dsRate/obj.sampleRate];
             obj.osTrlNums = [obj.trialInfo([obj.trialInfo.TranspositionDistance]~=0).TrialNum];
             obj.osTrlNums([obj.trialInfo(obj.osTrlNums).Performance]==0) = [];
