@@ -35,16 +35,16 @@ classdef MLB_SM < SeqMem
                 case 'PokeOut'
                     firstAlignNdx = obj.tsVect(obj.trialInfo(firstValid).PokeOutIndex);
                 case 'FrontReward'
-                    firstValid = find(~isnan([obj.trialInfo.RewardIndex]), 'first');
+                    firstValid = find(~isnan([obj.trialInfo.RewardIndex]),1, 'first');
                     firstAlignNdx = obj.tsVect(obj.trialInfo(firstValid).RewardIndex);
                 case 'RewardSignal'
-                    firstValid = find(~isnan([obj.trialInfo.RewardSignalIndex]), 'first');
+                    firstValid = find(~isnan([obj.trialInfo.RewardSignalIndex]),1, 'first');
                     firstAlignNdx = obj.tsVect(obj.trialInfo(firstValid).RewardSignalIndex);
                 case 'RearReward'
-                    firstValid = find(~isnan([obj.trialInfo.RearRewardIndex]), 'first');
+                    firstValid = find(~isnan([obj.trialInfo.RearRewardIndex]),1, 'first');
                     firstAlignNdx = obj.tsVect(obj.trialInfo(firstValid).RearRewardIndex);
                 case 'ErrorSignal'
-                    firstValid = find(~isnan([obj.trialInfo.ErrorIndex]), 'first');
+                    firstValid = find(~isnan([obj.trialInfo.ErrorIndex]),1, 'first');
                     firstAlignNdx = obj.tsVect(obj.trialInfo(firstValid).ErrorIndex);
             end
             tempTS = trialTime(:,1,firstValid) - firstAlignNdx;
