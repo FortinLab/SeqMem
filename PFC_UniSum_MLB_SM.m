@@ -1,21 +1,58 @@
 classdef PFC_UniSum_MLB_SM < MLB_SM
     %% Properties
     properties % Analysis parameters
-        preErlyWindow = [-500 500]
-        ltPstWindow = [-500 500]
-        rwdWindow = [-500 500]
-        errWindow = [-500 500]
+        preTrialWindow = [-500 0]
+        erlyTrialWindow = [0 500]
+        lateTrialWindow = [-500 0]
+        pstTrialWindow = [0 500]
+        preRwdWindow = [-500 0]
+        pstRwdWindow = [0 500]
+        errWindow = [250 250]
         trialWindow = [-500 1500]
     end
     properties % Data Matrices
         wholeTrialMtx
         wholeTrialTimeVect
         
-        preErlyMtx
-        preErlyTime
+        preTrialMtx
+        preTrialTime
         
-        ltPstMtx
-        ltPstTime
+        erlyTrialMtx
+        erlyTrialTime
+        
+        lateTrialMtx
+        lateTrialTime
+        
+        pstTrialMtx
+        pstTrialTime   
+        
+        preRwdMtx
+        preRwdTime 
+        
+        pstRwdMtx
+        pstRwdTime
+        
+        errPrdMtx
+        errPrdTime
+    end
+    properties % Mean Firing Rate Values
+        preTrialFR
+        erlyTrialFR
+        lateTrialFR
+        pstTrialFR
+        preRwdFR
+        pstRwdFR
+        errPrdFR
+    end
+    properties % Summary Stats
+        epochCorrMatrix
+        preTrialPosF
+        erlyTrialPosF
+        lateTrialPosF
+        pstTrialPosF
+        preRwdPosF
+        pstRwdPosF
+        errPrdPosF
     end
         
     %% Methods
@@ -30,7 +67,7 @@ classdef PFC_UniSum_MLB_SM < MLB_SM
             if nargin == 3
                 obj.binSize = binSize;
                 obj.dsRate = dsRate;
-                obj.ExtractTrialMatrix;
+                obj.ExtractTrialMatrices;
                 obj.ExtractTrialPeriods
             end
         end
@@ -38,13 +75,25 @@ classdef PFC_UniSum_MLB_SM < MLB_SM
     %% Pre-Processing Methods
     methods
         %% Extract FIS 
-        function ExtractTrialMatrix(obj)
+        function ExtractTrialMatrices(obj)
             [obj.wholeTrialMtx, obj.wholeTrialTimeVect] = obj.PP_TrialMatrix(obj.trialWindow, 'PokeIn');            
         end
         %% Extract Poke In
         function ExtractTrialPeriods(obj)
-            [obj.preErlyMtx, obj.preErlyTime] = obj.PP_TrialMatrix(obj.preErlyWindow, 'PokeIn');
-            [obj.ltPstMtx, obj.ltPstTime] = obj.PP_TrialMatrix(obj.preErlyWindow, 'PokeOut');
+            [obj.preTrialMtx, obj.preTrialTime] = obj.PP_TrialMatrix(obj.preTrialWindow, 'PokeIn');
+            obj.preTrialFR = reshape(mean(obj.preTrialMtx,1), [size(obj.preTrialMtx,2),size(obj.preTrialMtx,3)])';
+            [obj.erlyTrialMtx, obj.erlyTrialTime] = obj.PP_TrialMatrix(obj.erlyTrialWindow, 'PokeIn');
+            obj.erlyTrialFR = reshape(mean(obj.erlyTrialMtx,1), [size(obj.erlyTrialMtx,2), size(obj.erlyTrialMtx,3)])';
+            [obj.lateTrialMtx, obj.lateTrialTime] = obj.PP_TrialMatrix(obj.lateTrialWindow, 'PokeOut');
+            obj.lateTrialFR = reshape(mean(obj.lateTrialMtx,1), [size(obj.lateTrialMtx,2), size(obj.lateTrialMtx,3)])';
+            [obj.pstTrialMtx, obj.pstTrialTime] = obj.PP_TrialMatrix(obj.pstTrialWindow, 'PokeOut');
+            obj.pstTrialFR = reshape(mean(obj.pstTrialMtx,1), [size(obj.pstTrialMtx,2), size(obj.pstTrialMtx,3)])';
+            [obj.preRwdMtx, obj.preRwdTime] = obj.PP_TrialMatrix(obj.preRwdWindow, 'FrontReward');
+            obj.preRwdFR = reshape(mean(obj.preRwdMtx,1), [size(obj.preRwdMtx,2), size(obj.preRwdMtx,3)])';
+            [obj.pstRwdMtx, obj.pstRwdTime] = obj.PP_TrialMatrix(obj.pstRwdWindow, 'FrontReward');
+            obj.pstRwdFR = reshape(mean(obj.pstRwdMtx,1), [size(obj.pstRwdMtx,2), size(obj.pstRwdMtx,3)])';
+            [obj.errPrdMtx, obj.errPrdTime] = obj.PP_TrialMatrix(obj.pstTrialWindow, 'ErrorSignal');
+            obj.errPrdFR = reshape(mean(obj.errPrdMtx,1), [size(obj.errPrdMtx,2), size(obj.errPrdMtx,3)])';
         end
     end
     %% Analysis Methods
