@@ -237,8 +237,10 @@ classdef SeqMem < handle
                 if ~isnan(curIndex)
                     curWindow = curIndex + window;
                     tempLogVect(curWindow(1):curWindow(2)) = true;
-                end
-                trialOrgData{t} = dataMatrix(tempLogVect,:);                
+                    trialOrgData{t} = dataMatrix(tempLogVect,:);
+                else
+                    trialOrgData{t} = nan(length(window(1):window(2)), size(dataMatrix,2));
+                end                
             end
             trialMatrix = cell2mat(trialOrgData);
         end
