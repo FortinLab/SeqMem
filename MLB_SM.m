@@ -26,6 +26,9 @@ classdef MLB_SM < SeqMem
             paddedWindow = [window(1)-(obj.binSize/2) window(2)+(obj.binSize/2)];
             trialTime = obj.ExtractTrialMatrix(obj.tsVect, paddedWindow, alignment);
             tempMtx = obj.ExtractTrialMatrix(obj.ensembleMatrix, paddedWindow, alignment);
+            if ~isempty(obj.popVectIncludeLog)
+                tempMtx(:,~obj.popVectIncludeLog,:) = [];
+            end
             firstValid = 1;
             switch alignment
                 case 'Odor'
