@@ -1,5 +1,5 @@
 classdef SeqMem < handle
-    properties (SetAccess = protected)
+    properties
         pathDir
         behavMatFile
         nsmblMatFile
@@ -15,7 +15,9 @@ classdef SeqMem < handle
         lfpMatrixColIDs
         trialInfo
         unitInfo
+        numUniPerTet
         rejectedLFPmask
+        popVectIncludeLog
     end
     properties (Constant)
         PositionColors = [44/255, 168/255, 224/255;...
@@ -41,7 +43,11 @@ classdef SeqMem < handle
             obj.behavMatrixColIDs = behavMatrixColIDs.behavMatrixColIDs(2:end);
             obj.nsmblMatFile = fileNames{cellfun(@(a)~isempty(a), strfind(fileNames, 'EnsembleMatrix'))};
             ensembleMatrix = load([obj.pathDir '\' obj.nsmblMatFile]);
-            obj.ensembleMatrix = ensembleMatrix.ensembleMatrix(:,2:end);
+            if isempty(obj.popVectIncludeLog)
+                obj.ensembleMatrix = ensembleMatrix.ensembleMatrix(:,2:end);
+            else
+                obj.ensembleMatrix = ensembleMatrix.ensembleMatrix(:,[false; obj.popVectIncludeLog(:)]);
+            end
             obj.ensembleMatrixColIDs = ensembleMatrix.ensembleMatrixColIDs(2:end);
             obj.unitInfo = ensembleMatrix.ensembleUnitSummaries;
             obj.smFiles = fileNames(cellfun(@(a)~isempty(a), regexp(fileNames, '_SM\>')))';
@@ -138,13 +144,13 @@ classdef SeqMem < handle
                 seqNum{trl} = seq;
                 
                 % Create trial logical vector
-                curPokeIn = pokeInNdxs(find(pokeInNdxs<=trialIndices(trl)==1,1, 'last'));
-                curPokeOut = pokeOutNdxs(find(pokeOutNdxs>trialIndices(trl)==1,1, 'first'));
+                curPokeIn = pokeInNdxs(find((pokeInNdxs<=trialIndices(trl))==1,1, 'last'));
+                curPokeOut = pokeOutNdxs(find((pokeOutNdxs>trialIndices(trl))==1,1, 'first'));
                 
                 trialPokeInNdx{trl} = curPokeIn;
                 trialOdorNdx{trl} = trialIndices(trl);
                 trialPokeOutNdx{trl} = curPokeOut;
-                curFrontRwrdNdx = frontRwrdNdxs(find(frontRwrdNdxs>trialIndices(trl)==1,1, 'first'));
+                curFrontRwrdNdx = frontRwrdNdxs(find((frontRwrdNdxs>trialIndices(trl))==1,1, 'first'));
                 if  isempty(curFrontRwrdNdx) || trl==numTrials || curFrontRwrdNdx<trialIndices(trl+1)
                     trialRewardNdx{trl} = curFrontRwrdNdx;
                     if isempty(curFrontRwrdNdx)
@@ -153,7 +159,7 @@ classdef SeqMem < handle
                 else
                     trialRewardNdx{trl} = nan;
                 end
-                curErrSigNdx = errorSigNdxs(find(errorSigNdxs>trialIndices(trl)==1,1,'first'));
+                curErrSigNdx = errorSigNdxs(find((errorSigNdxs>trialIndices(trl))==1,1,'first'));
                 if isempty(curErrSigNdx) || trl==numTrials || curErrSigNdx<trialIndices(trl+1)
                     trialErrorNdx{trl} = curErrSigNdx;
                     if isempty(curErrSigNdx)
@@ -162,7 +168,7 @@ classdef SeqMem < handle
                 else
                     trialErrorNdx{trl} = nan;
                 end
-                curRwdSigNdx = rewardSigNdxs(find(rewardSigNdxs>trialIndices(trl)==1,1,'first'));
+                curRwdSigNdx = rewardSigNdxs(find((rewardSigNdxs>trialIndices(trl))==1,1,'first'));
                 if isempty(curRwdSigNdx) || trl==numTrials || curRwdSigNdx<trialIndices(trl+1)
                     trialRwdSigNdx{trl} = curRwdSigNdx;
                     if isempty(curRwdSigNdx)
@@ -171,7 +177,7 @@ classdef SeqMem < handle
                 else
                     trialRwdSigNdx{trl} = nan;
                 end
-                curRearRwdNdx = rearRwrdNdxs(find(rearRwrdNdxs>trialIndices(trl)==1,1,'first'));
+                curRearRwdNdx = rearRwrdNdxs(find((rearRwrdNdxs>trialIndices(trl))==1,1,'first'));
                 if isempty(curRearRwdNdx) || trl==numTrials || curRearRwdNdx<trialIndices(trl+1)
                     trialRearRwdNdx{trl} = curRearRwdNdx;
                     if isempty(curRearRwdNdx)
@@ -198,9 +204,11 @@ classdef SeqMem < handle
             fprintf('Compiling LFP\n');
             obj.lfpMatrix = nan(size(obj.behavMatrix,1),length(obj.smFiles));
             obj.lfpMatrixColIDs = cell(1,length(obj.smFiles));
+            obj.numUniPerTet = nan(1,length(obj.smFiles));
             for file = 1:length(obj.smFiles)
                 sm = load([obj.pathDir '\' obj.smFiles{file}], 'statMatrix');
                 colIDs = load([obj.pathDir '\' obj.smFiles{file}], 'statMatrixColIDs');
+                obj.numUniPerTet(file) = sum(cellfun(@(a)~isempty(a), regexp(colIDs.statMatrixColIDs, '-U[0-9]*')));
                 idSplit = strsplit(colIDs.statMatrixColIDs{2}, '_');
                 obj.lfpMatrixColIDs{file} = idSplit{1};
                 obj.lfpMatrix(:,file) = sm.statMatrix(:,2);                
@@ -248,11 +256,12 @@ classdef SeqMem < handle
     %% Data Pre-Processing
     methods
         %% Simple Filtering & Instantaneous Phase Extraction
-        function [filtSig, hilbPhase] = SimpleFilter(obj, signal, freqWin)
+        function [filtSig, hilbPhase, hilbPower] = SimpleFilter(obj, signal, freqWin)
             Wn_FRange = [freqWin(1)/(obj.sampleRate/2) freqWin(2)/(obj.sampleRate/2)];
             [bFRange, aFRange] = butter(3, Wn_FRange);
             filtSig = filtfilt(bFRange, aFRange, signal);
             hilbPhase = atan2(imag(hilbert(filtSig)), filtSig);
+            hilbPower = zscore(abs(hilbert(filtSig)));
         end
         %% LFP Artifact Rejection
     end
