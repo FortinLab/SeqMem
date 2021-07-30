@@ -53,55 +53,18 @@ classdef PFC_UniSum_MLB_SM < MLB_SM
         pstErrFR
         allTrialPeriodsFR
         ensembleTrialPeriodMeanFR
-    end
-    properties % Summary Stats
+        
         epochCorrRhoMatrixC
         epochCorrRhoMatrixIC
         epochCorrSigMatrixC
         epochCorrSigMatrixIC
-        
-        trialEpochFc = cell(4,7)
-        trialEpochFic = cell(4,7)
-        
-        trialEpochPerfF = cell(6,7)
-        
+    end
+    properties % ANOVA Stats                 
         trialEpochOdrPosPerfF = cell(18,7)
         
-        preTrialPosFc = cell(4,7)
-        preTrialPosFic = cell(4,7)
-        preTrialOdrFc = cell(4,7)
-        preTrialOdrFic = cell(4,7)
-        
-        erlyTrialPosFc = cell(4,7)
-        erlyTrialPosFic = cell(4,7)
-        erlyTrialOdrFc = cell(4,7)
-        erlyTrialOdrFic = cell(4,7)
-        
-        lateTrialPosFc = cell(4,7)
-        lateTrialPosFic = cell(4,7)
-        lateTrialOdrFc = cell(4,7)
-        lateTrialOdrFic = cell(4,7)
-        
-        pstTrialPosFc = cell(4,7)
-        pstTrialPosFic = cell(4,7)
-        pstTrialOdrFc = cell(4,7)
-        pstTrialOdrFic = cell(4,7)
-        
-        preRwdPosFc = cell(4,7)
-        preRwdOdrFc = cell(4,7)
-        
-        pstRwdPosFc = cell(4,7)
-        pstRwdOdrFc = cell(4,7)
-        
-        preErrPosFic = cell(4,7)
-        preErrOdrFic = cell(4,7)
-        
-        pstErrPosFc = cell(4,7)
-        pstErrPosFic = cell(4,7)
-        pstErrOdrFc = cell(4,7)
-        pstErrOdrFic = cell(4,7)
+        trialRewardOdrPosF = cell(10,7)
+        trialErrorOdrPosF = cell(10,7)
     end
-        
     %% Methods
     methods
         %% Object Creation
@@ -191,59 +154,25 @@ classdef PFC_UniSum_MLB_SM < MLB_SM
             posLog = [obj.trialInfo.Position];
             perfLog = [obj.trialInfo.Performance];
             for tet = 1:length(obj.ensembleMatrixColIDs)
-                % Do cells modulate their firing rate based on trial period?
-                tempEpochFRc = obj.allTrialPeriodsFR(perfLog,1:4,tet);
-                tempEpochLogC = ones(sum(perfLog),4).*repmat(1:4, [sum(perfLog),1]);
-                [~, obj.trialEpochFc(:,:,tet)] = anovan(tempEpochFRc(:), tempEpochLogC(:), 'display', 'off');
-                tempEpochFRic = obj.allTrialPeriodsFR(~perfLog,1:4,tet);
-                tempEpochLogIC = ones(sum(~perfLog),4).*repmat(1:4, [sum(~perfLog),1]);
-                [~, obj.trialEpochFic(:,:,tet)] = anovan(tempEpochFRic(:), tempEpochLogIC(:), 'display', 'off');
-                
-                % Do cells modulate their firing rate based on trial period and outcome?
                 tempEpochAll = obj.allTrialPeriodsFR(:,1:4,tet);
                 tempEpochAllLog = ones(length(perfLog),4).*repmat(1:4, [length(perfLog),1]);
-                [~, obj.trialEpochPerfF(:,:,tet)] = anovan(tempEpochAll(:), [tempEpochAllLog(:), repmat(perfLog', 4,1)],...
-                    'model', 'interaction', 'varnames', {'Epoch', 'Performance'}, 'display', 'off');
-                
-                % Do cells modulate their firing rate during trial periods based on trial position or odor?
-                [~,obj.preTrialPosFc(:,:,tet)] = anovan(obj.preTrialFR(perfLog,tet), posLog(perfLog)', 'display', 'off');
-                [~,obj.preTrialPosFic(:,:,tet)] = anovan(obj.preTrialFR(~perfLog,tet), posLog(~perfLog)', 'display', 'off');
-                [~,obj.preTrialOdrFc(:,:,tet)] = anovan(obj.preTrialFR(perfLog,tet), odorLog(perfLog)', 'display', 'off');
-                [~,obj.preTrialOdrFic(:,:,tet)] = anovan(obj.preTrialFR(~perfLog,tet), odorLog(~perfLog)', 'display', 'off');
-                
-                [~,obj.erlyTrialPosFc(:,:,tet)] = anovan(obj.erlyTrialFR(perfLog,tet), posLog(perfLog)', 'display', 'off');
-                [~,obj.erlyTrialPosFic(:,:,tet)] = anovan(obj.erlyTrialFR(~perfLog,tet), posLog(~perfLog)', 'display', 'off');
-                [~,obj.erlyTrialOdrFc(:,:,tet)] = anovan(obj.erlyTrialFR(perfLog,tet), odorLog(perfLog)', 'display', 'off');
-                [~,obj.erlyTrialOdrFic(:,:,tet)] = anovan(obj.erlyTrialFR(~perfLog,tet), odorLog(~perfLog)', 'display', 'off');
-                
-                [~,obj.lateTrialPosFc(:,:,tet)] = anovan(obj.lateTrialFR(perfLog,tet), posLog(perfLog)', 'display', 'off');
-                [~,obj.lateTrialPosFic(:,:,tet)] = anovan(obj.lateTrialFR(~perfLog,tet), posLog(~perfLog)', 'display', 'off');
-                [~,obj.lateTrialOdrFc(:,:,tet)] = anovan(obj.lateTrialFR(perfLog,tet), odorLog(perfLog)', 'display', 'off');
-                [~,obj.lateTrialOdrFic(:,:,tet)] = anovan(obj.lateTrialFR(~perfLog,tet), odorLog(~perfLog)', 'display', 'off');
-                
-                [~,obj.pstTrialPosFc(:,:,tet)] = anovan(obj.pstTrialFR(perfLog,tet), posLog(perfLog)', 'display', 'off');
-                [~,obj.pstTrialPosFic(:,:,tet)] = anovan(obj.pstTrialFR(~perfLog,tet), posLog(~perfLog)', 'display', 'off');
-                [~,obj.pstTrialOdrFc(:,:,tet)] = anovan(obj.pstTrialFR(perfLog,tet), odorLog(perfLog)', 'display', 'off');
-                [~,obj.pstTrialOdrFic(:,:,tet)] = anovan(obj.pstTrialFR(~perfLog,tet), odorLog(~perfLog)', 'display', 'off');
-                
-                [~,obj.preRwdPosFc(:,:,tet)] = anovan(obj.preRwdFR(perfLog,tet), posLog(perfLog)', 'display', 'off');
-                [~,obj.preRwdOdrFc(:,:,tet)] = anovan(obj.preRwdFR(perfLog,tet), odorLog(perfLog)', 'display', 'off');
-                
-                [~,obj.pstRwdPosFc(:,:,tet)] = anovan(obj.pstRwdFR(perfLog,tet), posLog(perfLog)', 'display', 'off');
-                [~,obj.pstRwdOdrFc(:,:,tet)] = anovan(obj.pstRwdFR(perfLog,tet), odorLog(perfLog)', 'display', 'off');
-                
-                [~,obj.preErrPosFic(:,:,tet)] = anovan(obj.preErrFR(~perfLog,tet), posLog(~perfLog)', 'display', 'off');
-                [~,obj.preErrOdrFic(:,:,tet)] = anovan(obj.preErrFR(~perfLog,tet), odorLog(~perfLog)', 'display', 'off');
-                
-                [~,obj.pstErrPosFic(:,:,tet)] = anovan(obj.pstErrFR(~perfLog,tet), posLog(~perfLog)', 'display', 'off');
-                [~,obj.pstErrOdrFic(:,:,tet)] = anovan(obj.pstErrFR(~perfLog,tet), odorLog(~perfLog)', 'display', 'off');
                 
                 % Do cells modulate their firing rate based on trial position and outcome?
                 [~, obj.trialEpochOdrPosPerfF(:,:,tet)] = anovan(tempEpochAll(:), [tempEpochAllLog(:), repmat(posLog', 4,1), repmat(perfLog', 4,1), repmat(odorLog', 4,1)],...
                     'model', 'full', 'sstype', 2, 'varnames', {'Epoch', 'Position', 'Performance', 'Odor'}, 'display', 'off');
+                
+                % Do cells show an error response and is it modulated by trial position?
+                rwdResponses = obj.allTrialPeriodsFR(:,5:6,tet);
+                rwdPrdLog = ones(size(obj.allTrialPeriodsFR,1),2).*repmat(1:2,[size(obj.allTrialPeriodsFR,1),1]);
+                [~, obj.trialRewardOdrPosF(:,:,tet)] = anovan(rwdResponses(:), [rwdPrdLog(:), repmat(posLog', 2,1), repmat(odorLog', 2,1)],...
+                    'model', 'full', 'sstype', 2, 'varnames', {'Pre/Post', 'Position', 'Odor'}, 'display', 'off');
+                                    
+                % Do cells show a reward response and is it modulated by trial position?
+                errorResponses = obj.allTrialPeriodsFR(:,7:8,tet);
+                errorPrdLog = ones(size(obj.allTrialPeriodsFR,1),2).*repmat(1:2,[size(obj.allTrialPeriodsFR,1),1]);
+                [~, obj.trialErrorOdrPosF(:,:,tet)] = anovan(errorResponses(:), [errorPrdLog(:), repmat(posLog', 2,1), repmat(odorLog', 2,1)],...
+                    'model', 'full', 'sstype', 2, 'varnames', {'Pre/Post', 'Position', 'Odor'}, 'display', 'off');
             end
-        % Do cells modulate their firing rate during trial periods based on
-        %   odor-in-position conjunction?
         end
         %% Instantaneous trial modulation
         %% Convolve Half Gaussian
