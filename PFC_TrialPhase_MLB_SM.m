@@ -4,11 +4,16 @@ classdef PFC_TrialPhase_MLB_SM < MLB_SM
         endTrialAlignment = 'PokeOut'
         beginTrialWindow = [-500 500]
         endTrialWindow = [-500 500]
-        phaseBins = [-pi/4, pi/4;...
-            pi/4, pi*3/4;...
-            pi*3/4 -pi*3/4;...
-            -pi*3/4 -pi/4]
-        phaseBinNames = [{'Peak'}, {'Fall'}, {'Trough'}, {'Rise'}]
+%         phaseBins = [-pi/4, pi/4;...
+%             pi/4, pi*3/4;...
+%             pi*3/4 -pi*3/4;...
+%             -pi*3/4 -pi/4]
+%         phaseBinNames = [{'Peak'}, {'Fall'}, {'Trough'}, {'Rise'}]
+        phaseBins = [0, pi/2;...
+            pi/2, pi;...
+            pi -pi/2;...
+            -pi/2 0]
+        phaseBinNames = [{'Peak-Fall'}, {'Trough-Fall'}, {'Trough-Rise'}, {'Peak-Rise'}]
         oscBandLims = [4 12]
         coordLFPchanID
     end
@@ -125,7 +130,6 @@ classdef PFC_TrialPhase_MLB_SM < MLB_SM
                     obj.fisL1OdecodeOdrTime(:,o,phase) = sum(tempPhaseDecodeOdor==o,2)./sum(~isnan(tempPhaseDecodeOdor),2);
                 end
             end
-            obj.fisL1OdecodeOdrPhaseTrlPrd = repmat({nan(4,4,size(obj.phaseBins,1))}, [1,4]);
             %   Decode Time across trial time
             [tempDecodeTime, ~] = obj.DecodeBayesPost(obj.fisSeqPosts, obj.fisSeqSpikeTimeLog);
             for s = 1:size(tempDecodeTime,2)
@@ -172,7 +176,7 @@ classdef PFC_TrialPhase_MLB_SM < MLB_SM
                         end
                     end
                 end
-                obj.fisL1OphaseDecodePhase_TrlPrd{prd} = tempPhaseDeocdePhase;
+                obj.fisL1OphaseDecodePhase_TrlPrd{prd} = tempPhaseDecodePhase;
                 obj.fisL1OphaseDecodePhaseOdor_TrlPrd{prd} = tempPhaseDecodePhaseOdor;
             end
         end
@@ -184,7 +188,7 @@ classdef PFC_TrialPhase_MLB_SM < MLB_SM
                 obj.CompileMLBmtx(obj.endTrialAlignment);
             end
             obj.fisSeqLFPphaseIDmtx = nan((size(obj.beginTrialLFPphaseID,1) + size(obj.endTrialLFPphaseID,1))*4, 1, size(obj.fiscTrials,2));
-            obj.fisSeqSpikePhaseMtx = nan((size(obj.beginTrialSpkPhaseMtx,1) + size(obj.endTrialSpkPhaseMtx,1))*4, length(obj.ensembleMatrixColIDs), size(obj.fiscTrials,2));
+            obj.fisSeqSpikePhaseMtx = nan((size(obj.beginTrialSpkPhaseMtx,1) + size(obj.endTrialSpkPhaseMtx,1))*4, size(obj.beginTrialSpkPhaseMtx,2), size(obj.fiscTrials,2));
             for seq = 1:size(obj.fiscTrials,2)
                 obj.fisSeqSpikePhaseMtx(:,:,seq) = [obj.beginTrialSpkPhaseMtx(:,:,obj.fiscTrials(1,seq)); obj.endTrialSpkPhaseMtx(:,:,obj.fiscTrials(1,seq));...
                     obj.beginTrialSpkPhaseMtx(:,:,obj.fiscTrials(2,seq)); obj.endTrialSpkPhaseMtx(:,:,obj.fiscTrials(2,seq));...
