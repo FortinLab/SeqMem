@@ -78,7 +78,7 @@ classdef PFC_TrialEvent_MLB_SM < MLB_SM
                 fileDir = uigetdir;
             end
             obj@MLB_SM(fileDir);
-            if nargin ~= 0
+            if nargin >= 2
                 if exist('binSize')==1
                     obj.binSize = binSize;
                 end
@@ -91,20 +91,14 @@ classdef PFC_TrialEvent_MLB_SM < MLB_SM
                 if exist('endWindow')==1
                     obj.endTrialWindow = endWindow;
                 end
-                obj.CompileMLBmtx(obj.beginTrialAlignment);
-                obj.CompileMLBmtx(obj.endTrialAlignment);
-                obj.CompileTrialObsvs;
-                obj.CompileFISlikes;
-                obj.DecodeFIS_L1O;
-                obj.DecodeOS;
-                obj.DecodeTAO;
+                obj.RunAnalysis;
             else
             end
             
         end
     end
     methods
-        %% Recompile the data
+        %% Run the full analysis
         function RunAnalysis(obj)
             fprintf('Analyzing\n');
             obj.CompileMLBmtx(obj.beginTrialAlignment);
