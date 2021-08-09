@@ -13,11 +13,14 @@ classdef PFC_UniSum_MLB_SM < MLB_SM
     end
     properties % Categorical Descriptors
         maxResponsePeriod
+        sessionFRmean
+        sessionFRstd        
     end
     properties % Data Matrices
         wholeTrialMtx
+        wholeTrialMtxZ
         wholeTrialTimeVect
-        
+                
         preTrialMtx
         preTrialTime
         
@@ -65,6 +68,11 @@ classdef PFC_UniSum_MLB_SM < MLB_SM
         trialRewardOdrPosF = cell(10,7)
         trialErrorOdrPosF = cell(10,7)
     end
+    properties % Individual Cell Decoding
+        cellFISCpost
+        cellFISCdecodeOdor
+        cellFISCdecodeTime
+    end
     %% Methods
     methods
         %% Object Creation
@@ -88,7 +96,22 @@ classdef PFC_UniSum_MLB_SM < MLB_SM
     methods
         %% Extract FIS 
         function ExtractTrialMatrices(obj)
-            [obj.wholeTrialMtx, obj.wholeTrialTimeVect] = obj.PP_TrialMatrix(obj.trialWindow, 'PokeIn');            
+            [obj.wholeTrialMtx, obj.wholeTrialTimeVect] = obj.PP_TrialMatrix(obj.trialWindow, 'PokeIn');   
+            obj.sessionFRmean = nan(1,length(obj.ensembleMatrixColIDs));
+            obj.sessionFRstd = nan(1,length(obj.ensembleMatrixColIDs));
+            for u = 1:length(obj.ensembleMatrixColIDs)
+                tempBinnedRates = conv(obj.ensembleMatrix(:,u),ones(1,obj.binSize)./(obj.binSize/obj.sampleRate), 'same');
+                obj.sessionFRmean(u) = mean(tempBinnedRates);
+                obj.sessionFRstd(u) = std(tempBinnedRates);
+            end
+            if ~isempty(obj.popVectIncludeLog)
+                obj.sessionFRmean(:,~obj.popVectIncludeLog) = [];
+                obj.sessionFRstd(:,~obj.popVectIncludeLog) = [];
+            end
+            obj.wholeTrialMtxZ = nan(size(obj.wholeTrialMtx));
+            for u = 1:length(obj.ensembleMatrixColIDs)
+                obj.wholeTrialMtxZ(:,u,:) = (obj.wholeTrialMtx(:,u,:)-obj.sessionFRmean(u))./obj.sessionFRstd(u);
+            end
         end
         %% Extract Poke In
         function ExtractTrialPeriods(obj)
@@ -174,7 +197,6 @@ classdef PFC_UniSum_MLB_SM < MLB_SM
                     'model', 'full', 'sstype', 2, 'varnames', {'Pre/Post', 'Position', 'Odor'}, 'display', 'off');
             end
         end
-        %% Instantaneous trial modulation
         %% Convolve Half Gaussian
         function convdData = ConvolveHalfGauss(obj, data)
             convdData = nan(size(data));
