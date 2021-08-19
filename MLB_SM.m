@@ -16,8 +16,8 @@ classdef MLB_SM < SeqMem
         end
     end
     methods % Data Pre-Processing Methods
-        %% Pre-Process Trial Data
-        function [dataMtx, timeVect] = PP_TrialMatrix(obj, window, alignment)
+        %% Pre-Process Trial Spiking Data
+        function [dataMtx, timeVect] = PP_TrialMatrix_Spiking(obj, window, alignment)
             if isempty(obj.binSize)
                 error('Define binSize');
             elseif isempty(obj.dsRate)
@@ -62,6 +62,25 @@ classdef MLB_SM < SeqMem
             dsVect = downsample(1:size(unpaddedBinnedMtx,1),obj.dsRate);
             dataMtx = unpaddedBinnedMtx(dsVect,:,:);
             timeVect = unpaddedTS(dsVect);
+        end
+        %% Pre-Process Trial LFP Data
+        function [phaseMtx, powerMtx] = PP_TrialMatrix_LFP(obj, freqWin, window, alignment)
+            if isempty(obj.binSize)
+                error('Define binSize');
+            elseif isempty(obj.dsRate)
+                error('Define dsRate');
+            end
+            paddedWindow = [window(1)-(obj.binSize/2) window(2)+(obj.binSize/2)];
+            tetWMU = find(obj.numUniPerTet==max(obj.numUniPerTet), 1, 'first');
+            [~, phase, power] = obj.SimpleFilter(obj.lfpMatrix(:,tetWMU), freqWin);
+
+            tempPhase = obj.ExtractTrialMatrix(phase, paddedWindow, alignment);
+            tempPower = obj.ExtractTrialMatrix(power, paddedWindow, alignment);
+            unpaddedPhase = tempPhase((obj.binSize/2)+1:end-(obj.binSize/2),:,:);
+            unpaddedPower = tempPower((obj.binSize/2)+1:end-(obj.binSize/2),:,:);
+            dsVect = downsample(1:size(unpaddedPhase,1),obj.dsRate);
+            phaseMtx = unpaddedPhase(dsVect,:,:);
+            powerMtx = unpaddedPower(dsVect,:,:);
         end
         %% Identify Fully InSeq Correct Sequences
         function PP_IdentifyFISCseqs(obj)

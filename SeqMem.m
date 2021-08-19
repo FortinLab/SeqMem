@@ -52,7 +52,7 @@ classdef SeqMem < handle
             obj.unitInfo = ensembleMatrix.ensembleUnitSummaries;
             obj.smFiles = fileNames(cellfun(@(a)~isempty(a), regexp(fileNames, '_SM\>')))';
             obj.OrganizeTrialInfo;
-%             obj.CompileLFPmatrix;
+            obj.CompileLFPmatrix;
         end
     end
     %% Data Organization & Extraction

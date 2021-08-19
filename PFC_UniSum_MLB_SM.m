@@ -96,7 +96,7 @@ classdef PFC_UniSum_MLB_SM < MLB_SM
     methods
         %% Extract FIS 
         function ExtractTrialMatrices(obj)
-            [obj.wholeTrialMtx, obj.wholeTrialTimeVect] = obj.PP_TrialMatrix(obj.trialWindow, 'PokeIn');   
+            [obj.wholeTrialMtx, obj.wholeTrialTimeVect] = obj.PP_TrialMatrix_Spiking(obj.trialWindow, 'PokeIn');   
             obj.sessionFRmean = nan(1,length(obj.ensembleMatrixColIDs));
             obj.sessionFRstd = nan(1,length(obj.ensembleMatrixColIDs));
             for u = 1:length(obj.ensembleMatrixColIDs)
@@ -115,14 +115,14 @@ classdef PFC_UniSum_MLB_SM < MLB_SM
         end
         %% Extract Poke In
         function ExtractTrialPeriods(obj)
-            [obj.preTrialMtx, obj.preTrialTime] = obj.PP_TrialMatrix(obj.preTrialWindow, 'PokeIn');
-            [obj.erlyTrialMtx, obj.erlyTrialTime] = obj.PP_TrialMatrix(obj.erlyTrialWindow, 'PokeIn');
-            [obj.lateTrialMtx, obj.lateTrialTime] = obj.PP_TrialMatrix(obj.lateTrialWindow, 'PokeOut');
-            [obj.pstTrialMtx, obj.pstTrialTime] = obj.PP_TrialMatrix(obj.pstTrialWindow, 'PokeOut');
-            [obj.preRwdMtx, obj.preRwdTime] = obj.PP_TrialMatrix(obj.preRwdWindow, 'FrontReward');
-            [obj.pstRwdMtx, obj.pstRwdTime] = obj.PP_TrialMatrix(obj.pstRwdWindow, 'FrontReward');
-            [obj.preErrMtx, obj.preErrTime] = obj.PP_TrialMatrix(obj.preErrWindow, 'ErrorSignal');
-            [obj.pstErrMtx, obj.pstErrTime] = obj.PP_TrialMatrix(obj.pstErrWindow, 'ErrorSignal');
+            [obj.preTrialMtx, obj.preTrialTime] = obj.PP_TrialMatrix_Spiking(obj.preTrialWindow, 'PokeIn');
+            [obj.erlyTrialMtx, obj.erlyTrialTime] = obj.PP_TrialMatrix_Spiking(obj.erlyTrialWindow, 'PokeIn');
+            [obj.lateTrialMtx, obj.lateTrialTime] = obj.PP_TrialMatrix_Spiking(obj.lateTrialWindow, 'PokeOut');
+            [obj.pstTrialMtx, obj.pstTrialTime] = obj.PP_TrialMatrix_Spiking(obj.pstTrialWindow, 'PokeOut');
+            [obj.preRwdMtx, obj.preRwdTime] = obj.PP_TrialMatrix_Spiking(obj.preRwdWindow, 'FrontReward');
+            [obj.pstRwdMtx, obj.pstRwdTime] = obj.PP_TrialMatrix_Spiking(obj.pstRwdWindow, 'FrontReward');
+            [obj.preErrMtx, obj.preErrTime] = obj.PP_TrialMatrix_Spiking(obj.preErrWindow, 'ErrorSignal');
+            [obj.pstErrMtx, obj.pstErrTime] = obj.PP_TrialMatrix_Spiking(obj.pstErrWindow, 'ErrorSignal');
             
             obj.preTrialFR = reshape(mean(obj.preTrialMtx,1), [size(obj.preTrialMtx,2),size(obj.preTrialMtx,3)])';
             obj.erlyTrialFR = reshape(mean(obj.erlyTrialMtx,1), [size(obj.erlyTrialMtx,2), size(obj.erlyTrialMtx,3)])';

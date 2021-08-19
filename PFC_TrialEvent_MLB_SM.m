@@ -5,12 +5,25 @@ classdef PFC_TrialEvent_MLB_SM < MLB_SM
         endTrialAlignment = 'PokeOut'
         beginTrialWindow = [-500 500]
         endTrialWindow = [-500 500]
+        thetaBand = [4 12]
+        betaBand = [16 32]
     end
     properties % Organized Spiking Data
         beginTrialMtx
         endTrialMtx
         trialSpikeMtx
         fisSeqSpikeMtx
+    end
+    properties % Organized LFP Data
+        beginTrialThetaPowerMtx
+        beginTrialThetaPhaseMtx
+        beginTrialBetaPowerMtx
+        beginTrialBetaPhaseMtx
+        
+        endTrialThetaPowerMtx
+        endTrialThetaPhaseMtx
+        endTrialBetaPowerMtx
+        endTrialBetaPhaseMtx
     end
     properties % Data Organization Vectors
         beginTrialTime
@@ -304,9 +317,13 @@ classdef PFC_TrialEvent_MLB_SM < MLB_SM
         function CompileMLBmtx(obj, alignment)
             switch alignment
                 case obj.beginTrialAlignment
-                    [obj.beginTrialMtx, obj.beginTrialTime] = obj.PP_TrialMatrix(obj.beginTrialWindow, alignment);
+                    [obj.beginTrialMtx, obj.beginTrialTime] = obj.PP_TrialMatrix_Spiking(obj.beginTrialWindow, alignment);
+                    [obj.beginTrialThetaPhaseMtx, obj.beginTrialThetaPowerMtx] = obj.PP_TrialMatrix_LFP(obj.thetaBand, obj.beginTrialWindow, alignment);
+                    [obj.beginTrialBetaPhaseMtx, obj.beginTrialBetaPowerMtx] = obj.PP_TrialMatrix_LFP(obj.betaBand, obj.beginTrialWindow, alignment);
                 case obj.endTrialAlignment
-                    [obj.endTrialMtx, obj.endTrialTime] = obj.PP_TrialMatrix(obj.endTrialWindow, alignment);
+                    [obj.endTrialMtx, obj.endTrialTime] = obj.PP_TrialMatrix_Spiking(obj.endTrialWindow, alignment);
+                    [obj.endTrialThetaPhaseMtx, obj.endTrialThetaPowerMtx] = obj.PP_TrialMatrix_LFP(obj.thetaBand, obj.endTrialWindow, alignment);
+                    [obj.endTrialBetaPhaseMtx, obj.endTrialBetaPowerMtx] = obj.PP_TrialMatrix_LFP(obj.betaBand, obj.endTrialWindow, alignment);
             end
         end
     end
