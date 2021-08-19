@@ -24,11 +24,20 @@ classdef PFC_TrialEvent_MLB_SM < MLB_SM
         endTrialThetaPhaseMtx
         endTrialBetaPowerMtx
         endTrialBetaPhaseMtx
+        
+        trialThetaPowerMtx
+        trialThetaPhaseMtx
+        trialBetaPowerMtx
+        trialBetaPhaseMtx
+        
+        fisThetaPowerMtx
+        fisThetaPhaseMtx
+        fisBetaPowerMtx
+        fisBetaPhaseMtx
     end
     properties % Data Organization Vectors
         beginTrialTime
         endTrialTime
-        fisSeqTrlNums
         osTrlNums
         skpTrlNums
         repTrlNums
@@ -48,6 +57,7 @@ classdef PFC_TrialEvent_MLB_SM < MLB_SM
     end
     properties % Posterior Distributions
         fisSeqPosts
+        trlPosts
         osPosts
         skpPosts
         repPosts
@@ -118,6 +128,7 @@ classdef PFC_TrialEvent_MLB_SM < MLB_SM
             obj.CompileMLBmtx(obj.endTrialAlignment);
             obj.CompileTrialObsvs;
             obj.CompileFISlikes;
+            obj.DecodeTrials;
             obj.DecodeFIS_L1O;
             obj.DecodeOS;
             obj.DecodeTAO;
@@ -127,19 +138,19 @@ classdef PFC_TrialEvent_MLB_SM < MLB_SM
             if isempty(obj.trialSpikeMtx)
                 obj.CompileTrialObsvs;
             end
-            obj.taoPosts = nan(size(obj.trialSpikeMtx{1},1), size(obj.fisSeqSpikeMtx,1), length(obj.taoTrlNums));
-            obj.taRepPosts = nan(size(obj.trialSpikeMtx{1},1), size(obj.fisSeqSpikeMtx,1), length(obj.taRepTrlNums));
-            obj.taSkpPosts = nan(size(obj.trialSpikeMtx{1},1), size(obj.fisSeqSpikeMtx,1), length(obj.taSkpTrlNums));
-            obj.taoDecode = nan(size(obj.trialSpikeMtx{1},1), length(obj.taoTrlNums));
+            obj.taoPosts = nan(size(obj.trialSpikeMtx,1), size(obj.fisSeqSpikeMtx,1), length(obj.taoTrlNums));
+            obj.taRepPosts = nan(size(obj.trialSpikeMtx,1), size(obj.fisSeqSpikeMtx,1), length(obj.taRepTrlNums));
+            obj.taSkpPosts = nan(size(obj.trialSpikeMtx,1), size(obj.fisSeqSpikeMtx,1), length(obj.taSkpTrlNums));
+            obj.taoDecode = nan(size(obj.trialSpikeMtx,1), length(obj.taoTrlNums));
             obj.taoDecode_TrlPrd = nan(max(obj.trialPeriodSize), length(obj.taoTrlNums), 4);
-            obj.taRepDecode = nan(size(obj.trialSpikeMtx{1},1), length(obj.taRepTrlNums));
+            obj.taRepDecode = nan(size(obj.trialSpikeMtx,1), length(obj.taRepTrlNums));
             obj.taRepDecode_TrlPrd = nan(max(obj.trialPeriodSize), length(obj.taRepTrlNums), 4);
-            obj.taSkpDecode = nan(size(obj.trialSpikeMtx{1},1), length(obj.taSkpTrlNums));
+            obj.taSkpDecode = nan(size(obj.trialSpikeMtx,1), length(obj.taSkpTrlNums));
             obj.taSkpDecode_TrlPrd = nan(max(obj.trialPeriodSize), length(obj.taSkpTrlNums), 4);
-            obj.taoDecodeTime = nan(size(obj.trialSpikeMtx{1},1), length(obj.taoTrlNums));
+            obj.taoDecodeTime = nan(size(obj.trialSpikeMtx,1), length(obj.taoTrlNums));
             obj.taoDecodeTime_TrlPrd = nan(max(obj.trialPeriodSize), length(obj.taoTrlNums), 4);
             for taO = 1:length(obj.taoTrlNums)
-                curObsv = obj.trialSpikeMtx{obj.taoTrlNums(taO)};
+                curObsv = obj.trialSpikeMtx(:,:,obj.taoTrlNums(taO));
                 obj.taoPosts(:,:,taO) = obj.CalcStaticBayesPost(mean(obj.fisSeqSpikeMtx,3), curObsv);
                 [tempDecodeOdr, tempDecodeOdrPost] = obj.DecodeBayesPost(obj.taoPosts(:,:,taO), obj.fisSeqSpikeOdorLog);
                 tempDecodeOdr(tempDecodeOdr==obj.trialInfo(obj.taoTrlNums(taO)).Position) = 0;
@@ -171,17 +182,17 @@ classdef PFC_TrialEvent_MLB_SM < MLB_SM
             if isempty(obj.trialSpikeMtx)
                 obj.CompileTrialObsvs;
             end
-            obj.osPosts = nan(size(obj.trialSpikeMtx{1},1), size(obj.fisSeqSpikeMtx,1), length(obj.osTrlNums));
-            obj.osDecode = nan(size(obj.trialSpikeMtx{1},1), length(obj.osTrlNums));
+            obj.osPosts = nan(size(obj.trialSpikeMtx,1), size(obj.fisSeqSpikeMtx,1), length(obj.osTrlNums));
+            obj.osDecode = nan(size(obj.trialSpikeMtx,1), length(obj.osTrlNums));
             obj.osDecode_TrlPrd = nan(max(obj.trialPeriodSize), length(obj.osTrlNums), 4);
-            obj.skpPosts = nan(size(obj.trialSpikeMtx{1},1), size(obj.fisSeqSpikeMtx,1), length(obj.skpTrlNums));
-            obj.skpDecode = nan(size(obj.trialSpikeMtx{1},1), length(obj.skpTrlNums));
+            obj.skpPosts = nan(size(obj.trialSpikeMtx,1), size(obj.fisSeqSpikeMtx,1), length(obj.skpTrlNums));
+            obj.skpDecode = nan(size(obj.trialSpikeMtx,1), length(obj.skpTrlNums));
             obj.skpDecode_TrlPrd = nan(max(obj.trialPeriodSize), length(obj.skpTrlNums), 4);
-            obj.repPosts = nan(size(obj.trialSpikeMtx{1},1), size(obj.fisSeqSpikeMtx,1), length(obj.repTrlNums));
-            obj.repDecode = nan(size(obj.trialSpikeMtx{1},1), length(obj.repTrlNums));
+            obj.repPosts = nan(size(obj.trialSpikeMtx,1), size(obj.fisSeqSpikeMtx,1), length(obj.repTrlNums));
+            obj.repDecode = nan(size(obj.trialSpikeMtx,1), length(obj.repTrlNums));
             obj.repDecode_TrlPrd = nan(max(obj.trialPeriodSize), length(obj.repTrlNums), 4);
             for osT = 1:length(obj.osTrlNums)
-                curObsv = obj.trialSpikeMtx{obj.osTrlNums(osT)};
+                curObsv = obj.trialSpikeMtx(:,:,obj.osTrlNums(osT));
                 obj.osPosts(:,:,osT) = obj.CalcStaticBayesPost(mean(obj.fisSeqSpikeMtx,3), curObsv);
                 [tempDecode, tempDecodePost] = obj.DecodeBayesPost(obj.osPosts(:,:,osT), obj.fisSeqSpikeOdorLog);
                 tempDecode(tempDecode==obj.trialInfo(obj.osTrlNums(osT)).Position) = 0;
@@ -202,6 +213,16 @@ classdef PFC_TrialEvent_MLB_SM < MLB_SM
                     obj.repDecode(:,obj.osTrlNums(osT)==obj.repTrlNums) = obj.osDecode(:,osT);
                     obj.repDecode_TrlPrd(:,obj.osTrlNums(osT)==obj.repTrlNums,:) = obj.osDecode_TrlPrd(:,osT,:);
                 end
+            end
+        end
+        %% Decode ISC 
+        function DecodeTrials(obj)
+            if isempty(obj.fisSeqSpikeMtx)
+                obj.CompileFISlikes;
+            end
+            obj.trlPosts = nan(size(obj.trialSpikeMtx,1), size(obj.fisSeqSpikeMtx,1), size(obj.trialSpikeMtx,3));
+            for trl = 1:length(obj.trialInfo)
+                obj.trlPosts(:,:,trl) = obj.CalcStaticBayesPost(mean(obj.fisSeqSpikeMtx,3), obj.trialSpikeMtx(:,:,trl));
             end
         end
         %% Decode FIS via Leave-1-Out
@@ -274,9 +295,19 @@ classdef PFC_TrialEvent_MLB_SM < MLB_SM
             obj.taSkpTrlNums = obj.osTrlNums(([obj.trialInfo(obj.osTrlNums).Position]+1 == [obj.trialInfo(obj.osTrlNums+1).Position])...
                 & [obj.trialInfo(obj.osTrlNums+1).Performance]==1 ...
                 & [obj.trialInfo(obj.osTrlNums).TranspositionDistance]<0)+1;
-            obj.trialSpikeMtx = cell(size(obj.trialInfo));
+            obj.trialSpikeMtx = nan(size(obj.beginTrialMtx,1)+size(obj.endTrialMtx,1), size(obj.beginTrialMtx,2), length(obj.trialInfo));
+            obj.trialThetaPowerMtx = nan(size(obj.beginTrialThetaPowerMtx,1)+size(obj.endTrialThetaPowerMtx,1), size(obj.beginTrialThetaPowerMtx,2), length(obj.trialInfo));
+            obj.trialThetaPhaseMtx = nan(size(obj.beginTrialThetaPhaseMtx,1)+size(obj.endTrialThetaPhaseMtx,1), size(obj.beginTrialThetaPhaseMtx,2), length(obj.trialInfo));
+            obj.trialBetaPowerMtx = nan(size(obj.beginTrialBetaPowerMtx,1)+size(obj.endTrialBetaPowerMtx,1), size(obj.beginTrialBetaPowerMtx,2), length(obj.trialInfo));
+            obj.trialBetaPhaseMtx = nan(size(obj.beginTrialBetaPhaseMtx,1)+size(obj.endTrialBetaPhaseMtx,1), size(obj.beginTrialBetaPhaseMtx,2), length(obj.trialInfo));
             for t = 1:length(obj.trialInfo)
-                obj.trialSpikeMtx{t} = [obj.beginTrialMtx(:,:,t); obj.endTrialMtx(:,:,t)];
+                obj.trialSpikeMtx(:,:,t) = [obj.beginTrialMtx(:,:,t); obj.endTrialMtx(:,:,t)];
+                if ~isempty(obj.lfpMatrix)
+                    obj.trialThetaPowerMtx(:,:,t) = [obj.beginTrialThetaPowerMtx(:,:,t); obj.endTrialThetaPowerMtx(:,:,t)];
+                    obj.trialThetaPhaseMtx(:,:,t) = [obj.beginTrialThetaPhaseMtx(:,:,t); obj.endTrialThetaPhaseMtx(:,:,t)];
+                    obj.trialBetaPowerMtx(:,:,t) = [obj.beginTrialBetaPowerMtx(:,:,t); obj.endTrialBetaPowerMtx(:,:,t)];
+                    obj.trialBetaPhaseMtx(:,:,t) = [obj.beginTrialBetaPhaseMtx(:,:,t); obj.endTrialBetaPhaseMtx(:,:,t)];
+                end
             end
         end
         %% Compile Fully InSeq Likelihoods (trial PSTHs)
@@ -289,22 +320,34 @@ classdef PFC_TrialEvent_MLB_SM < MLB_SM
             if isempty(obj.trialPeriodTimeLog)
                 obj.CompileTrialObsvs;
             end
-            fisStarts = find(conv([obj.trialInfo.Odor], 1:4, 'valid')==20 &...
-                conv([obj.trialInfo.Position], 1:4, 'valid')==20 &...
-                conv([obj.trialInfo.Performance], ones(1,4), 'valid')==4);
-            obj.fisSeqTrlNums = nan(4,length(fisStarts));
-            for iS = 1:length(fisStarts)
-                obj.fisSeqTrlNums(1,iS) = fisStarts(iS);
-                obj.fisSeqTrlNums(2,iS) = fisStarts(iS) + 1;
-                obj.fisSeqTrlNums(3,iS) = fisStarts(iS) + 2;
-                obj.fisSeqTrlNums(4,iS) = fisStarts(iS) + 3;
-            end
-            obj.fisSeqSpikeMtx = nan((size(obj.beginTrialMtx,1) + size(obj.endTrialMtx,1))*4, size(obj.beginTrialMtx,2), length(fisStarts));
-            for seq = 1:length(fisStarts)
-                obj.fisSeqSpikeMtx(:,:,seq) = [obj.beginTrialMtx(:,:,obj.fisSeqTrlNums(1,seq)); obj.endTrialMtx(:,:,obj.fisSeqTrlNums(1,seq));...
-                    obj.beginTrialMtx(:,:,obj.fisSeqTrlNums(2,seq)); obj.endTrialMtx(:,:,obj.fisSeqTrlNums(2,seq));...
-                    obj.beginTrialMtx(:,:,obj.fisSeqTrlNums(3,seq)); obj.endTrialMtx(:,:,obj.fisSeqTrlNums(3,seq));...
-                    obj.beginTrialMtx(:,:,obj.fisSeqTrlNums(4,seq)); obj.endTrialMtx(:,:,obj.fisSeqTrlNums(4,seq))];
+            obj.fisSeqSpikeMtx = nan((size(obj.beginTrialMtx,1) + size(obj.endTrialMtx,1))*4, size(obj.beginTrialMtx,2), size(obj.fiscTrials,2));
+            obj.fisThetaPowerMtx = nan((size(obj.beginTrialThetaPowerMtx,1) + size(obj.endTrialThetaPowerMtx,1))*4, size(obj.beginTrialThetaPowerMtx,2), size(obj.fiscTrials,2));
+            obj.fisThetaPhaseMtx = nan((size(obj.beginTrialThetaPhaseMtx,1) + size(obj.endTrialThetaPhaseMtx,1))*4, size(obj.beginTrialThetaPhaseMtx,2), size(obj.fiscTrials,2));
+            obj.fisBetaPowerMtx = nan((size(obj.beginTrialBetaPowerMtx,1) + size(obj.endTrialBetaPowerMtx,1))*4, size(obj.beginTrialBetaPowerMtx,2), size(obj.fiscTrials,2));
+            obj.fisBetaPhaseMtx = nan((size(obj.beginTrialBetaPhaseMtx,1) + size(obj.endTrialBetaPhaseMtx,1))*4, size(obj.beginTrialBetaPhaseMtx,2), size(obj.fiscTrials,2));
+            for seq = 1:size(obj.fiscTrials,2)
+                obj.fisSeqSpikeMtx(:,:,seq) = [obj.beginTrialMtx(:,:,obj.fiscTrials(1,seq)); obj.endTrialMtx(:,:,obj.fiscTrials(1,seq));...
+                    obj.beginTrialMtx(:,:,obj.fiscTrials(2,seq)); obj.endTrialMtx(:,:,obj.fiscTrials(2,seq));...
+                    obj.beginTrialMtx(:,:,obj.fiscTrials(3,seq)); obj.endTrialMtx(:,:,obj.fiscTrials(3,seq));...
+                    obj.beginTrialMtx(:,:,obj.fiscTrials(4,seq)); obj.endTrialMtx(:,:,obj.fiscTrials(4,seq))];
+                if ~isempty(obj.lfpMatrix)
+                    obj.fisThetaPowerMtx(:,:,seq) = [obj.beginTrialThetaPowerMtx(:,:,obj.fiscTrials(1,seq)); obj.endTrialThetaPowerMtx(:,:,obj.fiscTrials(1,seq));...
+                        obj.beginTrialThetaPowerMtx(:,:,obj.fiscTrials(2,seq)); obj.endTrialThetaPowerMtx(:,:,obj.fiscTrials(2,seq));...
+                        obj.beginTrialThetaPowerMtx(:,:,obj.fiscTrials(3,seq)); obj.endTrialThetaPowerMtx(:,:,obj.fiscTrials(3,seq));...
+                        obj.beginTrialThetaPowerMtx(:,:,obj.fiscTrials(4,seq)); obj.endTrialThetaPowerMtx(:,:,obj.fiscTrials(4,seq))];
+                    obj.fisThetaPhaseMtx(:,:,seq) = [obj.beginTrialThetaPhaseMtx(:,:,obj.fiscTrials(1,seq)); obj.endTrialThetaPhaseMtx(:,:,obj.fiscTrials(1,seq));...
+                        obj.beginTrialThetaPhaseMtx(:,:,obj.fiscTrials(2,seq)); obj.endTrialThetaPhaseMtx(:,:,obj.fiscTrials(2,seq));...
+                        obj.beginTrialThetaPhaseMtx(:,:,obj.fiscTrials(3,seq)); obj.endTrialThetaPhaseMtx(:,:,obj.fiscTrials(3,seq));...
+                        obj.beginTrialThetaPhaseMtx(:,:,obj.fiscTrials(4,seq)); obj.endTrialThetaPhaseMtx(:,:,obj.fiscTrials(4,seq))];
+                    obj.fisBetaPowerMtx(:,:,seq) = [obj.beginTrialBetaPowerMtx(:,:,obj.fiscTrials(1,seq)); obj.endTrialBetaPowerMtx(:,:,obj.fiscTrials(1,seq));...
+                        obj.beginTrialBetaPowerMtx(:,:,obj.fiscTrials(2,seq)); obj.endTrialBetaPowerMtx(:,:,obj.fiscTrials(2,seq));...
+                        obj.beginTrialBetaPowerMtx(:,:,obj.fiscTrials(3,seq)); obj.endTrialBetaPowerMtx(:,:,obj.fiscTrials(3,seq));...
+                        obj.beginTrialBetaPowerMtx(:,:,obj.fiscTrials(4,seq)); obj.endTrialBetaPowerMtx(:,:,obj.fiscTrials(4,seq))];
+                    obj.fisBetaPhaseMtx(:,:,seq) = [obj.beginTrialBetaPhaseMtx(:,:,obj.fiscTrials(1,seq)); obj.endTrialBetaPhaseMtx(:,:,obj.fiscTrials(1,seq));...
+                        obj.beginTrialBetaPhaseMtx(:,:,obj.fiscTrials(2,seq)); obj.endTrialBetaPhaseMtx(:,:,obj.fiscTrials(2,seq));...
+                        obj.beginTrialBetaPhaseMtx(:,:,obj.fiscTrials(3,seq)); obj.endTrialBetaPhaseMtx(:,:,obj.fiscTrials(3,seq));...
+                        obj.beginTrialBetaPhaseMtx(:,:,obj.fiscTrials(4,seq)); obj.endTrialBetaPhaseMtx(:,:,obj.fiscTrials(4,seq))];
+                end
             end
             obj.fisSeqSpikeOdorLog = [ones(1,size(obj.beginTrialMtx,1)+size(obj.endTrialMtx,1))*1,...
                 ones(1,size(obj.beginTrialMtx,1)+size(obj.endTrialMtx,1))*2,...
@@ -318,12 +361,16 @@ classdef PFC_TrialEvent_MLB_SM < MLB_SM
             switch alignment
                 case obj.beginTrialAlignment
                     [obj.beginTrialMtx, obj.beginTrialTime] = obj.PP_TrialMatrix_Spiking(obj.beginTrialWindow, alignment);
-                    [obj.beginTrialThetaPhaseMtx, obj.beginTrialThetaPowerMtx] = obj.PP_TrialMatrix_LFP(obj.thetaBand, obj.beginTrialWindow, alignment);
-                    [obj.beginTrialBetaPhaseMtx, obj.beginTrialBetaPowerMtx] = obj.PP_TrialMatrix_LFP(obj.betaBand, obj.beginTrialWindow, alignment);
+                    if ~isempty(obj.lfpMatrix)
+                        [obj.beginTrialThetaPhaseMtx, obj.beginTrialThetaPowerMtx] = obj.PP_TrialMatrix_LFP(obj.thetaBand, obj.beginTrialWindow, alignment);
+                        [obj.beginTrialBetaPhaseMtx, obj.beginTrialBetaPowerMtx] = obj.PP_TrialMatrix_LFP(obj.betaBand, obj.beginTrialWindow, alignment);
+                    end
                 case obj.endTrialAlignment
                     [obj.endTrialMtx, obj.endTrialTime] = obj.PP_TrialMatrix_Spiking(obj.endTrialWindow, alignment);
-                    [obj.endTrialThetaPhaseMtx, obj.endTrialThetaPowerMtx] = obj.PP_TrialMatrix_LFP(obj.thetaBand, obj.endTrialWindow, alignment);
-                    [obj.endTrialBetaPhaseMtx, obj.endTrialBetaPowerMtx] = obj.PP_TrialMatrix_LFP(obj.betaBand, obj.endTrialWindow, alignment);
+                    if ~isempty(obj.lfpMatrix)
+                        [obj.endTrialThetaPhaseMtx, obj.endTrialThetaPowerMtx] = obj.PP_TrialMatrix_LFP(obj.thetaBand, obj.endTrialWindow, alignment);
+                        [obj.endTrialBetaPhaseMtx, obj.endTrialBetaPowerMtx] = obj.PP_TrialMatrix_LFP(obj.betaBand, obj.endTrialWindow, alignment);
+                    end
             end
         end
     end
