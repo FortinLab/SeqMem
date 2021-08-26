@@ -111,14 +111,14 @@ classdef MLB_SM < SeqMem
             for trl = 1:size(obsv,3)
                 for t = 1:size(obsv,1)
                     p = nan(size(likely));
-                    curPopVect = floor(obsv(t,:,trl)*(obj.binSize/1000));
+                    curPopVect = floor(obsv(t,:,trl)*(obj.binSize/obj.sampleRate));
                     curPopFact = factorial(curPopVect);
                     for u = 1:size(likely,2)
                         curAvgUniFR = likely(:,u);
-                        p(:,u) = (((obj.binSize/1000).*curAvgUniFR).^curPopVect(u))./curPopFact(u);
+                        p(:,u) = (((obj.binSize/obj.sampleRate).*curAvgUniFR).^curPopVect(u))./curPopFact(u);
                     end
                     pp = prod(p,2);
-                    ee = exp(-((obj.binSize/1000)*sum(likely,2)));
+                    ee = exp(-((obj.binSize/obj.sampleRate)*sum(likely,2)));
                     tempPost = pp.*ee;
                     post(t,:,trl) = tempPost./sum(tempPost);
                 end
