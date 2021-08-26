@@ -5,7 +5,7 @@ classdef PFC_TrialPhaseTime_MLB_SM < MLB_SM
         freqWin = [4 12]
         radPrSamp
         phaseBins = deg2rad(0:10:359)
-        binSizeDeg = 45
+        binSizeDeg = 40
         dsRateDeg = 1
         cycs2pad = 2
         numCycs
@@ -78,12 +78,12 @@ classdef PFC_TrialPhaseTime_MLB_SM < MLB_SM
             % Unless a binSize is defined a priori, calculate binsize based on defined degrees to make the gaussian based in degree
             % (e.g. 45degrees by default)
             if isempty(obj.binSize)
-                obj.binSize = floor(deg2rad(obj.binSizeDeg)/obj.radPrSamp);
+                obj.binSize = floor(deg2rad(obj.binSizeDeg)/mean(diff(obj.phaseBins)));
             end
             % Unless a setpsize is defined a priori, calculate dsRate based on defined degrees to make the steps based in degrees
             % (default 1 degree since we're not hurting for space)
             if isempty(obj.dsRate)
-                obj.dsRate = ceil(deg2rad(obj.dsRateDeg)/obj.radPrSamp);
+                obj.dsRate = ceil(deg2rad(obj.dsRateDeg)/mean(diff(obj.phaseBins)));
             end
             lfpPhase = [zeros(sessionWindow(1)-1,1); lfpPhase + pi; zeros(size(obj.lfpMatrix,1)-sessionWindow(2),1)]; % Adding pi to lfpPhase here shifts the cycles from -pi:pi to 0:2*pi and makes the trough = 0. Makes it a bit easier to handle with the unwrapping since nothing is now negative
             lfpPwr = [zeros(sessionWindow(1)-1,1); lfpPwr; zeros(size(obj.lfpMatrix,1)-sessionWindow(2),1)];
