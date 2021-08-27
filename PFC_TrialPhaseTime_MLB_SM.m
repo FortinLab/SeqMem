@@ -17,9 +17,16 @@ classdef PFC_TrialPhaseTime_MLB_SM < MLB_SM
         spikeTrialTimeMatrix        
     end    
     properties
-        unwrapIdealPhaseBins
-        
+        unwrapIdealPhaseBins        
         unwrapIdealPhaseLog
+        unwrapOdorLog
+    end
+    properties
+        fiscLikes
+        fiscPosts
+        fiscOdorDecode
+        fiscCycleDecode
+        fiscPhaseDecode
     end
     %% Methods
     methods
@@ -61,6 +68,49 @@ classdef PFC_TrialPhaseTime_MLB_SM < MLB_SM
         function RunAnalysis(obj)
             fprintf('Analyzing\n');
             obj.PreProcessLFPandSpikes;
+            obj.CompileFISlikes;
+            obj.DecodeFIS_L1O;
+        end
+        %% Plot FIS Odor Decode
+        function PlotFIS_OdorDecode(obj)
+            figure;
+            for o = 1:4
+                plot(smooth(nanmean(obj.fiscOdorDecode==o,2))); 
+                hold on; 
+            end
+            boundaries = find(diff(obj.unwrapOdorLog));
+            for b = 1:length(boundaries)
+                plot([boundaries(b) boundaries(b)], get(gca, 'ylim'), '--k');
+            end
+            drawnow;
+            annotation(gcf,'textbox', [0 0.95 1 0.05],'String', obj.behavMatFile,...
+                'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left', 'interpreter', 'none');
+        end
+
+        %%
+        function DecodeFIS_L1O(obj)
+            obj.fiscPosts = nan(length(obj.unwrapIdealPhaseLog), length(obj.unwrapIdealPhaseLog), size(obj.fiscTrials,2));
+            for trl = 1:size(obj.fiscTrials,2)
+                tempLikes = obj.fiscLikes;
+                tempObsv = obj.fiscLikes(:,:,trl);
+                tempLikes(:,:,trl) = [];
+                obj.fiscPosts(:,:,trl) = obj.CalcStaticBayesPost(mean(tempLikes,3), tempObsv);
+            end
+            [obj.fiscOdorDecode, ~] = obj.DecodeBayesPost(obj.fiscPosts, obj.unwrapOdorLog);
+        end
+        %%
+        function CompileFISlikes(obj)
+            if isempty(obj.spikeTrialTimeMatrix)
+                obj.PreProcessLFPandSpikes;
+            end
+            obj.fiscLikes = nan(length(obj.unwrapIdealPhaseLog),size(obj.spikeTrialTimeMatrix,2), size(obj.fiscTrials,2));
+            for seq = 1:size(obj.fiscTrials,2)
+                tempMat = [];
+                for trl = 1:size(obj.fiscTrials,1)
+                    tempMat = [tempMat; obj.spikeTrialTimeMatrix(:,:,obj.fiscTrials(trl,seq))];
+                end
+                obj.fiscLikes(:,:,seq) = tempMat;
+            end
         end
         %%
         function PreProcessLFPandSpikes(obj)
@@ -89,7 +139,7 @@ classdef PFC_TrialPhaseTime_MLB_SM < MLB_SM
             lfpPwr = [zeros(sessionWindow(1)-1,1); lfpPwr; zeros(size(obj.lfpMatrix,1)-sessionWindow(2),1)];
 
             % Pad the window for extraction by the equivalent of ~2 cycles for the sake of smoothing/binning everything
-            paddedWindow = [obj.trialWindow(1)-(1000/(mean(obj.freqWin)))*obj.cycs2pad obj.trialWindow(2)+(1000/(mean(obj.freqWin)))*obj.cycs2pad];
+            paddedWindow = round([obj.trialWindow(1)-(1000/(mean(obj.freqWin)))*obj.cycs2pad obj.trialWindow(2)+(1000/(mean(obj.freqWin)))*obj.cycs2pad]);
             trialTime = obj.ExtractTrialMatrix(obj.tsVect, paddedWindow, obj.alignment);
             zroTime = obj.ExtractTrialMatrix(obj.tsVect, [0 0], obj.alignment);
             trialTimeLog = trialTime(:,:,1)-zroTime(:,:,1);
@@ -108,16 +158,15 @@ classdef PFC_TrialPhaseTime_MLB_SM < MLB_SM
                     [~, phaseBounds] = findpeaks(diff(iscPhase(:,:,trl))*-1, 'MinPeakProminence', 3);
                     tempNumCycs(trl) = length(phaseBounds);
                 end
-                [counts, bins] = histcounts(tempNumCycs, mean(sum(obj.freqWin))-10:mean(sum(obj.freqWin))+10);
+                [counts, bins] = histcounts(tempNumCycs, mean(obj.freqWin)-20:mean(obj.freqWin)+20);
                 csHC = cumsum(counts)./sum(counts);
-                obj.numCycs = min(bins(csHC>=0.75));
+                obj.numCycs = min(bins(csHC>=0.25));
             end
             if isempty(obj.numCycsPre)
-                obj.numCycsPre = abs((obj.trialWindow(1)-0)/(1000/mean(obj.freqWin))) + obj.cycs2pad;
+                obj.numCycsPre = round(abs((obj.trialWindow(1)-0)/(1000/mean(obj.freqWin)))) + obj.cycs2pad;
             end
             % Create idealized phase vectors for binning and analysis purposes
             obj.unwrapIdealPhaseBins = unwrap(repmat(obj.phaseBins', [obj.numCycs,1])) - (2*pi*obj.numCycsPre);
-            obj.unwrapIdealPhaseLog = repmat(obj.unwrapIdealPhaseBins, [4 1]);
             tempTrialCycPower = nan(obj.numCycs, length(obj.trialInfo));
             tempPhaseSpikeBins = nan(length(obj.unwrapIdealPhaseBins)-1, size(obj.ensembleMatrix,2), length(obj.trialInfo));
             % Now bin the spiking data on each trial and determine average power per cycle
@@ -156,6 +205,9 @@ classdef PFC_TrialPhaseTime_MLB_SM < MLB_SM
             radsUnpadLog = [false(length(obj.phaseBins)*obj.cycs2pad,1);...
                 true(length(obj.phaseBins)*(obj.numCycs-(obj.cycs2pad*2)),1);...
                 false((length(obj.phaseBins)*obj.cycs2pad)-1,1)];
+            tempUnwrapPhaseLog = obj.unwrapIdealPhaseBins(1:end-1)-mean(diff(obj.unwrapIdealPhaseBins))/2;
+            obj.unwrapIdealPhaseLog = repmat(tempUnwrapPhaseLog(radsUnpadLog), [4 1]);
+            obj.unwrapOdorLog = [ones(sum(radsUnpadLog),1); ones(sum(radsUnpadLog),1)*2; ones(sum(radsUnpadLog),1)*3; ones(sum(radsUnpadLog),1)*4];
             obj.spikeTrialTimeMatrix = tempPhaseSpikeBins(radsUnpadLog,:,:);
             cycUnpadLog = [false(obj.cycs2pad,1); true(obj.numCycs-(obj.cycs2pad*2),1); false(obj.cycs2pad,1)];
             obj.lfpPowerTrialTimeMatrix = tempTrialCycPower(cycUnpadLog,:);
@@ -169,14 +221,14 @@ classdef PFC_TrialPhaseTime_MLB_SM < MLB_SM
             for trl = 1:size(obsv,3)
                 for t = 1:size(obsv,1)
                     p = nan(size(likely));
-                    curPopVect = floor(obsv(t,:,trl)*(obj.binSize/obj.sampleRate)); % to get rid of floating point bs
+                    curPopVect = round(obsv(t,:,trl)*(obj.binSize*obj.radPrSamp)); % use round here to get rid of floating point bs
                     curPopFact = factorial(curPopVect);
                     for u = 1:size(likely,2)
                         curAvgUniFR = likely(:,u);
-                        p(:,u) = (((obj.binSize/obj.sampleRate).*curAvgUniFR).^curPopVect(u))./curPopFact(u);
+                        p(:,u) = (((obj.binSize*obj.radPrSamp).*curAvgUniFR).^curPopVect(u))./curPopFact(u);
                     end
                     pp = prod(p,2);
-                    ee = exp(-((obj.binSize/obj.sampleRate)*sum(likely,2)));
+                    ee = exp(-((obj.binSize*obj.radPrSamp)*sum(likely,2)));
                     tempPost = pp.*ee;
                     post(t,:,trl) = tempPost./sum(tempPost);
                 end
