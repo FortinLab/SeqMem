@@ -1,11 +1,11 @@
 classdef PFC_TrialPhaseTime_MLB_SM < MLB_SM
     properties
         alignment = 'PokeIn'
-        trialWindow = [-500 1200]
+        trialWindow = [0 1200]
         freqWin = [4 12]
         radPrSamp
-        phaseBins = deg2rad(0:10:359)
-        binSizeDeg = 40
+        phaseBins = deg2rad(1:10:360)
+        binSizeDeg = 90
         dsRateDeg = 1
         cycs2pad = 2
         numCycs
@@ -31,7 +31,7 @@ classdef PFC_TrialPhaseTime_MLB_SM < MLB_SM
     %% Methods
     methods
         %% Object Creation
-        %#ok<*EXIST>
+        %#ok<*EXIST><*PROP>
         function obj = PFC_TrialPhaseTime_MLB_SM(fileDir, dsRate, binSize, trialWindow, freqWin, phaseBins, alignment)
             if nargin == 0
                 fileDir = uigetdir;
@@ -71,11 +71,28 @@ classdef PFC_TrialPhaseTime_MLB_SM < MLB_SM
             obj.CompileFISlikes;
             obj.DecodeFIS_L1O;
         end
+        %% Plot FIS Odor Phase Decode
+        function PlotFIS_OdorDecodePhase(obj)
+            %#ok<*PROP>
+            figure; 
+            phaseBins = unique(obj.unwrapIdealPhaseLog);
+            phaseDecode = nan(length(phaseBins),4,4);
+            for o1 = 1:4
+                subplot(2,2,o1)
+                for o2 = 1:4
+                    for ph = 1:length(phaseBins)
+                        phaseDecode(ph,o1,o2) = mean(mean(obj.fiscOdorDecode(obj.unwrapOdorLog==o1 & obj.unwrapIdealPhaseLog==phaseBins(ph),:)==o2));
+                    end
+                    plot(phaseBins, phaseDecode(:,o1,o2), 'color', obj.PositionColors(o2,:))
+                    hold on;
+                end
+            end
+        end
         %% Plot FIS Odor Decode
         function PlotFIS_OdorDecode(obj)
             figure;
             for o = 1:4
-                plot(smooth(nanmean(obj.fiscOdorDecode==o,2))); 
+                plot(smooth(nanmean(obj.fiscOdorDecode==o,2)), 'color', obj.PositionColors(o,:)); 
                 hold on; 
             end
             boundaries = find(diff(obj.unwrapOdorLog));
@@ -166,6 +183,7 @@ classdef PFC_TrialPhaseTime_MLB_SM < MLB_SM
                 obj.numCycsPre = round(abs((obj.trialWindow(1)-0)/(1000/mean(obj.freqWin)))) + obj.cycs2pad;
             end
             % Create idealized phase vectors for binning and analysis purposes
+            idealPhaseBins = repmat((obj.phaseBins-mean(diff(obj.phaseBins))/2)', [obj.numCycs,1]);
             obj.unwrapIdealPhaseBins = unwrap(repmat(obj.phaseBins', [obj.numCycs,1])) - (2*pi*obj.numCycsPre);
             tempTrialCycPower = nan(obj.numCycs, length(obj.trialInfo));
             tempPhaseSpikeBins = nan(length(obj.unwrapIdealPhaseBins)-1, size(obj.ensembleMatrix,2), length(obj.trialInfo));
@@ -182,7 +200,6 @@ classdef PFC_TrialPhaseTime_MLB_SM < MLB_SM
                 tempLFPuwPhase = tempLFPuwPhase - tempLFPuwPhase(startFirstCyclePostPokeIn);
                 for u = 1:size(obj.ensembleMatrix,2)
                     tempCounts = histcounts(tempLFPuwPhase(tempSpikeTrialTimeMatrix(:,u,trl)>=1), obj.unwrapIdealPhaseBins);
-%                     binnedMtx(:,u,t) = conv(tempMtx(:,u,t),ones(1,obj.binSize)./(obj.binSize/obj.sampleRate), 'same');
                     tempPhaseSpikeBins(:,u,trl) = conv(tempCounts, ones(1,obj.binSize)./(obj.binSize*obj.radPrSamp), 'same');
                 end
                 tempCycPwr = nan(length(phaseBounds),1);
@@ -205,8 +222,8 @@ classdef PFC_TrialPhaseTime_MLB_SM < MLB_SM
             radsUnpadLog = [false(length(obj.phaseBins)*obj.cycs2pad,1);...
                 true(length(obj.phaseBins)*(obj.numCycs-(obj.cycs2pad*2)),1);...
                 false((length(obj.phaseBins)*obj.cycs2pad)-1,1)];
-            tempUnwrapPhaseLog = obj.unwrapIdealPhaseBins(1:end-1)-mean(diff(obj.unwrapIdealPhaseBins))/2;
-            obj.unwrapIdealPhaseLog = repmat(tempUnwrapPhaseLog(radsUnpadLog), [4 1]);
+%             tempUnwrapPhaseLog = obj.unwrapIdealPhaseBins(1:end-1)-mean(diff(obj.unwrapIdealPhaseBins))/2;
+            obj.unwrapIdealPhaseLog = repmat(idealPhaseBins(radsUnpadLog), [4 1]);
             obj.unwrapOdorLog = [ones(sum(radsUnpadLog),1); ones(sum(radsUnpadLog),1)*2; ones(sum(radsUnpadLog),1)*3; ones(sum(radsUnpadLog),1)*4];
             obj.spikeTrialTimeMatrix = tempPhaseSpikeBins(radsUnpadLog,:,:);
             cycUnpadLog = [false(obj.cycs2pad,1); true(obj.numCycs-(obj.cycs2pad*2),1); false(obj.cycs2pad,1)];
