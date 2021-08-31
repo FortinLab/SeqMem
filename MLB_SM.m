@@ -71,8 +71,10 @@ classdef MLB_SM < SeqMem
                 error('Define dsRate');
             end
             paddedWindow = [window(1)-(obj.binSize/2) window(2)+(obj.binSize/2)];
-            tetWMU = find(obj.numUniPerTet==max(obj.numUniPerTet), 1, 'first');
-            [~, phase, power] = obj.SimpleFilter(obj.lfpMatrix(:,tetWMU), freqWin);
+            if isempty(obj.lfpRefTet)
+                obj.lfpRefTet = find(obj.numUniPerTet==max(obj.numUniPerTet), 1, 'first');
+            end
+            [~, phase, power] = obj.SimpleFilter(obj.lfpMatrix(:,obj.lfpRefTet), freqWin);
 
             tempPhase = obj.ExtractTrialMatrix(phase, paddedWindow, alignment);
             tempPower = obj.ExtractTrialMatrix(power, paddedWindow, alignment);
@@ -101,7 +103,7 @@ classdef MLB_SM < SeqMem
                     end
                 end
             end
-            obj.fiscTrials = potentialSeqs(:,fiscLog);            
+            obj.fiscTrials = potentialSeqs(:,fiscLog);     
         end
     end
     methods % MLB Analysis Methods

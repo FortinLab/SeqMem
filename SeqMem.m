@@ -13,6 +13,7 @@ classdef SeqMem < handle
         ensembleMatrixColIDs
         lfpMatrix
         lfpMatrixColIDs
+        lfpRefTet
         trialInfo
         unitInfo
         numUniPerTet

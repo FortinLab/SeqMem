@@ -136,11 +136,13 @@ classdef PFC_TrialPhaseTime_MLB_SM < MLB_SM
             if isempty(obj.lfpMatrix)
                 obj.CompileLFPmatrix;
             end
-            tetWMU = find(obj.numUniPerTet==max(obj.numUniPerTet), 1, 'first');
+            if isempty(obj.lfpRefTet)
+                obj.lfpRefTet = find(obj.numUniPerTet==max(obj.numUniPerTet), 1, 'first');
+            end
             % To remove the pre/post session recordings from merged files that were cut to have unit IDs across recordings (for LFP analysis only)
             sessionWindow = [obj.trialInfo(1).PokeInIndex-1000; obj.trialInfo(end).PokeOutIndex+2000];
            
-            [~, lfpPhase, lfpPwr] = obj.SimpleFilter(obj.lfpMatrix(sessionWindow(1):sessionWindow(2),tetWMU), obj.freqWin);
+            [~, lfpPhase, lfpPwr] = obj.SimpleFilter(obj.lfpMatrix(sessionWindow(1):sessionWindow(2),obj.lfpRefTet), obj.freqWin);
             obj.radPrSamp = mean(diff(unwrap(lfpPhase)));
             % Unless a binSize is defined a priori, calculate binsize based on defined degrees to make the gaussian based in degree
             % (e.g. 45degrees by default)
