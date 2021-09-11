@@ -67,8 +67,12 @@ classdef MLB_SM < SeqMem
         function [phaseMtx, powerMtx] = PP_TrialMatrix_LFP(obj, freqWin, window, alignment)
             if isempty(obj.binSize)
                 error('Define binSize');
-            elseif isempty(obj.dsRate)
+            end
+            if isempty(obj.dsRate)
                 error('Define dsRate');
+            end
+            if isempty(obj.lfpMatrix)
+                obj.CompileLFPmatrix;
             end
             paddedWindow = [window(1)-(obj.binSize/2) window(2)+(obj.binSize/2)];
             if isempty(obj.lfpRefTet)
