@@ -123,7 +123,8 @@ classdef MLB_SM < SeqMem
                         curAvgUniFR = likely(:,u);
                         p(:,u) = (((obj.binSize/obj.sampleRate).*curAvgUniFR).^curPopVect(u))./curPopFact(u);
                     end
-                    pp = prod(p,2);
+                    p(p==0) = 0.0000000000000000000001;
+                    pp = prod(p,2, 'omitnan');
                     ee = exp(-((obj.binSize/obj.sampleRate)*sum(likely,2)));
                     tempPost = pp.*ee;
                     post(t,:,trl) = tempPost./sum(tempPost);
