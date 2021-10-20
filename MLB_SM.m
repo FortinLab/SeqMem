@@ -140,7 +140,9 @@ classdef MLB_SM < SeqMem
                 for d = 1:size(post,1)
                     if ~isnan(post(d,1,o))
                         maxPost(d,o) = max(post(d,:,o));
-                        decode(d,o) = id(find(post(d,:,o)==maxPost(d,o),1,'first'));
+                        select = rand(1,length(decode));
+                        tempDecode = find(post(d,:,o)==maxPost(d,o));
+                        decode(d,o) = id(tempDecode(select==max(select)));
                     end
                 end
             end
