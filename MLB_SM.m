@@ -2,6 +2,7 @@ classdef MLB_SM < SeqMem
     properties % Analysis Variables
         binSize
         dsRate
+        binType = 'box'
     end
     properties % Data Structures
         fiscTrials
@@ -54,7 +55,11 @@ classdef MLB_SM < SeqMem
             binnedMtx = nan(size(tempMtx));
             for t = 1:size(tempMtx,3)
                 for u = 1:size(tempMtx,2)
-                    binnedMtx(:,u,t) = conv(tempMtx(:,u,t),ones(1,obj.binSize)./(obj.binSize/obj.sampleRate), 'same');
+                    if strcmp(obj.binType, 'box')
+                        binnedMtx(:,u,t) = conv(tempMtx(:,u,t),ones(1,obj.binSize)./(obj.binSize/obj.sampleRate), 'same');
+                    elseif strcmp(obj.binType, 'gauss')
+                        binnedMtx(:,u,t) = conv(tempMtx(:,u,t),gausswin(obj.binSize)./(obj.binSize/obj.sampleRate), 'same');
+                    end
                 end
             end
             unpaddedBinnedMtx = binnedMtx((obj.binSize/2)+1:end-(obj.binSize/2),:,:);
@@ -140,8 +145,8 @@ classdef MLB_SM < SeqMem
                 for d = 1:size(post,1)
                     if ~isnan(post(d,1,o))
                         maxPost(d,o) = max(post(d,:,o));
-                        select = rand(1,length(decode));
                         tempDecode = find(post(d,:,o)==maxPost(d,o));
+                        select = rand(1,length(tempDecode));
                         decode(d,o) = id(tempDecode(select==max(select)));
                     end
                 end
