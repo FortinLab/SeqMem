@@ -9,6 +9,12 @@ fileDirs = [{'D:\WorkBigDataFiles\PFC\Files To Process\GE11\GE11_Session132'},..
     {'D:\WorkBigDataFiles\PFC\Files To Process\GE17\GE17_Session095'},...
     {'D:\WorkBigDataFiles\PFC\Files To Process\GE24\Session096'}];
 
+% fileDirs = [{'D:\WorkBigDataFiles\CA1 Data\1. WellTrained session\SuperChris'},...
+%     {'D:\WorkBigDataFiles\CA1 Data\1. WellTrained session\Stella'},...
+%     {'D:\WorkBigDataFiles\CA1 Data\1. WellTrained session\Mitt'},...
+%     {'D:\WorkBigDataFiles\CA1 Data\1. WellTrained session\Buchanan'},...
+%     {'D:\WorkBigDataFiles\CA1 Data\1. WellTrained session\Barat'}];
+
 binSize = 200;
 dsRate = 50;
 trlWindow = [-800 1200];
@@ -16,12 +22,14 @@ trlWindow = [-800 1200];
 PositionColors = [44/255, 168/255, 224/255;...
     154/255, 133/255, 122/255;...
     9/255, 161/255, 74/255;...
-    128/255, 66/255, 151/255];
+    128/255, 66/255, 151/255;...
+    241/255, 103/255, 36/255];
 
 odrPosts = cell(1,length(fileDirs));
 odrDecodes = cell(1,length(fileDirs));
 trlInfo = odrPosts;
 fiscs = odrPosts;
+% meanPosts = cell(5,5,length(fileDirs));
 meanPosts = cell(4,4,length(fileDirs));
 meanDecodes = meanPosts;
 lfpPhase = odrPosts;
@@ -54,12 +62,12 @@ colormap(broc);
 z = colormap;
 % z = flipud(z);
 % z(1,:) = [1 1 1];
-for p = 1:4
-    for pp = 1:4
-        subplot(4,4,sub2ind([4,4],p,pp));
-        tempMean = mean(cell2mat(meanDecodes(p,pp,:)),3,'omitnan');
+for p = 1:size(fiscs{1},1)
+    for pp = 1:size(fiscs{1},1)
+        subplot(size(fiscs{1},1),size(fiscs{1},1),sub2ind([size(fiscs{1},1),size(fiscs{1},1)],p,pp));
+        threshMean = mean(cell2mat(meanDecodes(p,pp,:)),3,'omitnan');
 %         tempMean(tempMean<0.3) = nan;
-        imagesc(trlTimeVect,trlTimeVect, tempMean, [0 0.5]);
+        imagesc(trlTimeVect,trlTimeVect, threshMean, [0 0.5]);
         hold on;
         plot(trlTimeVect,trlTimeVect, '--k');
         colormap(z);
@@ -74,14 +82,14 @@ annotation(gcf,'textbox', [0 0.95 1 0.05],'String', sprintf('Mean Animal; BinSiz
 %%
 % histogram(cell2mat(cellfun(@(a)a(:), cellfun(@(a)mean(a), lfpPower, 'uniformoutput', 0), 'uniformoutput', 0)'))
 %%
-isc = cell(1,4);
-iscPwr = cell(1,4);
+isc = cell(1,size(fiscs{1},1));
+iscPwr = cell(1,size(fiscs{1},1));
 for ani = 1:length(fileDirs)
     tempISlog = [trlInfo{ani}.Odor]==[trlInfo{ani}.Position];
     tempPerfLog = [trlInfo{ani}.Performance];
     tempPwr = mean(lfpPower{ani});
     tempPwr = tempPwr(:);
-    for op = 1:4
+    for op = 1:size(fiscs{1},1)
 %         tempTempISlog = tempISlog - ismember([trlInfo{ani}.TrialNum], fiscs{ani}(op,:));
 %         tempTempISlog = ismember([trlInfo{ani}.TrialNum], fiscs{ani}(op,:));
         tempTempISlog = tempISlog;
@@ -91,17 +99,24 @@ for ani = 1:length(fileDirs)
 end
 
 figure;
-for p = 1:4
+for p = 1:size(fiscs{1},1)
     tempTrls = isc{p};
     tempPwr = iscPwr{p};
 %     tempTrls(tempPwr<0) = [];
-    for pp = 1:4
-        subplot(4,4,sub2ind([4,4],p,pp));
+    for pp = 1:size(fiscs{1},1)
+        subplot(size(fiscs{1},1),size(fiscs{1},1),sub2ind([size(fiscs{1},1),size(fiscs{1},1)],p,pp));
         trlMean = mean(cell2mat(reshape(cellfun(@(a){a(:,:,pp)}, tempTrls), [1,1,size(tempTrls,1)])),3,'omitnan');
 %         trlMean(trlMean<0.3)=nan;
+        threshMean = trlMean;
+        threshMean(threshMean<0.35) = 0;
+        threshMean(threshMean>0) = 1;
         imagesc(trlTimeVect, trlTimeVect, trlMean, [0 0.5]);
         hold on;
         plot(trlTimeVect,trlTimeVect, '--k');
+        bounds = bwboundaries(threshMean);
+        for b = 1:length(bounds)
+            plot(trlTimeVect(bounds{b}(:,2)), trlTimeVect(bounds{b}(:,1)), 'k', 'linewidth', 5);
+        end
         colormap(z);
         title(sprintf('Decode %i During %i', pp, p));
         xlabel('Template Time');
@@ -113,11 +128,11 @@ annotation(gcf,'textbox', [0 0.95 1 0.05],'String', sprintf('Mean Trials; BinSiz
     'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left', 'interpreter', 'none');
     
 %%
-lagVect = -3:3;
+lagVect = (size(fiscs{1},1)-2)*-1:(size(fiscs{1},1)-2);
 trlLag = cell(size(lagVect));
-for p = 1:4
+for p = 2:size(fiscs{1},1)
     tempTrls = isc{p};
-    for pp = 1:4
+    for pp = 2:size(fiscs{1},1)
         curLag = lagVect==pp-p;
         trlLag{curLag} = [trlLag{curLag}; cellfun(@(a){a(:,:,pp)}, tempTrls)];
     end
@@ -139,26 +154,51 @@ for lag = 1:length(lagVect)
 end
 annotation(gcf,'textbox', [0 0.95 1 0.05],'String', sprintf('Decoding by Lag Collapsed; BinSize = %i, DSrate = %i', binSize, dsRate),...
     'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left', 'interpreter', 'none');
+%%
+
+figure 
+for lag = 1:length(lagVect)
+    subplot(length(lagVect),1, lag);
+    curLagMean = mean(cell2mat(reshape(trlLag{lag}, [1,1,length(trlLag{lag})])),3,'omitnan');
+    tempLagMean = curLagMean;
+    curLagMean(curLagMean<0.35) = 0;
+    curLagMean(curLagMean>0) = 1;
+    imagesc(trlTimeVect, trlTimeVect, tempLagMean, [0 0.5]);
+    hold on;
+    
+    bounds = bwboundaries(curLagMean);
+    for b = 1:length(bounds)
+        plot(trlTimeVect(bounds{b}(:,2)), trlTimeVect(bounds{b}(:,1)), 'k', 'linewidth', 5);
+    end
+    set(gca, 'ydir', 'normal');
+    colormap(z);
+end
     
 %%
-objPosDecode = cell(1,5);
-for p = 1:4
+objPosDecode = cell(1,size(fiscs{1},1)+1);
+for p = 1:size(fiscs{1},1)
     tempTrls = isc{p};
-    for pp = 1:4
+    for pp = 1:size(fiscs{1},1)
         if p==pp
-%             if p ~= 1 && p~=4
-                objPosDecode{5} = [objPosDecode{5}; cellfun(@(a){a(:,:,pp)}, tempTrls)];
-%             end
+            if p ~= 1 && p~=4
+                objPosDecode{end} = [objPosDecode{end}; cellfun(@(a){a(:,:,pp)}, tempTrls)];
+            end
         else
             objPosDecode{pp} = [objPosDecode{pp}; cellfun(@(a){a(:,:,pp)},tempTrls)];
         end
     end
 end
 figure;
-subplots = [1, 3, 5, 7, 2];
-ttls = [{'pos1'}, {'pos2'}, {'pos3'}, {'pos4'}, {'Matched'}];
+if size(fiscs{1},1) == 4
+    subplots = [1, 3, 5, 7, 2];
+    ttls = [{'pos1'}, {'pos2'}, {'pos3'}, {'pos4'}, {'Matched'}];
+elseif size(fiscs{1},1) == 5
+    subplots = [1, 3, 5, 7, 9, 2];
+    ttls = [{'pos1'}, {'pos2'}, {'pos3'}, {'pos4'}, {'pos5'}, {'Matched'}];
+end
+
 for sp = 1:length(subplots)
-    subplot(4,2,subplots(sp));
+    subplot(size(fiscs{1},1),2,subplots(sp));
     curMean = mean(cell2mat(reshape(objPosDecode{sp}, [1,1,length(objPosDecode{sp})])),3,'omitnan');
 %     curMean(curMean<0.3)=nan;
     imagesc(trlTimeVect, trlTimeVect, curMean, [0 0.5]);
@@ -212,14 +252,14 @@ for t = 1:length(trlTimeVect)
     timeWindow = [rlyWindow latWindow];
 %     timeWindow = [0.49 0.21];
     figure;
-    pPlt = nan(1,4);
-    sp = nan(1,4);
-    for p = 1:4
-        sp(p) = subplot(4,1,p);
+    pPlt = nan(1,size(fiscs{1},1));
+    sp = nan(1,size(fiscs{1},1));
+    for p = 1:size(fiscs{1},1)
+        sp(p) = subplot(size(fiscs{1},1),1,p);
         patch('XData', [timeWindow, fliplr(timeWindow)], 'YData', [0 0 1 1], 'EdgeColor', 'none', 'FaceColor', 'k', 'FaceAlpha', 0.2);
         hold on;
         tempTrials = isc{p};
-        for pp = 1:4
+        for pp = 1:size(fiscs{1},1)
             tempDecode = cell2mat(cellfun(@(a){mean(a(:,trlTimeVect>timeWindow(1) & trlTimeVect<timeWindow(2),pp),2)}, tempTrials)');
             meanDecode = mean(tempDecode,2);
             semDecode = SEMcalc(tempDecode,0,2);
@@ -229,7 +269,11 @@ for t = 1:length(trlTimeVect)
         end
         title(sprintf('Position %i', p));
     end
-    legend(pPlt,[{'1'}, {'2'}, {'3'}, {'4'}], 'location', 'north', 'orientation', 'horizontal');
+    if size(fiscs{1},1) == 4
+        legend(pPlt,[{'1'}, {'2'}, {'3'}, {'4'}], 'location', 'north', 'orientation', 'horizontal');
+    elseif size(fiscs{1},1) == 5
+        legend(pPlt,[{'1'}, {'2'}, {'3'}, {'4'}, {'5'}], 'location', 'north', 'orientation', 'horizontal');
+    end
     linkaxes(sp, 'xy');
     axis tight
     annotation(gcf,'textbox', [0 0.95 1 0.05],'String', sprintf('Time-Slice Decoding; Centered @%.00fms; BinSize = %i, DSrate = %i',trlTimeVect(t)*1000, binSize, dsRate),...
