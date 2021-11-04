@@ -1,4 +1,5 @@
 classdef MLB_SM < SeqMem
+    % Implementation of a naive bayes classifier assuming a poisson distribution for spiking data
     properties % Analysis Variables
         binSize
         dsRate
@@ -116,7 +117,7 @@ classdef MLB_SM < SeqMem
         end
     end
     methods % MLB Analysis Methods
-        %% Calculate MLB
+        %% Calculate Static MLB
         function post = CalcStaticBayesPost(obj,likely, obsv)
             post = nan(size(obsv,1), size(likely,1), size(obsv,3));
             for trl = 1:size(obsv,3)
@@ -128,11 +129,46 @@ classdef MLB_SM < SeqMem
                         curAvgUniFR = likely(:,u);
                         p(:,u) = (((obj.binSize/obj.sampleRate).*curAvgUniFR).^curPopVect(u))./curPopFact(u);
                     end
-                    p(p==0) = 0.0000000000000000000001;
+                    p(p==0) = 0.00000000000000001;
                     pp = prod(p,2, 'omitnan');
                     ee = exp(-((obj.binSize/obj.sampleRate)*sum(likely,2)));
                     tempPost = pp.*ee;
                     post(t,:,trl) = tempPost./sum(tempPost);
+                end
+            end
+        end
+        %% Calculate Iterative MLB
+        function post = CalcIterativeBayesPost(obj, likely, obsv, depVar, grpVar)
+            % Calculate posterior probability using a dependant variable and a grouping variable
+            %   The dependant variable (mainly time) is the variable that is iterated across
+            %   The grouping variable (mainly odor or position) is the variable used as the likelihoods at each level of the dependant variable
+            % For example, typical use case here is to look for temporally invariant coding where 
+            %   depVar = time, i.e. the algorithm will step through different time points
+            %   grpVar = odor/position, i.e. the algorithm will then choose likelihoods from different levels of odor or position
+            rateScalar = obj.binSize/obj.sampleRate;
+            lvlsDepVar = unique(depVar);
+            lvlsGrpVar = unique(grpVar);
+            post = nan(size(obsv,1), size(likely,1)/length(lvlsGrpVar), length(lvlsGrpVar), size(obsv,3));
+            for dv = 1:length(lvlsDepVar)
+                tempLikely = nan(length(lvlsGrpVar), size(likely,2));
+                for gv = 1:length(lvlsGrpVar)
+                    tempLikely(gv,:) = likely(depVar==lvlsDepVar(dv) & grpVar==lvlsGrpVar(gv),:);
+                end
+                for trl = 1:size(obsv,3)
+                    for t = 1:size(obsv,1)
+                        p = nan(size(tempLikely));
+                        curPopVect = floor(obsv(t,:,trl)*rateScalar);
+                        curPopFact = factorial(curPopVect);
+                        for u = 1:size(tempLikely,2)
+                            curAvgUniFR = tempLikely(:,u);
+                            p(:,u) = ((rateScalar.*curAvgUniFR).^curPopVect(u))./curPopFact(u);
+                        end
+                        p(p==0) = 0.00000000000000001;
+                        pp = prod(p,2, 'omitnan');
+                        ee = exp(-(rateScalar*sum(tempLikely,2)));
+                        tempTempPost = pp.*ee;
+                        post(t,dv,:,trl) = tempTempPost ./ sum(tempTempPost);
+                    end
                 end
             end
         end
