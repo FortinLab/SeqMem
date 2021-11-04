@@ -19,7 +19,7 @@ function [odrPost, odrDecode, trialInfo, fisc, meanPostOdr, meanDecodeOdr, trlLF
 
     %%
     [trlSpikes, trlTimeVect] = mlb.PP_TrialMatrix_Spiking(trlWindow, alignment);
-    [trlLFPphase, trlLFPpower] = mlb.PP_TrialMatrix_LFP([4 12], trlWindow, alignment);
+    [trlLFPphase, trlLFPpower] = mlb.PP_TrialMatrix_LFP([16 32], trlWindow, alignment);
     mlb.PP_IdentifyFISCseqs;
     trialInfo = mlb.trialInfo;
     fisc = mlb.fiscTrials;
@@ -49,7 +49,7 @@ function [odrPost, odrDecode, trialInfo, fisc, meanPostOdr, meanDecodeOdr, trlLF
         %% Use the likelihoods
         % Step through each trial
         curObsv = trlSpikes(:,:,trl);
-        tempPost = nan(size(trlSpikes,1),size(trlSpikes,1),4);
+        tempPost = nan(size(trlSpikes,1),size(trlSpikes,1),mlb.seqLength);
         for likeTime = 1:size(trlTimeVect,1)
             tempLike = cell2mat(cellfun(@(a){a(likeTime,:)}, fiscLikes)');
             curPosts = mlb.CalcStaticBayesPost(tempLike, curObsv);
@@ -69,16 +69,16 @@ function [odrPost, odrDecode, trialInfo, fisc, meanPostOdr, meanDecodeOdr, trlLF
     isLog = odorVect==posVect;
     perfLog = logical([mlb.trialInfo.Performance]);
 
-    meanPostOdr = cell(4);
-    meanDecodeOdr = cell(4);
-    for trlOdr = 1:4
+    meanPostOdr = cell(mlb.seqLength);
+    meanDecodeOdr = cell(mlb.seqLength);
+    for trlOdr = 1:mlb.seqLength
         tempFig1 = figure;
         tempFig2 = figure;
-%         trlVect = mlb.fiscTrials(trlOdr,:);
-        trlVect = odorVect==trlOdr & isLog & perfLog;
-        for decodeOdr = 1:4
+        trlVect = mlb.fiscTrials(trlOdr,:);
+%         trlVect = odorVect==trlOdr & isLog & perfLog;
+        for decodeOdr = 1:mlb.seqLength
             figure(tempFig1);
-            subplot(2,2,decodeOdr);
+            subplot(3,3,decodeOdr);
             meanPost = mean(cell2mat(reshape(cellfun(@(a){a(:,:,decodeOdr)}, odrPost(trlVect)), [1,1,sum(trlVect)])),3,'omitnan');
             meanPostOdr{trlOdr, decodeOdr} = meanPost;
             imagesc(trlTimeVect,trlTimeVect,meanPost, [0 0.75]);
@@ -87,7 +87,7 @@ function [odrPost, odrDecode, trialInfo, fisc, meanPostOdr, meanDecodeOdr, trlLF
             ylabel('Decode Time');
             set(gca, 'ydir', 'normal');
             figure(tempFig2)
-            subplot(2,2,decodeOdr);
+            subplot(3,3,decodeOdr);
             meanDecode = mean(odrDecode(:,:,trlVect)==decodeOdr,3,'omitnan');
             meanDecodeOdr{trlOdr,decodeOdr} = meanDecode;
             imagesc(trlTimeVect, trlTimeVect, meanDecode, [0 0.75]);
