@@ -43,15 +43,18 @@ classdef SeqMem < handle
             obj.behavMatrix = behavMatrix.behavMatrix(:,2:end);
             behavMatrixColIDs = load([obj.pathDir '\' obj.behavMatFile], 'behavMatrixColIDs');
             obj.behavMatrixColIDs = behavMatrixColIDs.behavMatrixColIDs(2:end);
-            obj.nsmblMatFile = fileNames{cellfun(@(a)~isempty(a), strfind(fileNames, 'EnsembleMatrix'))};
-            ensembleMatrix = load([obj.pathDir '\' obj.nsmblMatFile]);
-            if isempty(obj.popVectIncludeLog)
-                obj.ensembleMatrix = ensembleMatrix.ensembleMatrix(:,2:end);
-            else
-                obj.ensembleMatrix = ensembleMatrix.ensembleMatrix(:,[false; obj.popVectIncludeLog(:)]);
+            nsmblMatFileLog = cellfun(@(a)~isempty(a), strfind(fileNames, 'EnsembleMatrix'));
+            if sum(nsmblMatFileLog)~=0
+                obj.nsmblMatFile = fileNames{nsmblMatFileLog};
+                ensembleMatrix = load([obj.pathDir '\' obj.nsmblMatFile]);
+                if isempty(obj.popVectIncludeLog)
+                    obj.ensembleMatrix = ensembleMatrix.ensembleMatrix(:,2:end);
+                else
+                    obj.ensembleMatrix = ensembleMatrix.ensembleMatrix(:,[false; obj.popVectIncludeLog(:)]);
+                end
+                obj.ensembleMatrixColIDs = ensembleMatrix.ensembleMatrixColIDs(2:end);
+                obj.unitInfo = ensembleMatrix.ensembleUnitSummaries;
             end
-            obj.ensembleMatrixColIDs = ensembleMatrix.ensembleMatrixColIDs(2:end);
-            obj.unitInfo = ensembleMatrix.ensembleUnitSummaries;
             obj.smFiles = fileNames(cellfun(@(a)~isempty(a), regexp(fileNames, '_SM\>')))';
             obj.OrganizeTrialInfo;
 %             obj.CompileLFPmatrix;
