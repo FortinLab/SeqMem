@@ -119,6 +119,7 @@ classdef MLB_SM < SeqMem
     methods % MLB Analysis Methods
         %% Calculate Static MLB
         function post = CalcStaticBayesPost(obj,likely, obsv)
+%             tic;
             post = nan(size(obsv,1), size(likely,1), size(obsv,3));
             for trl = 1:size(obsv,3)
                 for t = 1:size(obsv,1)
@@ -136,6 +137,7 @@ classdef MLB_SM < SeqMem
                     post(t,:,trl) = tempPost./sum(tempPost);
                 end
             end
+%             toc
         end
         %% Calculate Iterative MLB
         function post = CalcIterativeBayesPost(obj, likely, obsv, depVar, grpVar)
@@ -145,6 +147,7 @@ classdef MLB_SM < SeqMem
             % For example, typical use case here is to look for temporally invariant coding where 
             %   depVar = time, i.e. the algorithm will step through different time points
             %   grpVar = odor/position, i.e. the algorithm will then choose likelihoods from different levels of odor or position
+%             tic;
             rateScalar = obj.binSize/obj.sampleRate;
             lvlsDepVar = unique(depVar);
             lvlsGrpVar = unique(grpVar);
@@ -155,6 +158,7 @@ classdef MLB_SM < SeqMem
                     tempLikely(gv,:) = likely(depVar==lvlsDepVar(dv) & grpVar==lvlsGrpVar(gv),:);
                 end
                 for trl = 1:size(obsv,3)
+%                     tic;
                     for t = 1:size(obsv,1)
                         p = nan(size(tempLikely));
                         curPopVect = floor(obsv(t,:,trl)*rateScalar);
@@ -169,8 +173,48 @@ classdef MLB_SM < SeqMem
                         tempTempPost = pp.*ee;
                         post(t,dv,:,trl) = tempTempPost ./ sum(tempTempPost);
                     end
+%                     toc
                 end
             end
+%             toc
+            
+%             % GPU Version... waaaaaaaaay slower, but fun to think about. Too much overhead transfering data around for
+%               this to be useful.
+%             tic;
+%             rateScalar = gpuArray(obj.binSize/obj.sampleRate);
+%             likely = gpuArray(likely);
+%             obsv = gpuArray(obsv);
+%             depVar = gpuArray(depVar);
+%             grpVar = gpuArray(grpVar);
+%             lvlsDepVar = gpuArray(unique(depVar));
+%             lvlsGrpVar = gpuArray(unique(grpVar));
+%             post = gpuArray(nan(size(obsv,1), size(likely,1)/length(lvlsGrpVar), length(lvlsGrpVar), size(obsv,3)));
+%             for dv = 1:length(lvlsDepVar)
+%                 tempLikely = gpuArray(nan(length(lvlsGrpVar), size(likely,2)));
+%                 for gv = 1:length(lvlsGrpVar)
+%                     tempLikely(gv,:) = likely(depVar==lvlsDepVar(dv) & grpVar==lvlsGrpVar(gv),:);
+%                 end
+%                 for trl = 1:size(obsv,3)
+%                     tic;
+%                     for t = 1:size(obsv,1)
+%                         p = gpuArray(nan(size(tempLikely)));
+%                         curPopVect = floor(obsv(t,:,trl)*rateScalar);
+%                         curPopFact = factorial(curPopVect);
+%                         for u = 1:size(tempLikely,2)
+%                             curAvgUniFR = tempLikely(:,u);
+%                             p(:,u) = ((rateScalar.*curAvgUniFR).^curPopVect(u))./curPopFact(u);
+%                         end
+%                         p(p==0) = 0.00000000000000001;
+%                         pp = prod(p,2, 'omitnan');
+%                         ee = exp(-(rateScalar*sum(tempLikely,2)));
+%                         tempTempPost = pp.*ee;
+%                         post(t,dv,:,trl) = tempTempPost ./ sum(tempTempPost);
+%                     end
+%                     toc
+%                 end
+%             end
+%             post = gather(post);
+%             toc
         end
         %% Decode MLB
         function [decode, maxPost] = DecodeBayesPost(~, post, id)
