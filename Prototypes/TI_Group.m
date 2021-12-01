@@ -3,17 +3,16 @@
 %     {'D:\WorkBigDataFiles\PFC\GE14_Session123'},...
 %     {'D:\WorkBigDataFiles\PFC\GE17_Session095'},...
 %     {'D:\WorkBigDataFiles\PFC\GE24_Session096'}];
-fileDirs = [{'D:\WorkBigDataFiles\PFC\Files To Process\GE11\GE11_Session132'},...
-    {'D:\WorkBigDataFiles\PFC\Files To Process\GE13\GE13_Session083'},...
-    {'D:\WorkBigDataFiles\PFC\Files To Process\GE14\GE14_Session123'},...
-    {'D:\WorkBigDataFiles\PFC\Files To Process\GE17\GE17_Session095'},...
-    {'D:\WorkBigDataFiles\PFC\Files To Process\GE24\Session096'}];
-
-% fileDirs = [{'D:\WorkBigDataFiles\CA1 Data\1. WellTrained session\SuperChris'},...
-%     {'D:\WorkBigDataFiles\CA1 Data\1. WellTrained session\Stella'},...
-%     {'D:\WorkBigDataFiles\CA1 Data\1. WellTrained session\Mitt'},...
-%     {'D:\WorkBigDataFiles\CA1 Data\1. WellTrained session\Buchanan'},...
-%     {'D:\WorkBigDataFiles\CA1 Data\1. WellTrained session\Barat'}];
+% fileDirs = [{'D:\WorkBigDataFiles\PFC\Files To Process\GE11\GE11_Session132'},...
+%     {'D:\WorkBigDataFiles\PFC\Files To Process\GE13\GE13_Session083'},...
+%     {'D:\WorkBigDataFiles\PFC\Files To Process\GE14\GE14_Session123'},...
+%     {'D:\WorkBigDataFiles\PFC\Files To Process\GE17\GE17_Session095'},...
+%     {'D:\WorkBigDataFiles\PFC\Files To Process\GE24\Session096'}];
+fileDirs = [{'D:\WorkBigDataFiles\CA1 Data\1. WellTrained session\SuperChris'},...
+    {'D:\WorkBigDataFiles\CA1 Data\1. WellTrained session\Stella'},...
+    {'D:\WorkBigDataFiles\CA1 Data\1. WellTrained session\Mitt'},...
+    {'D:\WorkBigDataFiles\CA1 Data\1. WellTrained session\Buchanan'},...
+    {'D:\WorkBigDataFiles\CA1 Data\1. WellTrained session\Barat'}];
 
 binSize = 200;
 dsRate = 50;
@@ -29,8 +28,8 @@ odrPosts = cell(1,length(fileDirs));
 odrDecodes = cell(1,length(fileDirs));
 trlInfo = odrPosts;
 fiscs = odrPosts;
-% meanPosts = cell(5,5,length(fileDirs));
-meanPosts = cell(4,4,length(fileDirs));
+meanPosts = cell(5,5,length(fileDirs));
+% meanPosts = cell(4,4,length(fileDirs));
 meanDecodes = meanPosts;
 lfpPhase = odrPosts;
 lfpPower = odrPosts;
@@ -64,7 +63,7 @@ z = colormap;
 % z(1,:) = [1 1 1];
 for p = 1:size(fiscs{1},1)
     for pp = 1:size(fiscs{1},1)
-        subplot(size(fiscs{1},1),size(fiscs{1},1),sub2ind([size(fiscs{1},1),size(fiscs{1},1)],p,pp));
+        subplot(size(fiscs{1},1),size(fiscs{1},1),sub2ind([size(fiscs{1},1),size(fiscs{1},1)],pp,p));
         threshMean = mean(cell2mat(meanDecodes(p,pp,:)),3,'omitnan');
 %         tempMean(tempMean<0.3) = nan;
         imagesc(trlTimeVect,trlTimeVect, threshMean, [0 0.5]);
@@ -79,6 +78,69 @@ for p = 1:size(fiscs{1},1)
 end
 annotation(gcf,'textbox', [0 0.95 1 0.05],'String', sprintf('Mean Animal; BinSize = %i, DSrate = %i', binSize, dsRate),...
     'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left', 'interpreter', 'none');
+
+%% Look at difference between Hits & False Alarms
+
+iscDiffs = cell(1,size(fiscs{1},1));
+for p = 1:size(fiscs{1},1)
+    for a = 1:length(fileDirs)
+        tempHit = meanDecodes{p,p,a};
+        tempFA = median(cell2mat(reshape(meanDecodes(1:size(fiscs{1},1)~=p,p,a), [1,1,size(fiscs{1},1)-1])),3, 'omitnan');
+        iscDiffs{1,p,a} = tempHit-tempFA;
+    end
+end
+
+figure;
+for p = 1:size(fiscs{1},1)
+    subplot(1,size(fiscs{1},1),p);
+    tempMean = median(cell2mat(iscDiffs(1,p,:)),3);
+    imagesc(trlTimeVect,trlTimeVect, tempMean, [0 0.5]);
+    hold on;
+    plot(trlTimeVect,trlTimeVect, '--k');
+    colormap(z);
+    title(sprintf('Decode %i During %i', p, p));
+    xlabel('Template Time');
+    ylabel('Trial Time');
+    set(gca, 'ydir', 'normal');
+end
+annotation(gcf,'textbox', [0 0.95 1 0.05],'String', sprintf('Hit Rate - False Alarm; BinSize = %i, DSrate = %i', binSize, dsRate),...
+    'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left', 'interpreter', 'none');
+
+%% Calculate timecourse of LFP power & Compare with HR-FA Decoding
+iscPwr = cell(1,size(fiscs{1},1));
+for ani = 1:length(fileDirs)
+    tempISlog = [trlInfo{ani}.Odor]==[trlInfo{ani}.Position];
+    tempPerfLog = [trlInfo{ani}.Performance];
+    tempPwr = lfpPower{ani};
+    nonAfiscTrls = fiscs{ani}(2:end,:);
+    iscPwr{ani} = mean(tempPwr(:,:,nonAfiscTrls(:)),3,'omitnan');
+end
+iscPwr = cell2mat(iscPwr);
+
+nonA = mean(cell2mat(reshape(iscDiffs(:,2:end,:), [1,1,numel(iscDiffs(:,2:end,:))])),3);
+figure; 
+sp1 = subplot(5,4,1:16);
+imagesc(trlTimeVect, trlTimeVect, nonA, [0 0.5]);
+hold on;
+plot(trlTimeVect, trlTimeVect, '--k');
+colormap(z);
+title('Matched Decoding (non A1 Trials)');
+ylabel('Trial Time');
+set(gca, 'ydir', 'normal');
+sp2 = subplot(5,4,17:20);
+plot(trlTimeVect, mean(iscPwr,2), '-k');
+patch('XData', [trlTimeVect; flipud(trlTimeVect)], 'YData', [mean(iscPwr,2)-SEMcalc(iscPwr')'; flipud(mean(iscPwr,2)+SEMcalc(iscPwr')')],...
+    'facealpha', 0.5);
+linkaxes([sp1 sp2], 'x');
+title('Theta Power (animal mean +/- SEM)');
+ylabel('Power');
+xlabel('Template Time');
+axis tight
+
+axes(gcf, 'position',[0.7 0.3 0.2 0.2]);
+corrScatPlot(trapz(nonA)', mean(iscPwr,2));
+% set(axes, 'fontcolor', 'w')
+        
 %%
 % histogram(cell2mat(cellfun(@(a)a(:), cellfun(@(a)mean(a), lfpPower, 'uniformoutput', 0), 'uniformoutput', 0)'))
 %%
@@ -87,7 +149,7 @@ iscPwr = cell(1,size(fiscs{1},1));
 for ani = 1:length(fileDirs)
     tempISlog = [trlInfo{ani}.Odor]==[trlInfo{ani}.Position];
     tempPerfLog = [trlInfo{ani}.Performance];
-    tempPwr = mean(lfpPower{ani});
+    tempPwr = trapz(lfpPower{ani});
     tempPwr = tempPwr(:);
     for op = 1:size(fiscs{1},1)
 %         tempTempISlog = tempISlog - ismember([trlInfo{ani}.TrialNum], fiscs{ani}(op,:));
@@ -98,13 +160,15 @@ for ani = 1:length(fileDirs)
     end
 end
 
+pwr=cell2mat(iscPwr(:));
+
 figure;
 for p = 1:size(fiscs{1},1)
     tempTrls = isc{p};
     tempPwr = iscPwr{p};
-%     tempTrls(tempPwr<0) = [];
+    tempTrls(tempPwr>median(pwr)) = [];
     for pp = 1:size(fiscs{1},1)
-        subplot(size(fiscs{1},1),size(fiscs{1},1),sub2ind([size(fiscs{1},1),size(fiscs{1},1)],p,pp));
+        subplot(size(fiscs{1},1),size(fiscs{1},1),sub2ind([size(fiscs{1},1),size(fiscs{1},1)],pp,p));
         trlMean = mean(cell2mat(reshape(cellfun(@(a){a(:,:,pp)}, tempTrls), [1,1,size(tempTrls,1)])),3,'omitnan');
 %         trlMean(trlMean<0.3)=nan;
         threshMean = trlMean;
@@ -114,9 +178,9 @@ for p = 1:size(fiscs{1},1)
         hold on;
         plot(trlTimeVect,trlTimeVect, '--k');
         bounds = bwboundaries(threshMean);
-        for b = 1:length(bounds)
-            plot(trlTimeVect(bounds{b}(:,2)), trlTimeVect(bounds{b}(:,1)), 'k', 'linewidth', 5);
-        end
+%         for b = 1:length(bounds)
+%             plot(trlTimeVect(bounds{b}(:,2)), trlTimeVect(bounds{b}(:,1)), 'k', 'linewidth', 5);
+%         end
         colormap(z);
         title(sprintf('Decode %i During %i', pp, p));
         xlabel('Template Time');
@@ -279,7 +343,7 @@ for t = 1:length(trlTimeVect)
     annotation(gcf,'textbox', [0 0.95 1 0.05],'String', sprintf('Time-Slice Decoding; Centered @%.00fms; BinSize = %i, DSrate = %i',trlTimeVect(t)*1000, binSize, dsRate),...
         'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left', 'interpreter', 'none');
     orient(gcf, 'tall')
-    print(gcf, '-dpdf', sprintf('plot%i.pdf', t));
+%     print(gcf, '-dpdf', sprintf('plot%i.pdf', t));
     close(gcf);
 end
     
