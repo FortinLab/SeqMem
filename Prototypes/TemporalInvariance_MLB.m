@@ -79,7 +79,7 @@ function [odrPost, odrDecode, trialInfo, fisc, meanPostOdr, meanDecodeOdr, trlLF
         for decodeOdr = 1:mlb.seqLength
             figure(tempFig1);
             subplot(3,3,decodeOdr);
-            meanPost = mean(cell2mat(reshape(cellfun(@(a){a(:,:,decodeOdr)}, odrPost(trlVect)), [1,1,sum(trlVect)])),3,'omitnan');
+            meanPost = mean(cell2mat(reshape(cellfun(@(a){a(:,:,decodeOdr)}, odrPost(trlVect)), [1,1,sum(trlVect~=0)])),3,'omitnan');
             meanPostOdr{trlOdr, decodeOdr} = meanPost;
             imagesc(trlTimeVect,trlTimeVect,meanPost, [0 0.75]);
             title(sprintf('Posteriors: Decode Pos%i During Pos%i', decodeOdr, trlOdr));
