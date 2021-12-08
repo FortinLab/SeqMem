@@ -1,22 +1,24 @@
-% fileDirs = [{'D:\WorkBigDataFiles\PFC\GE11_Session132'},...
-%     {'D:\WorkBigDataFiles\PFC\GE13_Session083'},...
-%     {'D:\WorkBigDataFiles\PFC\GE14_Session123'},...
-%     {'D:\WorkBigDataFiles\PFC\GE17_Session095'},...
-%     {'D:\WorkBigDataFiles\PFC\GE24_Session096'}];
+fileDirs = [{'D:\WorkBigDataFiles\PFC\GE11_Session132'},...
+    {'D:\WorkBigDataFiles\PFC\GE13_Session083'},...
+    {'D:\WorkBigDataFiles\PFC\GE14_Session123'},...
+    {'D:\WorkBigDataFiles\PFC\GE17_Session095'},...
+    {'D:\WorkBigDataFiles\PFC\GE24_Session096'}];
 % fileDirs = [{'D:\WorkBigDataFiles\PFC\Files To Process\GE11\GE11_Session132'},...
 %     {'D:\WorkBigDataFiles\PFC\Files To Process\GE13\GE13_Session083'},...
 %     {'D:\WorkBigDataFiles\PFC\Files To Process\GE14\GE14_Session123'},...
 %     {'D:\WorkBigDataFiles\PFC\Files To Process\GE17\GE17_Session095'},...
 %     {'D:\WorkBigDataFiles\PFC\Files To Process\GE24\Session096'}];
-fileDirs = [{'D:\WorkBigDataFiles\CA1 Data\1. WellTrained session\SuperChris'},...
-    {'D:\WorkBigDataFiles\CA1 Data\1. WellTrained session\Stella'},...
-    {'D:\WorkBigDataFiles\CA1 Data\1. WellTrained session\Mitt'},...
-    {'D:\WorkBigDataFiles\CA1 Data\1. WellTrained session\Buchanan'},...
-    {'D:\WorkBigDataFiles\CA1 Data\1. WellTrained session\Barat'}];
+% fileDirs = [{'D:\WorkBigDataFiles\CA1 Data\1. WellTrained session\SuperChris'},...
+%     {'D:\WorkBigDataFiles\CA1 Data\1. WellTrained session\Stella'},...
+%     {'D:\WorkBigDataFiles\CA1 Data\1. WellTrained session\Mitt'},...
+%     {'D:\WorkBigDataFiles\CA1 Data\1. WellTrained session\Buchanan'},...
+%     {'D:\WorkBigDataFiles\CA1 Data\1. WellTrained session\Barat'}];
 
-binSize = 200;
-dsRate = 50;
-trlWindow = [-800 1200];
+aniID = [{'GE11'}, {'GE13'}, {'GE14'}, {'GE17'}, {'GE24'}];
+
+binSize = 20;
+dsRate = 20;
+trlWindow = [-500 1500];
 
 PositionColors = [44/255, 168/255, 224/255;...
     154/255, 133/255, 122/255;...
@@ -28,8 +30,8 @@ odrPosts = cell(1,length(fileDirs));
 odrDecodes = cell(1,length(fileDirs));
 trlInfo = odrPosts;
 fiscs = odrPosts;
-meanPosts = cell(5,5,length(fileDirs));
-% meanPosts = cell(4,4,length(fileDirs));
+% meanPosts = cell(5,5,length(fileDirs));
+meanPosts = cell(4,4,length(fileDirs));
 meanDecodes = meanPosts;
 lfpPhase = odrPosts;
 lfpPower = odrPosts;
@@ -42,6 +44,46 @@ for fl = 1:length(fileDirs)
 end
 %
 close all;
+
+%%
+iscDecode = cell(max([trlInfo{fl}.Position]),length(fileDirs));
+for fl = 1:length(fileDirs)
+    tempOdrPosts = odrPosts{fl};
+    tempTrlDecodes = nan(size(tempOdrPosts{1},1), size(tempOdrPosts{1},2), length(tempOdrPosts));
+    for trl = 1:length(tempOdrPosts)
+        for r = 1:size(tempOdrPosts{trl},1)
+            for c = 1:size(tempOdrPosts{trl},2)
+                tempTrlDecodes(r,c,trl) = find(max(tempOdrPosts{trl}(r,c,:))==tempOdrPosts{trl}(r,c,:),1,'first');
+            end
+        end
+    end
+    for op = 1:max([trlInfo{fl}.Position])
+        iscPosLog = [trlInfo{fl}.TranspositionDistance]==0 & [trlInfo{fl}.Position]==op & [trlInfo{fl}.Performance]==1;
+        iscDecode{op,fl} = tempTrlDecodes(:,:,iscPosLog)==op;
+    end
+end
+
+figure;
+for fl = 1:length(fileDirs)
+    for o = 1:size(iscDecode,1)
+        subplot(size(iscDecode,1),length(fileDirs),sub2ind([length(fileDirs),size(iscDecode,1)],fl,o));
+        imagesc(trlTimeVect,trlTimeVect,imgaussfilt(mean(iscDecode{o,fl},3)), [0 0.5]);
+        set(gca, 'ydir' ,'normal')
+        if o == 1
+            title(aniID{fl});
+        end
+    end
+end
+
+figure;
+for fl = 1:length(fileDirs)
+    tempISCdecode = mean(cell2mat(reshape(cellfun(@(a)mean(a,3,'omitnan'),iscDecode(:,fl), 'uniformoutput', 0), [1,1,size(iscDecode,1)])),3);
+    subplot(1,length(fileDirs),fl)
+    imagesc(trlTimeVect,trlTimeVect,imgaussfilt(tempISCdecode), [0 0.5]);
+    set(gca, 'ydir' ,'normal')
+    title(aniID{fl});
+end
+    
 %%
 % figure;
 % for p = 1:4
