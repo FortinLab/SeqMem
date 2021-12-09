@@ -1,11 +1,15 @@
 classdef SeqMem < handle
-    properties
+    properties % Files used to create the object
         pathDir
         behavMatFile
         nsmblMatFile
         smFiles
+    end
+    properties % Properties about the session files
         seqLength
         sampleRate
+    end
+    properties % Raw data compiled from session files
         tsVect
         behavMatrix
         behavMatrixColIDs
@@ -13,10 +17,28 @@ classdef SeqMem < handle
         ensembleMatrixColIDs
         lfpMatrix
         lfpMatrixColIDs
-        lfpRefTet
+    end
+    properties % Organized data from session files
         trialInfo
         unitInfo
-        numUniPerTet
+        lfpRefTet
+        numUniPerTet        
+    end
+    properties % Calculate behavioral variables
+        responseMatrix
+        resposneMatrixSFP
+        dPrime
+        dPrimeByPos
+        dPrimeByOdr
+        dPrimeSFP
+        SMI
+        SMIsfp
+        SMIbyPos
+        SMIbyOdr
+        transMat       
+        
+    end
+    properties % Masks to select data
         rejectedLFPmask
         popVectIncludeLog
     end
@@ -26,6 +48,8 @@ classdef SeqMem < handle
             9/255, 161/255, 74/255;...
             128/255, 66/255, 151/255;...
             241/255, 103/255, 36/255];
+        Rosetta = [{'A'},{'B'},{'C'},{'D'},{'E'},{'F'},{'G'},{'H'},{'I'},{'J'},{'K'},{'L'},{'M'},{'N'},{'O'},{'P'},{'Q'},{'R'},{'S'},{'T'},{'U'},{'V'},{'W'},{'X'},{'Y'},{'Z'}];
+        RosettaLF = [{'a'},{'b'},{'c'},{'d'},{'e'},{'f'},{'g'},{'h'},{'i'},{'j'},{'k'},{'l'},{'m'},{'n'},{'o'},{'p'},{'q'},{'r'},{'s'},{'t'},{'u'},{'v'},{'w'},{'x'},{'y'},{'z'}];
     end
     %% Object Creation Method
     methods
@@ -269,5 +293,42 @@ classdef SeqMem < handle
             hilbPower = zscore(abs(hilbert(filtSig)));
         end
         %% LFP Artifact Rejection
+    end
+    %% Behavioral Analyses
+    methods
+        %% Summarize Session Behavior
+        function SummarizeSessionBehavior(obj)
+        end
+        %% Calculate dPrime
+        function [dPrm, h, fa] = CalculateDprime(~, responseMatrix)
+            %%
+            if sum(responseMatrix(1,:)) == 1 || sum(responseMatrix(2,:)) == 1
+                dPrm = nan;
+                h = nan;
+                fa = nan;
+            else
+                h = responseMatrix(1,1)/sum(responseMatrix(1,:));
+                if h == 1
+                    h = (sum(responseMatrix(1,:))-1)/sum(responseMatrix(1,:));
+                elseif h == 0
+                    h = 1/sum(responseMatrix(1,:));
+                end
+                fa = responseMatrix(2,1)/sum(responseMatrix(2,:));
+                if fa == 1
+                    fa = (sum(responseMatrix(2,:))-1)/sum(responseMatrix(2,:));
+                elseif fa == 0
+                    fa = 1/sum(responseMatrix(2,:));
+                end
+                
+                dPrm = norminv(h)-norminv(fa);
+            end
+        end
+        %% Calculate SMI
+        function [smi] = CalculateSMI(~, responseMatrix)
+            numerator = (responseMatrix(1,1)*responseMatrix(2,2))-(responseMatrix(2,1)*responseMatrix(1,2));
+            denominator = sqrt((responseMatrix(1,1)+responseMatrix(1,2))*(responseMatrix(1,1)+responseMatrix(2,1))*(responseMatrix(2,1)+responseMatrix(2,2))*(responseMatrix(1,2)+responseMatrix(2,2)));
+            smi = numerator/denominator;
+        end
+        %% Calculate RI
     end
 end
