@@ -7,6 +7,9 @@ classdef SeqMem < handle
     end
     properties % Properties about the session files
         seqLength
+        numSeqs
+        odrSeqs
+        lagVect
         sampleRate
     end
     properties % Raw data compiled from session files
@@ -25,18 +28,39 @@ classdef SeqMem < handle
         numUniPerTet        
     end
     properties % Calculate behavioral variables
+        % Hit/FP/FN/Miss tables
         responseMatrix
-        resposneMatrixSFP
+        responseMatrixSFP
+        responseMatrixByPos
+        responseMatrixByOdr
+        % Raw Accuracy: Trial Type & By Lag
+        transMatAcc
+        lagAccVect
+        lagAccVectSFP
+        % Response Latency: Trial Type & By Lag
+        transMatLatRaw
+        transMatLatMean
+        lagLatVectRaw
+        lagLatVectMean
+        lagLatVectSFPraw        
+        lagLatVectSFPmean 
+        % d' Accuracy
         dPrime
+        dPrimeSFP
         dPrimeByPos
         dPrimeByOdr
-        dPrimeSFP
-        SMI
-        SMIsfp
-        SMIbyPos
-        SMIbyOdr
-        transMat       
-        
+        % smi Accuracy
+        smi
+        smiSFP
+        smiByPos
+        smiByOdr
+        % ri Response Bias
+        ri
+        riSFP
+        riByPos
+        riByOdr
+        % OrdX Trial Analysis
+        ordXpokeLats
     end
     properties % Masks to select data
         rejectedLFPmask
@@ -227,6 +251,9 @@ classdef SeqMem < handle
                 'RearRewardIndex', trialRearRwdNdx, 'ErrorIndex', trialErrorNdx,...
                 'TranspositionDistance', trialTransDist, 'ItemItemDistance', trialItmItmDist);
             obj.seqLength = size(positionTrlMtx,2);
+            obj.lagVect = (1:obj.seqLength*2-1)-obj.seqLength;
+            obj.numSeqs = length(unique(cell2mat(trialOdor)))/length(unique(cell2mat(trialPosition)));
+            obj.odrSeqs = reshape(unique(cell2mat(trialOdor)), [obj.seqLength, obj.numSeqs])';
         end
         %% Create LFP matrix
         function CompileLFPmatrix(obj)
@@ -298,37 +325,193 @@ classdef SeqMem < handle
     methods
         %% Summarize Session Behavior
         function SummarizeSessionBehavior(obj)
+            % Extract Odor & Position Lists
+            odrs = unique([obj.trialInfo.Odor]);
+            poss = unique([obj.trialInfo.Position]); 
+            % Fill in properties with blank data
+            obj.responseMatrix = zeros(2,2,obj.numSeqs);
+            obj.responseMatrixSFP = zeros(2,2,obj.numSeqs);
+            obj.responseMatrixByPos = repmat({zeros(2,2)}, [obj.numSeqs, obj.seqLength]);
+            obj.responseMatrixByOdr = repmat({zeros(2,2)}, [obj.numSeqs, obj.seqLength]);
+            obj.transMatAcc = nan(length(odrs), length(poss));
+            obj.lagAccVect = zeros(obj.numSeqs,length(obj.lagVect),2);
+            obj.lagAccVectSFP = zeros(obj.numSeqs,length(obj.lagVect));
+            obj.transMatLatRaw = cell(length(odrs), length(poss), 2);
+            obj.lagLatVectRaw = cell(obj.numSeqs,length(obj.lagVect),2);
+            obj.lagLatVectSFPraw = cell(obj.numSeqs,length(obj.lagVect),2);
+            % Run through session file to calculate things
+            for odr = 1:length(odrs)
+                odrTrlLog = [obj.trialInfo.Odor]==odrs(odr);
+                curSeq = find(sum(obj.odrSeqs==odrs(odr),2));                
+                curOdrNdx = find(odrs(odr)==obj.odrSeqs(curSeq,:));
+                for pos = 1:length(poss)
+                    posTrlLog = [obj.trialInfo.Position]==pos;
+                    if curOdrNdx == pos
+                        % Correct Trials
+                        obj.responseMatrix(1,1,curSeq) = obj.responseMatrix(1,1,curSeq) + sum([obj.trialInfo(odrTrlLog & posTrlLog).Performance]==1);
+                        obj.responseMatrixByPos{curSeq,pos}(1,1) = obj.responseMatrixByPos{curSeq,pos}(1,1) + sum([obj.trialInfo(odrTrlLog & posTrlLog).Performance]==1);
+                        obj.responseMatrixByOdr{curSeq,curOdrNdx}(1,1) = obj.responseMatrixByOdr{curSeq,curOdrNdx}(1,1) + sum([obj.trialInfo(odrTrlLog & posTrlLog).Performance]==1);
+                        % Incorrect Trials
+                        obj.responseMatrix(1,2,curSeq) = obj.responseMatrix(1,2,curSeq) + sum([obj.trialInfo(odrTrlLog & posTrlLog).Performance]==0);
+                        obj.responseMatrixByPos{curSeq,pos}(1,2) = obj.responseMatrixByPos{curSeq,pos}(1,2) + sum([obj.trialInfo(odrTrlLog & posTrlLog).Performance]==0);
+                        obj.responseMatrixByOdr{curSeq,curOdrNdx}(1,2) = obj.responseMatrixByOdr{curSeq,curOdrNdx}(1,2) + sum([obj.trialInfo(odrTrlLog & posTrlLog).Performance]==0);
+                    elseif find(odrs(odr)==obj.odrSeqs(curSeq,:)) ~= pos
+                        % Correct Trials
+                        obj.responseMatrix(2,2,curSeq) = obj.responseMatrix(2,2,curSeq) + sum([obj.trialInfo(odrTrlLog & posTrlLog).Performance]==1);
+                        obj.responseMatrixByPos{curSeq,pos}(2,2) = obj.responseMatrixByPos{curSeq,pos}(2,2) + sum([obj.trialInfo(odrTrlLog & posTrlLog).Performance]==1);
+                        obj.responseMatrixByOdr{curSeq,curOdrNdx}(2,2) = obj.responseMatrixByOdr{curSeq,curOdrNdx}(2,2) + sum([obj.trialInfo(odrTrlLog & posTrlLog).Performance]==1);
+                        % Incorrect Trials
+                        obj.responseMatrix(2,1,curSeq) = obj.responseMatrix(2,1,curSeq) + sum([obj.trialInfo(odrTrlLog & posTrlLog).Performance]==0);
+                        obj.responseMatrixByPos{curSeq,pos}(2,1) = obj.responseMatrixByPos{curSeq,pos}(2,1) + sum([obj.trialInfo(odrTrlLog & posTrlLog).Performance]==0);
+                        obj.responseMatrixByOdr{curSeq,curOdrNdx}(2,1) = obj.responseMatrixByOdr{curSeq,curOdrNdx}(2,1) + sum([obj.trialInfo(odrTrlLog & posTrlLog).Performance]==0);
+                    end
+                    if pos ~= 1
+                        if curOdrNdx == pos
+                            obj.responseMatrixSFP(1,1,curSeq) = obj.responseMatrixSFP(1,1,curSeq) + sum([obj.trialInfo(odrTrlLog & posTrlLog).Performance]==1);
+                            obj.responseMatrixSFP(1,2,curSeq) = obj.responseMatrixSFP(1,2,curSeq) + sum([obj.trialInfo(odrTrlLog & posTrlLog).Performance]==0);
+                        elseif curOdrNdx ~= pos
+                            obj.responseMatrixSFP(2,2,curSeq) = obj.responseMatrixSFP(2,2,curSeq) + sum([obj.trialInfo(odrTrlLog & posTrlLog).Performance]==1);
+                            obj.responseMatrixSFP(2,1,curSeq) = obj.responseMatrixSFP(2,1,curSeq) + sum([obj.trialInfo(odrTrlLog & posTrlLog).Performance]==0);
+                        end
+                        obj.lagAccVectSFP(curSeq,obj.lagVect==(curOdrNdx-pos),1) = obj.lagAccVectSFP(curSeq,obj.lagVect==(curOdrNdx-pos),1) + sum([obj.trialInfo(odrTrlLog & posTrlLog).Performance]==1);
+                        obj.lagAccVectSFP(curSeq,obj.lagVect==(curOdrNdx-pos),2) = obj.lagAccVectSFP(curSeq,obj.lagVect==(curOdrNdx-pos),1) + sum([obj.trialInfo(odrTrlLog & posTrlLog).Performance]==0);
+                        
+                        obj.lagLatVectSFPraw{curSeq,obj.lagVect==(curOdrNdx-pos),1} = [obj.lagLatVectSFPraw{curSeq,obj.lagVect==(curOdrNdx-pos),1}, [obj.trialInfo(odrTrlLog & posTrlLog & [obj.trialInfo.Performance]==1).PokeDuration]];
+                        obj.lagLatVectSFPraw{curSeq,obj.lagVect==(curOdrNdx-pos),2} = [obj.lagLatVectSFPraw{curSeq,obj.lagVect==(curOdrNdx-pos),2}, [obj.trialInfo(odrTrlLog & posTrlLog & [obj.trialInfo.Performance]==0).PokeDuration]];
+                    end
+                    
+                    obj.transMatAcc(odr,pos) = mean([obj.trialInfo(odrTrlLog & posTrlLog).Performance]);
+                    obj.lagAccVect(curSeq,obj.lagVect==(curOdrNdx-pos),1) = obj.lagAccVect(curSeq,obj.lagVect==(curOdrNdx-pos),1) + sum([obj.trialInfo(odrTrlLog & posTrlLog).Performance]==1);
+                    obj.lagAccVect(curSeq,obj.lagVect==(curOdrNdx-pos),2) = obj.lagAccVect(curSeq,obj.lagVect==(curOdrNdx-pos),2) + sum([obj.trialInfo(odrTrlLog & posTrlLog).Performance]==0);                  
+                    
+                    obj.transMatLatRaw{odr,pos,1} = [obj.trialInfo(odrTrlLog & posTrlLog & [obj.trialInfo.Performance]==1).PokeDuration];
+                    obj.transMatLatRaw{odr,pos,2} = [obj.trialInfo(odrTrlLog & posTrlLog & [obj.trialInfo.Performance]==0).PokeDuration];
+                    obj.lagLatVectRaw{curSeq,obj.lagVect==(curOdrNdx-pos),1} = [obj.lagLatVectRaw{curSeq,obj.lagVect==(curOdrNdx-pos),1}, [obj.trialInfo(odrTrlLog & posTrlLog & [obj.trialInfo.Performance]==1).PokeDuration]];
+                    obj.lagLatVectRaw{curSeq,obj.lagVect==(curOdrNdx-pos),2} = [obj.lagLatVectRaw{curSeq,obj.lagVect==(curOdrNdx-pos),2}, [obj.trialInfo(odrTrlLog & posTrlLog & [obj.trialInfo.Performance]==0).PokeDuration]];
+                end
+            end
+            obj.transMatLatMean = cellfun(@(a)mean(a, 'omitnan'), obj.transMatLatRaw, 'uniformoutput', 0);
+            obj.lagLatVectMean = cellfun(@(a)mean(a, 'omitnan'), obj.lagLatVectRaw, 'uniformoutput', 0);
+            obj.lagLatVectSFPmean = cellfun(@(a)mean(a, 'omitnan'), obj.lagLatVectSFPraw, 'uniformoutput', 0);
+            % d' Accuracy
+            [obj.dPrime,~,~] = obj.CalculateDprime(obj.responseMatrix);
+            [obj.dPrimeSFP,~,~] = obj.CalculateDprime(obj.responseMatrixSFP);
+            % smi Accuracy
+            obj.smi = obj.CalculateSMI(obj.responseMatrix);
+            obj.smiSFP = obj.CalculateSMI(obj.responseMatrixSFP);
+            % ri Response Bias
+            [obj.ri,~,~] = obj.CalculateRI(obj.responseMatrix);
+            [obj.riSFP,~,~] = obj.CalculateRI(obj.responseMatrixSFP);
+            % Calculate pos/odr values
+            obj.dPrimeByPos = nan(size(obj.odrSeqs));
+            obj.dPrimeByOdr = nan(size(obj.odrSeqs));
+            obj.smiByPos = nan(size(obj.odrSeqs));
+            obj.smiByOdr = nan(size(obj.odrSeqs));
+            obj.riByPos = nan(size(obj.odrSeqs));
+            obj.riByOdr = nan(size(obj.odrSeqs));
+            for seq = 1:obj.numSeqs
+                for op = 1:obj.seqLength
+                    [obj.dPrimeByPos(seq,op),~,~] = obj.CalculateDprime(obj.responseMatrixByPos{seq,op});
+                    [obj.dPrimeByOdr(seq,op),~,~] = obj.CalculateDprime(obj.responseMatrixByOdr{seq,op});
+                    obj.smiByPos(seq,op) = obj.CalculateSMI(obj.responseMatrixByPos{seq,op});
+                    obj.smiByOdr(seq,op) = obj.CalculateSMI(obj.responseMatrixByOdr{seq,op});
+                    [obj.riByPos(seq,op),~,~] = obj.CalculateRI(obj.responseMatrixByPos{seq,op});
+                    [obj.riByOdr(seq,op),~,~] = obj.CalculateRI(obj.responseMatrixByOdr{seq,op});
+                end
+            end
         end
         %% Calculate dPrime
         function [dPrm, h, fa] = CalculateDprime(~, responseMatrix)
             %%
-            if sum(responseMatrix(1,:)) == 1 || sum(responseMatrix(2,:)) == 1
-                dPrm = nan;
-                h = nan;
-                fa = nan;
-            else
-                h = responseMatrix(1,1)/sum(responseMatrix(1,:));
-                if h == 1
-                    h = (sum(responseMatrix(1,:))-1)/sum(responseMatrix(1,:));
-                elseif h == 0
-                    h = 1/sum(responseMatrix(1,:));
+            dPrm = nan(1,size(responseMatrix,3));
+            h = nan(1,size(responseMatrix,3));
+            fa = nan(1,size(responseMatrix,3));
+            for grp = 1:size(responseMatrix,3)
+                if sum(responseMatrix(1,:,grp)) == 1 || sum(responseMatrix(2,:,grp)) == 1
+                    dPrm(grp) = nan;
+                    h(grp) = nan;
+                    fa(grp) = nan;
+                else
+                    h(grp) = responseMatrix(1,1,grp)/sum(responseMatrix(1,:,grp));
+                    if h(grp) == 1
+                        h(grp) = (sum(responseMatrix(1,:,grp))-1)/sum(responseMatrix(1,:,grp));
+                    elseif h(grp) == 0
+                        h(grp) = 1/sum(responseMatrix(1,:,grp));
+                    end
+                    fa(grp) = responseMatrix(2,1,grp)/sum(responseMatrix(2,:,grp));
+                    if fa(grp) == 1
+                        fa(grp) = (sum(responseMatrix(2,:,grp))-1)/sum(responseMatrix(2,:,grp));
+                    elseif fa(grp) == 0
+                        fa(grp) = 1/sum(responseMatrix(2,:,grp));
+                    end
+                    
+                    dPrm(grp) = norminv(h(grp))-norminv(fa(grp));
                 end
-                fa = responseMatrix(2,1)/sum(responseMatrix(2,:));
-                if fa == 1
-                    fa = (sum(responseMatrix(2,:))-1)/sum(responseMatrix(2,:));
-                elseif fa == 0
-                    fa = 1/sum(responseMatrix(2,:));
-                end
-                
-                dPrm = norminv(h)-norminv(fa);
             end
         end
         %% Calculate SMI
         function [smi] = CalculateSMI(~, responseMatrix)
-            numerator = (responseMatrix(1,1)*responseMatrix(2,2))-(responseMatrix(2,1)*responseMatrix(1,2));
-            denominator = sqrt((responseMatrix(1,1)+responseMatrix(1,2))*(responseMatrix(1,1)+responseMatrix(2,1))*(responseMatrix(2,1)+responseMatrix(2,2))*(responseMatrix(1,2)+responseMatrix(2,2)));
-            smi = numerator/denominator;
+            smi = nan(1,size(responseMatrix,3));
+            for grp = 1:size(responseMatrix,3)
+                numerator = (responseMatrix(1,1,grp)*responseMatrix(2,2,grp))-(responseMatrix(2,1,grp)*responseMatrix(1,2,grp));
+                denominator = sqrt((responseMatrix(1,1,grp)+responseMatrix(1,2,grp))*(responseMatrix(1,1,grp)+responseMatrix(2,1,grp))*(responseMatrix(2,1,grp)+responseMatrix(2,2,grp))*(responseMatrix(1,2,grp)+responseMatrix(2,2,grp)));
+                smi(grp) = numerator/denominator;
+            end
         end
         %% Calculate RI
+        function [ri, h, fa] = CalculateRI(~, responseMatrix)
+            % RI calculation taken from:
+            % Talwar & Gerstein (2001) J Neurophysiol. 1555-1572
+            ri = nan(1,size(responseMatrix,3));
+            h = nan(1,size(responseMatrix,3));
+            fa = nan(1,size(responseMatrix,3));
+            for grp = 1:size(responseMatrix,3)
+                if sum(responseMatrix(1,:,grp)) == 1 || sum(responseMatrix(2,:,grp)) == 1
+                    ri(grp) = nan;
+                    h(grp) = nan;
+                    fa(grp) = nan;
+                else
+                    h(grp) = responseMatrix(1,1,grp)/sum(responseMatrix(1,:,grp));
+                    if h(grp) == 1
+                        h(grp) = (sum(responseMatrix(1,:,grp))-1)/sum(responseMatrix(1,:,grp));
+                    elseif h(grp) == 0
+                        h(grp) = 1/sum(responseMatrix(1,:,grp));
+                    end
+                    fa(grp) = responseMatrix(2,1,grp)/sum(responseMatrix(2,:,grp));
+                    if fa(grp) == 1
+                        fa(grp) = (sum(responseMatrix(2,:,grp))-1)/sum(responseMatrix(2,:,grp));
+                    elseif fa(grp) == 0
+                        fa(grp) = 1/sum(responseMatrix(2,:,grp));
+                    end
+                    
+                    ri(grp) = (h(grp) + fa(grp) - 1) / (1 - (h(grp) - fa(grp))^2);
+                end
+            end
+        end
+    end
+    %% Misc
+    methods
+        %% SEM calculation
+        function [semVal] = SEMcalc(~,data, nVal, dim)
+            %% SEMcalc Calculates SEM
+            % data = data set where SEM is being calculated
+            % nVal = determination if denominator is n or n-1
+            
+            %%
+            if isempty(data)
+                semVal = nan;
+                return
+            end
+            if nargin==1
+                nVal = 0;
+                dim = 1;
+            elseif nargin==2
+                dim = 1;
+            end
+            
+            denom = sum(~isnan(data),dim);
+            denom(denom==0) = 1;
+            semVal = nanstd(data,nVal,dim)./sqrt(denom-1);
+        end
     end
 end
