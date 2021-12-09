@@ -1,13 +1,13 @@
-fileDirs = [{'D:\WorkBigDataFiles\PFC\GE11_Session132'},...
-    {'D:\WorkBigDataFiles\PFC\GE13_Session083'},...
-    {'D:\WorkBigDataFiles\PFC\GE14_Session123'},...
-    {'D:\WorkBigDataFiles\PFC\GE17_Session095'},...
-    {'D:\WorkBigDataFiles\PFC\GE24_Session096'}];
-% fileDirs = [{'D:\WorkBigDataFiles\PFC\Files To Process\GE11\GE11_Session132'},...
-%     {'D:\WorkBigDataFiles\PFC\Files To Process\GE13\GE13_Session083'},...
-%     {'D:\WorkBigDataFiles\PFC\Files To Process\GE14\GE14_Session123'},...
-%     {'D:\WorkBigDataFiles\PFC\Files To Process\GE17\GE17_Session095'},...
-%     {'D:\WorkBigDataFiles\PFC\Files To Process\GE24\Session096'}];
+% fileDirs = [{'D:\WorkBigDataFiles\PFC\GE11_Session132'},...
+%     {'D:\WorkBigDataFiles\PFC\GE13_Session083'},...
+%     {'D:\WorkBigDataFiles\PFC\GE14_Session123'},...
+%     {'D:\WorkBigDataFiles\PFC\GE17_Session095'},...
+%     {'D:\WorkBigDataFiles\PFC\GE24_Session096'}];
+fileDirs = [{'D:\WorkBigDataFiles\PFC\Files To Process\GE11\GE11_Session132'},...
+    {'D:\WorkBigDataFiles\PFC\Files To Process\GE13\GE13_Session083'},...
+    {'D:\WorkBigDataFiles\PFC\Files To Process\GE14\GE14_Session123'},...
+    {'D:\WorkBigDataFiles\PFC\Files To Process\GE17\GE17_Session095'},...
+    {'D:\WorkBigDataFiles\PFC\Files To Process\GE24\Session096'}];
 % fileDirs = [{'D:\WorkBigDataFiles\CA1 Data\1. WellTrained session\SuperChris'},...
 %     {'D:\WorkBigDataFiles\CA1 Data\1. WellTrained session\Stella'},...
 %     {'D:\WorkBigDataFiles\CA1 Data\1. WellTrained session\Mitt'},...
@@ -15,10 +15,11 @@ fileDirs = [{'D:\WorkBigDataFiles\PFC\GE11_Session132'},...
 %     {'D:\WorkBigDataFiles\CA1 Data\1. WellTrained session\Barat'}];
 
 aniID = [{'GE11'}, {'GE13'}, {'GE14'}, {'GE17'}, {'GE24'}];
+% aniID = [{'SuperChris'}, {'Stella'}, {'Mitt'}, {'Buchanan'}, {'Barat'}];
 
-binSize = 20;
-dsRate = 20;
-trlWindow = [-500 1500];
+binSize = 200;
+dsRate = 50;
+trlWindow = [-1200 1200];
 
 PositionColors = [44/255, 168/255, 224/255;...
     154/255, 133/255, 122/255;...
@@ -67,7 +68,8 @@ figure;
 for fl = 1:length(fileDirs)
     for o = 1:size(iscDecode,1)
         subplot(size(iscDecode,1),length(fileDirs),sub2ind([length(fileDirs),size(iscDecode,1)],fl,o));
-        imagesc(trlTimeVect,trlTimeVect,imgaussfilt(mean(iscDecode{o,fl},3)), [0 0.5]);
+%         imagesc(trlTimeVect,trlTimeVect,imgaussfilt(mean(iscDecode{o,fl},3)), [0 0.5]);
+        imagesc(trlTimeVect,trlTimeVect,mean(iscDecode{o,fl},3), [0 0.5]);
         set(gca, 'ydir' ,'normal')
         if o == 1
             title(aniID{fl});
@@ -79,7 +81,8 @@ figure;
 for fl = 1:length(fileDirs)
     tempISCdecode = mean(cell2mat(reshape(cellfun(@(a)mean(a,3,'omitnan'),iscDecode(:,fl), 'uniformoutput', 0), [1,1,size(iscDecode,1)])),3);
     subplot(1,length(fileDirs),fl)
-    imagesc(trlTimeVect,trlTimeVect,imgaussfilt(tempISCdecode), [0 0.5]);
+%     imagesc(trlTimeVect,trlTimeVect,imgaussfilt(tempISCdecode), [0 0.5]);
+    imagesc(trlTimeVect,trlTimeVect,tempISCdecode, [0 0.5]);
     set(gca, 'ydir' ,'normal')
     title(aniID{fl});
 end
@@ -174,13 +177,20 @@ plot(trlTimeVect, mean(iscPwr,2), '-k');
 patch('XData', [trlTimeVect; flipud(trlTimeVect)], 'YData', [mean(iscPwr,2)-SEMcalc(iscPwr')'; flipud(mean(iscPwr,2)+SEMcalc(iscPwr')')],...
     'facealpha', 0.5);
 linkaxes([sp1 sp2], 'x');
-title('Theta Power (animal mean +/- SEM)');
+title('Beta Power (animal mean +/- SEM)');
 ylabel('Power');
 xlabel('Template Time');
 axis tight
 
 axes(gcf, 'position',[0.7 0.3 0.2 0.2]);
-corrScatPlot(trapz(nonA)', mean(iscPwr,2));
+% corrScatPlot(trapz(nonA)', mean(iscPwr,2));
+int = nan(1,size(nonA,2)*2);
+mask = zeros(size(nonA));
+for t = 1:2:length(trlTimeVect)*2    
+    int(t) = trapz(diag(flip(nonA), t-length(nonA)));
+end
+int(isnan(int))=[];
+corrScatPlot(int', mean(iscPwr,2));
 % set(axes, 'fontcolor', 'w')
         
 %%
