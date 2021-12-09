@@ -1,5 +1,6 @@
 function [odrPost, odrDecode, trialInfo, fisc, meanPostOdr, meanDecodeOdr, trlLFPphase, trlLFPpower, trlTimeVect] = TemporalInvariance_MLB(smDir, binSize, dsRate, trlWindow)
 %     clc;
+%     alignment = 'PokeOut';
     alignment = 'PokeIn';
     
     if nargin==0
@@ -7,7 +8,7 @@ function [odrPost, odrDecode, trialInfo, fisc, meanPostOdr, meanDecodeOdr, trlLF
     end
     mlb = MLB_SM(smDir);
     if nargin == 0
-        mlb.binSize = 100;
+        mlb.binSize = 60;
         mlb.dsRate = 50;    
         trlWindow = [-800 1200];
     else
