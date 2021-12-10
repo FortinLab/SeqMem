@@ -4,9 +4,15 @@ classdef MLB_SM < SeqMem
         binSize
         dsRate
         binType = 'box'
+        numPerms
+        windows
+        alignments
     end
     properties % Data Structures
         fiscTrials
+        likelihoods
+        observations
+        posts
     end
     methods
         function obj = MLB_SM(fileDir)
@@ -94,6 +100,12 @@ classdef MLB_SM < SeqMem
             phaseMtx = unpaddedPhase(dsVect,:,:);
             powerMtx = unpaddedPower(dsVect,:,:);
         end
+        %% Pre-Process Trial Spiking Data as Binary
+        function [binMtx, timeVect] = PP_TrialMatrix_SpikeBin(obj, window, alignment)
+        end
+        %% Pre-Process Trial Spiking Data as Timebin z-scored
+        function [timeZMtx, timeVect] = PP_TrialMatrix_SpikeTimeZ(obj,window,alignment)
+        end
         %% Identify Fully InSeq Correct Sequences
         function PP_IdentifyFISCseqs(obj)
             odrVect = [obj.trialInfo.Odor];
@@ -116,8 +128,24 @@ classdef MLB_SM < SeqMem
             obj.fiscTrials = potentialSeqs(:,fiscLog);     
         end
     end
-    methods % MLB Analysis Methods
-        %% Calculate Static MLB
+    methods % Configuration Methods
+        %% Set Likelihoods as Fully InSeq Correct
+        function SetLikesFISC(obj)
+        end
+        %% Set Likelihoods as SubSampled ISC
+        function SetLikesSubSample(obj)
+        end        
+    end
+    methods % MLB Processing Methods
+        %% Process via Leave-1-Out
+        function ProcessLikely_Lv1Ot(obj)
+        end
+        %% Process all Observations
+        function ProcessObserve(obj)
+        end        
+    end
+    methods % MLB Algorithms
+        %% Calculate Static MLB (Poisson... kept in here just so all previous analyses won't break... will remove eventually as the rest of the code base gets revised).
         function post = CalcStaticBayesPost(obj,likely, obsv)
 %             tic;
             post = nan(size(obsv,1), size(likely,1), size(obsv,3));
@@ -139,8 +167,39 @@ classdef MLB_SM < SeqMem
             end
 %             toc
         end
-        %% Calculate Iterative MLB
-        function post = CalcIterativeBayesPost(obj, likely, obsv, depVar, grpVar)
+        %% Calculate Static MLB Poisson
+        function post = CalcStaticBayesPost_Poisson(obj,likely, obsv)
+%             tic;
+            post = nan(size(obsv,1), size(likely,1), size(obsv,3));
+            for trl = 1:size(obsv,3)
+                for t = 1:size(obsv,1)
+                    p = nan(size(likely));
+                    curPopVect = floor(obsv(t,:,trl)*(obj.binSize/obj.sampleRate));
+                    curPopFact = factorial(curPopVect);
+                    for u = 1:size(likely,2)
+                        curAvgUniFR = likely(:,u);
+                        p(:,u) = (((obj.binSize/obj.sampleRate).*curAvgUniFR).^curPopVect(u))./curPopFact(u);
+                    end
+                    p(p==0) = 0.00000000000000001;
+                    pp = prod(p,2, 'omitnan');
+                    ee = exp(-((obj.binSize/obj.sampleRate)*sum(likely,2)));
+                    tempPost = pp.*ee;
+                    post(t,:,trl) = tempPost./sum(tempPost);
+                end
+            end
+%             toc
+        end
+        %% Calculate Static MLB Bernoulli
+        % **** TO CREATE ****
+        function post = CalcStaticBayesPost_Bernoulli(obj,likely, obsv)
+        end
+        %% Calculate Static MLB Gaussian
+        % **** TO CREATE ****
+        function post = CalcStaticBayesPost_Gaussian(obj,likely, obsv)
+        end
+        %% Calculate Iterative MLB Poisson
+        % **** TO CREATE ****
+        function post = CalcIterativeBayesPost_Poisson(obj, likely, obsv, depVar, grpVar)
             % Calculate posterior probability using a dependant variable and a grouping variable
             %   The dependant variable (mainly time) is the variable that is iterated across
             %   The grouping variable (mainly odor or position) is the variable used as the likelihoods at each level of the dependant variable
@@ -177,45 +236,17 @@ classdef MLB_SM < SeqMem
                 end
             end
 %             toc
-            
-%             % GPU Version... waaaaaaaaay slower, but fun to think about. Too much overhead transfering data around for
-%               this to be useful.
-%             tic;
-%             rateScalar = gpuArray(obj.binSize/obj.sampleRate);
-%             likely = gpuArray(likely);
-%             obsv = gpuArray(obsv);
-%             depVar = gpuArray(depVar);
-%             grpVar = gpuArray(grpVar);
-%             lvlsDepVar = gpuArray(unique(depVar));
-%             lvlsGrpVar = gpuArray(unique(grpVar));
-%             post = gpuArray(nan(size(obsv,1), size(likely,1)/length(lvlsGrpVar), length(lvlsGrpVar), size(obsv,3)));
-%             for dv = 1:length(lvlsDepVar)
-%                 tempLikely = gpuArray(nan(length(lvlsGrpVar), size(likely,2)));
-%                 for gv = 1:length(lvlsGrpVar)
-%                     tempLikely(gv,:) = likely(depVar==lvlsDepVar(dv) & grpVar==lvlsGrpVar(gv),:);
-%                 end
-%                 for trl = 1:size(obsv,3)
-%                     tic;
-%                     for t = 1:size(obsv,1)
-%                         p = gpuArray(nan(size(tempLikely)));
-%                         curPopVect = floor(obsv(t,:,trl)*rateScalar);
-%                         curPopFact = factorial(curPopVect);
-%                         for u = 1:size(tempLikely,2)
-%                             curAvgUniFR = tempLikely(:,u);
-%                             p(:,u) = ((rateScalar.*curAvgUniFR).^curPopVect(u))./curPopFact(u);
-%                         end
-%                         p(p==0) = 0.00000000000000001;
-%                         pp = prod(p,2, 'omitnan');
-%                         ee = exp(-(rateScalar*sum(tempLikely,2)));
-%                         tempTempPost = pp.*ee;
-%                         post(t,dv,:,trl) = tempTempPost ./ sum(tempTempPost);
-%                     end
-%                     toc
-%                 end
-%             end
-%             post = gather(post);
-%             toc
         end
+        %% Calculate Iterative MLB Bernoulli
+        % **** TO CREATE ****
+        function post = CalcIterativeBayesPost_Bernoulli(obj, likely, obsv, depVar, grpVar)            
+        end
+        %% Calculate Iterative MLB Gaussian
+        % **** TO CREATE ****
+        function post = CalcIterativeBayesPost_Gaussian(obj, likely, obsv, depVar, grpVar)            
+        end
+    end
+    methods % Decoding Methods
         %% Decode MLB
         function [decode, maxPost] = DecodeBayesPost(~, post, id)
             % Assumes post is in the structure of ObservTime X LikelyTime X Trial
@@ -233,6 +264,7 @@ classdef MLB_SM < SeqMem
             end
         end
         %% Tabluate MLB
+        %... don't really remember what this's doing... or why I made it...
         function decode = TabulateBayesPost(~, post, id)
             idS = unique(id);
             decode = nan(size(post,1), size(post,3), length(idS));
