@@ -10,13 +10,15 @@ classdef MLB_SM < SeqMem
     end
     properties % Data Structures
         fiscTrials
-        likelihoods
-        observations
+        likeTrls
+        likeIDvects
+        obsvTrls
+        obsvIDvects
         posts
     end
     methods
         function obj = MLB_SM(fileDir)
-            if nargin == 0 
+            if nargin == 0
                 fileDir = uigetdir;
             end
             obj@SeqMem(fileDir);
@@ -91,7 +93,7 @@ classdef MLB_SM < SeqMem
                 obj.lfpRefTet = find(obj.numUniPerTet==max(obj.numUniPerTet), 1, 'first');
             end
             [~, phase, power] = obj.SimpleFilter(obj.lfpMatrix(:,obj.lfpRefTet), freqWin);
-
+            
             tempPhase = obj.ExtractTrialMatrix(phase, paddedWindow, alignment);
             tempPower = obj.ExtractTrialMatrix(power, paddedWindow, alignment);
             unpaddedPhase = tempPhase((obj.binSize/2)+1:end-(obj.binSize/2),:,:);
@@ -117,24 +119,72 @@ classdef MLB_SM < SeqMem
             for seq = 1:size(potentialSeqs,2)
                 if potentialSeqs(end,seq) <= length(obj.trialInfo)
                     if sum(odrVect(potentialSeqs(:,seq)) == posVect(potentialSeqs(:,seq))) == obj.seqLength ...
-                        && sum([obj.trialInfo(potentialSeqs(:,seq)).Performance]) == obj.seqLength
+                            && sum([obj.trialInfo(potentialSeqs(:,seq)).Performance]) == obj.seqLength
                         fiscLog(seq) = true;
                     elseif sum(odrVect(potentialSeqs(:,seq))-10 == posVect(potentialSeqs(:,seq))) == obj.seqLength ...
-                        && sum([obj.trialInfo(potentialSeqs(:,seq)).Performance]) == obj.seqLength
+                            && sum([obj.trialInfo(potentialSeqs(:,seq)).Performance]) == obj.seqLength
                         fiscLog(seq) = true;
                     end
                 end
             end
-            obj.fiscTrials = potentialSeqs(:,fiscLog);     
+            obj.fiscTrials = potentialSeqs(:,fiscLog);
+        end
+        %% Group Trial Data
+        function [ssnData, ssnID] = PP_ConcatTrialData(obj)
+            trlDta = cell(size(obj.windows,1),1);
+            trlTimeVects = cell(size(obj.windows,1),1);
+            for win = 1:size(obj.windows,1)
+                [trlDta{win}, trlTimeVects{win}] = obj.PP_TrialMatrix_Spiking(obj.windows(win,:), obj.alignments{win});
+            end
+            ssnData = nan(size(cell2mat(trlTimeVects),1), size(obj.ensembleMatrix,2), length(obj.trialInfo));
+            ssnID = nan(size(cell2mat(trlTimeVects),1), 5, length(obj.trialInfo));
+            for trl = 1:size(trlDta{win},3)
+                tempTrialData = cell(size(obj.windows,1),1);
+                tempTrialTimeVect = cell(size(obj.windows,1),1);
+                tempTrialWindowVect = cell(size(obj.windows,1),1);
+                for win = 1:size(obj.windows,1)
+                    tempTrialData{win} = trlDta{win}(:,:,trl);
+                    if win==1
+                        tempTrialTimeVect{win} = trlTimeVects{win};
+                    else
+                        tempTrialTimeVect{win} = cumsum([trlTimeVects{win-1}(end) + mode(diff(trlTimeVects{win})); diff(trlTimeVects{win})]);
+                    end
+                    tempTrialWindowVect{win} = ones(size(trlTimeVects{win},1),1).*win;
+                end
+                ssnData(:,:,trl) = cell2mat(tempTrialData);
+                ssnID(:,1,trl) = cell2mat(tempTrialTimeVect);
+                ssnID(:,2,trl) = cell2mat(tempTrialWindowVect);
+                ssnID(:,3,trl) = ones(size(ssnID,1),1).*obj.trialInfo(trl).Position;
+                ssnID(:,4,trl) = ones(size(ssnID,1),1).*obj.trialInfo(trl).Odor;
+                ssnID(:,5,trl) = ones(size(ssnID,1),1).*obj.trialInfo(trl).TrialNum;
+            end
         end
     end
     methods % Configuration Methods
         %% Set Likelihoods as Fully InSeq Correct
         function SetLikesFISC(obj)
+            % Set likelihoods & observations using FISC trials where FISC are likelihoods and all other ISC are observations
+            [ssnData, ssnID] = obj.PP_ConcatTrialData;
+            obj.likeTrls = nan(size(ssnData,1)*size(obj.fiscTrials,1), size(ssnData,2), size(obj.fiscTrials,2));
+            obj.likeIDvects = nan(size(ssnID,1)*size(obj.fiscTrials,1), size(ssnID,2), size(obj.fiscTrials,2));
+            for seq = 1:size(obj.fiscTrials,2)
+                tempSeqData = cell(size(obj.fiscTrials,1),1);
+                tempSeqIDlog = cell(size(obj.fiscTrials,1),1);
+                for pos = 1:size(obj.fiscTrials,1)
+                    tempSeqData{pos} = ssnData(:,:,obj.fiscTrials(pos,seq));
+                    tempSeqIDlog{pos} = ssnID(:,:,obj.fiscTrials(pos,seq));
+                end
+                obj.likeTrls(:,:,seq) = cell2mat(tempSeqData);
+                obj.likeIDvects(:,:,seq) = cell2mat(tempSeqIDlog);
+            end
+            iscLog = ([obj.trialInfo.TranspositionDistance]==0 & [obj.trialInfo.Performance]==1);
+            iscLog(obj.fiscTrials) = false;
+            obj.obsvTrls = ssnData(:,:,iscLog);
+            obj.obsvIDvects = ssnID(:,:,iscLog);
         end
         %% Set Likelihoods as SubSampled ISC
         function SetLikesSubSample(obj)
-        end        
+        end
     end
     methods % MLB Processing Methods
         %% Process via Leave-1-Out
@@ -142,12 +192,12 @@ classdef MLB_SM < SeqMem
         end
         %% Process all Observations
         function ProcessObserve(obj)
-        end        
+        end
     end
     methods % MLB Algorithms
         %% Calculate Static MLB (Poisson... kept in here just so all previous analyses won't break... will remove eventually as the rest of the code base gets revised).
         function post = CalcStaticBayesPost(obj,likely, obsv)
-%             tic;
+            %             tic;
             post = nan(size(obsv,1), size(likely,1), size(obsv,3));
             for trl = 1:size(obsv,3)
                 for t = 1:size(obsv,1)
@@ -165,11 +215,11 @@ classdef MLB_SM < SeqMem
                     post(t,:,trl) = tempPost./sum(tempPost);
                 end
             end
-%             toc
+            %             toc
         end
         %% Calculate Static MLB Poisson
         function post = CalcStaticBayesPost_Poisson(obj,likely, obsv)
-%             tic;
+            %             tic;
             post = nan(size(obsv,1), size(likely,1), size(obsv,3));
             for trl = 1:size(obsv,3)
                 for t = 1:size(obsv,1)
@@ -187,7 +237,7 @@ classdef MLB_SM < SeqMem
                     post(t,:,trl) = tempPost./sum(tempPost);
                 end
             end
-%             toc
+            %             toc
         end
         %% Calculate Static MLB Bernoulli
         % **** TO CREATE ****
@@ -203,10 +253,10 @@ classdef MLB_SM < SeqMem
             % Calculate posterior probability using a dependant variable and a grouping variable
             %   The dependant variable (mainly time) is the variable that is iterated across
             %   The grouping variable (mainly odor or position) is the variable used as the likelihoods at each level of the dependant variable
-            % For example, typical use case here is to look for temporally invariant coding where 
+            % For example, typical use case here is to look for temporally invariant coding where
             %   depVar = time, i.e. the algorithm will step through different time points
             %   grpVar = odor/position, i.e. the algorithm will then choose likelihoods from different levels of odor or position
-%             tic;
+            %             tic;
             rateScalar = obj.binSize/obj.sampleRate;
             lvlsDepVar = unique(depVar);
             lvlsGrpVar = unique(grpVar);
@@ -217,7 +267,7 @@ classdef MLB_SM < SeqMem
                     tempLikely(gv,:) = likely(depVar==lvlsDepVar(dv) & grpVar==lvlsGrpVar(gv),:);
                 end
                 for trl = 1:size(obsv,3)
-%                     tic;
+                    %                     tic;
                     for t = 1:size(obsv,1)
                         p = nan(size(tempLikely));
                         curPopVect = floor(obsv(t,:,trl)*rateScalar);
@@ -232,18 +282,18 @@ classdef MLB_SM < SeqMem
                         tempTempPost = pp.*ee;
                         post(t,dv,:,trl) = tempTempPost ./ sum(tempTempPost);
                     end
-%                     toc
+                    %                     toc
                 end
             end
-%             toc
+            %             toc
         end
         %% Calculate Iterative MLB Bernoulli
         % **** TO CREATE ****
-        function post = CalcIterativeBayesPost_Bernoulli(obj, likely, obsv, depVar, grpVar)            
+        function post = CalcIterativeBayesPost_Bernoulli(obj, likely, obsv, depVar, grpVar)
         end
         %% Calculate Iterative MLB Gaussian
         % **** TO CREATE ****
-        function post = CalcIterativeBayesPost_Gaussian(obj, likely, obsv, depVar, grpVar)            
+        function post = CalcIterativeBayesPost_Gaussian(obj, likely, obsv, depVar, grpVar)
         end
     end
     methods % Decoding Methods
