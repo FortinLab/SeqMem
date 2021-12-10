@@ -175,7 +175,7 @@ end
 lnPlot(1) = subplot(7,4,17:20);
 timeDecode = cell2mat(aniTimeDecode);
 meanTmDec = mean(timeDecode,2);
-semTmDec = SEMcalc(timeDecode')';
+semTmDec = pfcMLB.SEMcalc(timeDecode')';
 plot(1:length(timeIDvect), meanTmDec, '-k');
 hold on;
 patch('XData', [1:length(timeIDvect), length(timeIDvect):-1:1],...
@@ -196,7 +196,7 @@ odrDecode = cell2mat(aniOdrDecode);
 for oip = 1:size(odrDecode,2)
     tempOIP = reshape(odrDecode(:,oip,:), [size(odrDecode,1), size(odrDecode,3)]);
     tempMeanOdrDec = mean(tempOIP,2);
-    tempSemOdrDec = SEMcalc(tempOIP')';
+    tempSemOdrDec = pfcMLB.SEMcalc(tempOIP')';
     if oipID(oip)<10
         plot(1:length(oipIDvect),tempMeanOdrDec, 'color', pfcMLB.PositionColors(oipID(oip),:), 'linestyle', '-');
         hold on;
@@ -224,7 +224,7 @@ posDecode = cell2mat(aniPosDecode);
 for pos = 1:size(posDecode,2)
     tempPOS = reshape(posDecode(:,pos,:), [size(posDecode,1), size(posDecode,3)]);
     tempMeanPosDec = mean(tempPOS,2);
-    tempSemPosDec = SEMcalc(tempPOS')';
+    tempSemPosDec = pfcMLB.SEMcalc(tempPOS')';
     plot(1:length(posIDvect), tempMeanPosDec, 'color', pfcMLB.PositionColors(posID(pos),:), 'linestyle', '-');
     hold on;
     patch('XData', [1:length(posIDvect), length(posIDvect):-1:1],...
@@ -277,7 +277,7 @@ if sum(oipID>10)>=1
     subplot(1,3,1:2)
     for pos = 1:max(posID)
         tempMeanOdrDiff = mean(odrDiffs(:,:,pos),2);
-        tempSemOdrDiff = SEMcalc(odrDiffs(:,:,pos)')';
+        tempSemOdrDiff = pfcMLB.SEMcalc(odrDiffs(:,:,pos)')';
         plot(tempMeanOdrDiff, 'color', pfcMLB.PositionColors(pos,:));
         hold on;
         patch('XData', [1:size(odrDiffs,1), size(odrDiffs,1):-1:1],...
@@ -293,14 +293,14 @@ if sum(oipID>10)>=1
     set(gca, 'color', 'none', 'XAxisLocation', 'origin', 'xtick', posTrlCenters, 'xticklabel', []);
     subplot(1,3,3)
     seq1SeqDiffMean = mean(seqDiffs(:,:,1),2);
-    seq1SeqDiffSEM = SEMcalc(seqDiffs(:,:,1)')';
+    seq1SeqDiffSEM = pfcMLB.SEMcalc(seqDiffs(:,:,1)')';
     plot(trlTimeVect,seq1SeqDiffMean, '-k');
     hold on;
     patch('XData', [trlTimeVect;flipud(trlTimeVect)],...
         'YData', [seq1SeqDiffMean+seq1SeqDiffSEM ; flipud(seq1SeqDiffMean-seq1SeqDiffSEM)], 'edgecolor', 'k',...
         'facecolor', 'k', 'facealpha', 0.5);
     seq2SeqDiffMean = mean(seqDiffs(:,:,2),2);
-    seq2SeqDiffSEM = SEMcalc(seqDiffs(:,:,2)')';
+    seq2SeqDiffSEM = pfcMLB.SEMcalc(seqDiffs(:,:,2)')';
     plot(trlTimeVect,seq2SeqDiffMean, '--k');
     hold on;
     patch('XData', [trlTimeVect; flipud(trlTimeVect)],...

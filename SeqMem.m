@@ -28,6 +28,7 @@ classdef SeqMem < handle
         numUniPerTet        
     end
     properties % Calculate behavioral variables
+        isTrialNums
         % Hit/FP/FN/Miss tables
         responseMatrix
         responseMatrixSFP
@@ -329,6 +330,7 @@ classdef SeqMem < handle
             odrs = unique([obj.trialInfo.Odor]);
             poss = unique([obj.trialInfo.Position]); 
             % Fill in properties with blank data
+            obj.isTrialNums = zeros(size(obj.odrSeqs,1), size(obj.odrSeqs,2),2);
             obj.responseMatrix = zeros(2,2,obj.numSeqs);
             obj.responseMatrixSFP = zeros(2,2,obj.numSeqs);
             obj.responseMatrixByPos = repmat({zeros(2,2)}, [obj.numSeqs, obj.seqLength]);
@@ -347,6 +349,8 @@ classdef SeqMem < handle
                 for pos = 1:length(poss)
                     posTrlLog = [obj.trialInfo.Position]==pos;
                     if curOdrNdx == pos
+                        obj.isTrialNums(curSeq,curOdrNdx,1) = sum([obj.trialInfo(odrTrlLog & posTrlLog).Performance]==1);
+                        obj.isTrialNums(curSeq,curOdrNdx,2) = sum([obj.trialInfo(odrTrlLog & posTrlLog).Performance]==0);
                         % Correct Trials
                         obj.responseMatrix(1,1,curSeq) = obj.responseMatrix(1,1,curSeq) + sum([obj.trialInfo(odrTrlLog & posTrlLog).Performance]==1);
                         obj.responseMatrixByPos{curSeq,pos}(1,1) = obj.responseMatrixByPos{curSeq,pos}(1,1) + sum([obj.trialInfo(odrTrlLog & posTrlLog).Performance]==1);
