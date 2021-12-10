@@ -106,6 +106,7 @@ classdef SeqMem < handle
             end
             obj.smFiles = fileNames(cellfun(@(a)~isempty(a), regexp(fileNames, '_SM\>')))';
             obj.OrganizeTrialInfo;
+            obj.SummarizeSessionBehavior;
 %             obj.CompileLFPmatrix;
         end
     end
