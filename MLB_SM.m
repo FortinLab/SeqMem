@@ -4,20 +4,21 @@ classdef MLB_SM < SeqMem
         binSize
         dsRate
         binType = 'box'
-        numPerms
+        numPerms = 10
         ssProportion = 0.5
         ssType
         windows
         alignments
     end
     properties % Data Structures
-        fiscTrials
+        fiscTrials        
+        trialIDs = [{'Time'}, {'Window'}, {'Position'}, {'Odor'}, {'TrialNum'}];
         likeTrlSpikes
         likeIDvects
         obsvTrlSpikes
         obsvIDvects
-        trialIDs = [{'Time'}, {'Window'}, {'Position'}, {'Odor'}, {'TrialNum'}];
-        posts
+        post
+        postIDvects
     end
     methods
         function obj = MLB_SM(fileDir)
@@ -107,9 +108,19 @@ classdef MLB_SM < SeqMem
         end
         %% Pre-Process Trial Spiking Data as Binary
         function [binMtx, timeVect] = PP_TrialMatrix_SpikeBin(obj, window, alignment)
+            [dataMtx, timeVect] = obj.PP_TrialMatrix_Spiking(window, alignment);
+
         end
         %% Pre-Process Trial Spiking Data as Timebin z-scored
         function [timeZMtx, timeVect] = PP_TrialMatrix_SpikeTimeZ(obj,window,alignment)
+            [dataMtx, timeVect] = obj.PP_TrialMatrix_Spiking(window, alignment);
+            iscLog = [obj.trialInfo.TranspositionDistance]==0 & [obj.trialInfo.Performance]==1;
+            cellTimeMeans = mean(dataMtx(:,:,iscLog),3);
+            cellTimeVar = std(dataMtx(:,:,iscLog),0,3);
+            for trl = 1:size(dataMtx,3)
+                dataMtx(:,:,trl) = (dataMtx(:,:,trl)-cellTimeMeans)./cellTimeVar;
+            end
+            timeZMtx = dataMtx;
         end
         %% Identify Fully InSeq Correct Sequences
         function PP_IdentifyFISCseqs(obj)
@@ -165,14 +176,14 @@ classdef MLB_SM < SeqMem
     end
     methods % Configuration Methods
         %% Set Likelihoods as Fully InSeq Correct
-        function SetLikesFISC(obj)
+        function SetLikes_FISC(obj)
             % Set likelihoods & observations using FISC trials where FISC are likelihoods and all other ISC are observations
-            if size(obj.odrSeqs,2)>=2
+            if size(obj.odrSeqs,1)>=2
                 warning('FISC likes should only be used with single list sessions (use sub-sampling for dual list). Ignore if ONLY examining ordinal coding, or if task conditions changed and code was updated but warning statement wasn''t (check github/readme).');
             end
             [ssnSpikes, ssnID] = obj.PP_ConcatTrialData;
-            obj.likeTrlSpikes = nan(size(ssnSpikes,1)*size(obj.fiscTrials,1), size(ssnSpikes,2), size(obj.fiscTrials,2));
-            obj.likeIDvects = nan(size(ssnID,1)*size(obj.fiscTrials,1), size(ssnID,2), size(obj.fiscTrials,2));
+            obj.likeTrlSpikes = {nan(size(ssnSpikes,1)*size(obj.fiscTrials,1), size(ssnSpikes,2), size(obj.fiscTrials,2))};
+            obj.likeIDvects = {nan(size(ssnID,1)*size(obj.fiscTrials,1), size(ssnID,2), size(obj.fiscTrials,2))};
             for seq = 1:size(obj.fiscTrials,2)
                 tempSeqData = cell(size(obj.fiscTrials,1),1);
                 tempSeqIDlog = cell(size(obj.fiscTrials,1),1);
@@ -180,16 +191,16 @@ classdef MLB_SM < SeqMem
                     tempSeqData{pos} = ssnSpikes(:,:,obj.fiscTrials(pos,seq));
                     tempSeqIDlog{pos} = ssnID(:,:,obj.fiscTrials(pos,seq));
                 end
-                obj.likeTrls(:,:,seq) = cell2mat(tempSeqData);
-                obj.likeIDvects(:,:,seq) = cell2mat(tempSeqIDlog);
+                obj.likeTrlSpikes{1}(:,:,seq) = cell2mat(tempSeqData);
+                obj.likeIDvects{1}(:,:,seq) = cell2mat(tempSeqIDlog);
             end
             iscLog = ([obj.trialInfo.TranspositionDistance]==0 & [obj.trialInfo.Performance]==1);
             iscLog(obj.fiscTrials) = false;
-            obj.obsvTrlSpikes = ssnSpikes(:,:,iscLog);
-            obj.obsvIDvects = ssnID(:,:,iscLog);
+            obj.obsvTrlSpikes = {ssnSpikes(:,:,iscLog)};
+            obj.obsvIDvects = {ssnID(:,:,iscLog)};
         end
         %% Set Likelihoods as SubSampled ISC
-        function SetLikesSubSample(obj)
+        function SetLikes_SubSample(obj)
             if isempty(obj.ssType)
                 error('Specify sub-sampling method for selecting observations');
             end
@@ -271,10 +282,27 @@ classdef MLB_SM < SeqMem
     end
     methods % MLB Processing Methods
         %% Process via Leave-1-Out
-        function ProcessLikely_Lv1Ot(obj)
+        function Process_LikelyLOO(obj)
+            obj.post = repmat({nan(size(obj.likeTrlSpikes{1},1), size(obj.likeTrlSpikes{1},1), size(obj.likeTrlSpikes{1},3))}, size(obj.likeTrlSpikes));
+            obj.postIDvects = repmat({nan(size(obj.likeIDvects{1}))}, size(obj.likeIDvects));
+            for perm = 1:length(obj.likeTrlSpikes)
+                for seq = 1:size(obj.likeTrlSpikes{perm},3)
+                    tempObsv = obj.likeTrlSpikes{perm}(:,:,seq);
+                    tempLike = obj.likeTrlSpikes{perm};
+                    tempLike(:,:,seq) = [];
+                    obj.post{perm}(:,:,seq) = obj.CalcStaticBayesPost_Poisson(mean(tempLike,3), tempObsv);
+                    obj.postIDvects{perm}(:,:,seq) = obj.likeIDvects{perm}(:,:,seq);
+                end
+            end
         end
         %% Process all Observations
-        function ProcessObserve(obj)
+        function Process_Observes(obj)
+            obj.post = cell(size(obj.obsvTrlSpikes));
+            obj.postIDvects = cell(size(obj.obsvTrlSpikes));
+            for perm = 1:length(obj.likeTrlSpikes)
+                obj.post{perm} = obj.CalcStaticBayesPost_Poisson(mean(obj.likeTrlSpikes{perm},3), obj.obsvTrlSpikes{perm});
+                obj.postIDvects{perm} = obj.obsvTrlSpikes{perm};
+            end
         end
     end
     methods % MLB Algorithms
