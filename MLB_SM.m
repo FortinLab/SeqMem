@@ -5,15 +5,18 @@ classdef MLB_SM < SeqMem
         dsRate
         binType = 'box'
         numPerms
+        ssProportion = 0.5
+        ssType
         windows
         alignments
     end
     properties % Data Structures
         fiscTrials
-        likeTrls
+        likeTrlSpikes
         likeIDvects
-        obsvTrls
+        obsvTrlSpikes
         obsvIDvects
+        trialIDs = [{'Time'}, {'Window'}, {'Position'}, {'Odor'}, {'TrialNum'}];
         posts
     end
     methods
@@ -130,13 +133,13 @@ classdef MLB_SM < SeqMem
             obj.fiscTrials = potentialSeqs(:,fiscLog);
         end
         %% Group Trial Data
-        function [ssnData, ssnID] = PP_ConcatTrialData(obj)
+        function [ssnSpikes, ssnID] = PP_ConcatTrialData(obj)
             trlDta = cell(size(obj.windows,1),1);
             trlTimeVects = cell(size(obj.windows,1),1);
             for win = 1:size(obj.windows,1)
                 [trlDta{win}, trlTimeVects{win}] = obj.PP_TrialMatrix_Spiking(obj.windows(win,:), obj.alignments{win});
             end
-            ssnData = nan(size(cell2mat(trlTimeVects),1), size(obj.ensembleMatrix,2), length(obj.trialInfo));
+            ssnSpikes = nan(size(cell2mat(trlTimeVects),1), size(obj.ensembleMatrix,2), length(obj.trialInfo));
             ssnID = nan(size(cell2mat(trlTimeVects),1), 5, length(obj.trialInfo));
             for trl = 1:size(trlDta{win},3)
                 tempTrialData = cell(size(obj.windows,1),1);
@@ -151,7 +154,7 @@ classdef MLB_SM < SeqMem
                     end
                     tempTrialWindowVect{win} = ones(size(trlTimeVects{win},1),1).*win;
                 end
-                ssnData(:,:,trl) = cell2mat(tempTrialData);
+                ssnSpikes(:,:,trl) = cell2mat(tempTrialData);
                 ssnID(:,1,trl) = cell2mat(tempTrialTimeVect);
                 ssnID(:,2,trl) = cell2mat(tempTrialWindowVect);
                 ssnID(:,3,trl) = ones(size(ssnID,1),1).*obj.trialInfo(trl).Position;
@@ -164,14 +167,17 @@ classdef MLB_SM < SeqMem
         %% Set Likelihoods as Fully InSeq Correct
         function SetLikesFISC(obj)
             % Set likelihoods & observations using FISC trials where FISC are likelihoods and all other ISC are observations
-            [ssnData, ssnID] = obj.PP_ConcatTrialData;
-            obj.likeTrls = nan(size(ssnData,1)*size(obj.fiscTrials,1), size(ssnData,2), size(obj.fiscTrials,2));
+            if size(obj.odrSeqs,2)>=2
+                warning('FISC likes should only be used with single list sessions (use sub-sampling for dual list). Ignore if ONLY examining ordinal coding, or if task conditions changed and code was updated but warning statement wasn''t (check github/readme).');
+            end
+            [ssnSpikes, ssnID] = obj.PP_ConcatTrialData;
+            obj.likeTrlSpikes = nan(size(ssnSpikes,1)*size(obj.fiscTrials,1), size(ssnSpikes,2), size(obj.fiscTrials,2));
             obj.likeIDvects = nan(size(ssnID,1)*size(obj.fiscTrials,1), size(ssnID,2), size(obj.fiscTrials,2));
             for seq = 1:size(obj.fiscTrials,2)
                 tempSeqData = cell(size(obj.fiscTrials,1),1);
                 tempSeqIDlog = cell(size(obj.fiscTrials,1),1);
                 for pos = 1:size(obj.fiscTrials,1)
-                    tempSeqData{pos} = ssnData(:,:,obj.fiscTrials(pos,seq));
+                    tempSeqData{pos} = ssnSpikes(:,:,obj.fiscTrials(pos,seq));
                     tempSeqIDlog{pos} = ssnID(:,:,obj.fiscTrials(pos,seq));
                 end
                 obj.likeTrls(:,:,seq) = cell2mat(tempSeqData);
@@ -179,11 +185,88 @@ classdef MLB_SM < SeqMem
             end
             iscLog = ([obj.trialInfo.TranspositionDistance]==0 & [obj.trialInfo.Performance]==1);
             iscLog(obj.fiscTrials) = false;
-            obj.obsvTrls = ssnData(:,:,iscLog);
+            obj.obsvTrlSpikes = ssnSpikes(:,:,iscLog);
             obj.obsvIDvects = ssnID(:,:,iscLog);
         end
         %% Set Likelihoods as SubSampled ISC
         function SetLikesSubSample(obj)
+            if isempty(obj.ssType)
+                error('Specify sub-sampling method for selecting observations');
+            end
+            % Set likelihoods & observations using sets of subsampled ISC trials
+            [ssnSpikes, ssnID] = obj.PP_ConcatTrialData;
+            % Determine number of trials used for subsampled likelihoods
+            likeliSize = floor(min(min(obj.isTrialNums(:,:,1)))*obj.ssProportion);
+            trlCounts = reshape(obj.isTrialNums(:,:,1)',[numel(obj.isTrialNums(:,:,1)),1]);
+            odrIDs = reshape(obj.odrSeqs',[numel(obj.odrSeqs),1]);
+            likeTrials = nan(length(trlCounts), likeliSize, obj.numPerms);
+            for oip = 1:length(trlCounts)
+                tempPool = randi(trlCounts(oip), [likeliSize,obj.numPerms]);
+                for r = 1:obj.numPerms
+                    while length(unique(tempPool(:,r)))~=size(tempPool,1)
+                        tempPool(:,r) = [unique(tempPool(:,r)); randi(trlCounts(oip), [size(tempPool,1)-length(unique(tempPool(:,r))),1])];
+                    end
+                end
+                while size(unique(tempPool', 'rows'),1)~=obj.numPerms
+                    tempPool = [unique(tempPool', 'rows')', randi(trlCounts(oip), [likeliSize,obj.numPerms-size(unique(tempPool', 'rows'),1)])];
+                    for r = 1:obj.numPerms
+                        while length(unique(tempPool(:,r)))~=size(tempPool,1)
+                            tempPool(:,r) = [unique(tempPool(:,r)); randi(trlCounts(oip), [size(tempPool,1)-length(unique(tempPool(:,r))),1])];
+                        end
+                    end
+                end
+                if size(unique(tempPool', 'rows'),1)~=obj.numPerms
+                    error('Apparently I need to code for this eventuality too!?');
+                end
+                likeTrials(oip,:,:) = tempPool;
+            end
+            odrTrlSpikes = cell(size(odrIDs));
+            odrTrlIDs = cell(size(odrIDs));
+            for odr = 1:length(odrIDs)
+                odrIDlog = [obj.trialInfo.Odor]==odrIDs(odr);
+                odrPosLog = [obj.trialInfo.Position]==find(sum(obj.odrSeqs==odrIDs(odr),1));
+                odrTrlSpikes{odr} = ssnSpikes(:,:,(odrIDlog & odrPosLog & [obj.trialInfo.Performance]==1));
+                odrTrlIDs{odr} = ssnID(:,:,(odrIDlog & odrPosLog & [obj.trialInfo.Performance]==1));
+            end
+            obj.likeTrlSpikes = repmat({nan(size(ssnSpikes,1)*size(likeTrials,1), size(ssnSpikes,2), size(likeTrials,2))}, [1,obj.numPerms]);
+            obj.obsvTrlSpikes = cell(1,obj.numPerms);
+            obj.likeIDvects = repmat({nan(size(ssnID,1)*size(likeTrials,1), size(ssnID,2), size(likeTrials,2))}, [1,obj.numPerms]);
+            obj.obsvIDvects = cell(1,obj.numPerms);
+            for perm = 1:obj.numPerms
+                tempOdrTrlSpikes = odrTrlSpikes;
+                tempOdrTrlIDs = odrTrlIDs;
+                for seq = 1:size(likeTrials,2)
+                    tempLikeSpikes = cell(length(odrIDs),1);
+                    tempLikeIDs = cell(length(odrIDs),1);
+                    for odr = 1:size(likeTrials,1)
+                        tempLikeSpikes{odr} = tempOdrTrlSpikes{odr}(:,:,likeTrials(odr,seq));
+                        tempOdrTrlSpikes{odr}(:,:,likeTrials(odr,seq)) = nan;
+                        tempLikeIDs{odr} = tempOdrTrlIDs{odr}(:,:,likeTrials(odr,seq));
+                        tempOdrTrlIDs{odr}(:,:,likeTrials(odr,seq)) = nan;
+                    end               
+                    obj.likeTrlSpikes{perm}(:,:,seq) = cell2mat(tempLikeSpikes);
+                    obj.likeIDvects{perm}(:,:,seq) = cell2mat(tempLikeIDs);
+                end
+                if obj.ssType == 1
+                    for odr = 1:size(tempOdrTrlSpikes,1)
+                        tempPool = randi(size(tempOdrTrlSpikes{odr},3), [1,likeliSize]);
+                        tempPool = unique(tempPool);
+                        tempPool(reshape(isnan(tempOdrTrlSpikes{odr}(1,1,tempPool)), [1,length(tempPool)])) = [];
+                        while length(tempPool)~=likeliSize
+                            tempPool = [tempPool, randi(size(tempOdrTrlSpikes{odr},3), [1, likeliSize-length(tempPool)])]; %#ok<AGROW>
+                            tempPool = unique(tempPool);
+                            tempPool(reshape(isnan(tempOdrTrlSpikes{odr}(1,1,tempPool)), [1,length(tempPool)])) = [];
+                        end
+                        tempOdrTrlSpikes{odr} = tempOdrTrlSpikes{odr}(:,:,tempPool);
+                        tempOdrTrlIDs{odr} = tempOdrTrlIDs{odr}(:,:,tempPool);
+                    end
+                end                    
+                tempObsvSpikes = cell2mat(reshape(tempOdrTrlSpikes, [1,1,numel(tempOdrTrlSpikes)]));
+                tempObsvIDs = cell2mat(reshape(tempOdrTrlIDs, [1,1,numel(tempOdrTrlIDs)]));
+                obsvLog = sum(sum(isnan(tempObsvSpikes)))==0;
+                obj.obsvTrlSpikes{perm} = tempObsvSpikes(:,:,obsvLog);
+                obj.obsvIDvects{perm} = tempObsvIDs(:,:,obsvLog);
+            end
         end
     end
     methods % MLB Processing Methods
