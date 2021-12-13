@@ -13,13 +13,14 @@ classdef MLB_SM < SeqMem
     end
     properties % Data Structures
         fiscTrials        
-        trialIDs = [{'Time'}, {'Window'}, {'Position'}, {'Odor'}, {'TrialNum'}];
+        trialIDs = [{'Time'}, {'Window'}, {'Position'}, {'Odor'}];
         likeTrlSpikes
-        likeIDvects
+        likeTrlIDs
         obsvTrlSpikes
-        obsvIDvects
+        obsvTrlIDs
         post
-        postIDvects
+        postTrlIDs
+        decodeIDvects
     end
     methods
         function obj = MLB_SM(fileDir)
@@ -110,7 +111,8 @@ classdef MLB_SM < SeqMem
         %% Pre-Process Trial Spiking Data as Binary
         function [binMtx, timeVect] = PP_TrialMatrix_SpikeBin(obj, window, alignment)
             [dataMtx, timeVect] = obj.PP_TrialMatrix_Spiking(window, alignment);
-
+            binMtx = dataMtx.*(obj.binSize/obj.sampleRate);
+            binMtx(binMtx>=1) = 1;
         end
         %% Pre-Process Trial Spiking Data as Timebin z-scored
         function [timeZMtx, timeVect] = PP_TrialMatrix_SpikeTimeZ(obj,window,alignment)
@@ -146,10 +148,19 @@ classdef MLB_SM < SeqMem
         end
         %% Group Trial Data
         function [ssnSpikes, ssnID] = PP_ConcatTrialData(obj)
+            if isempty(obj.bayesType)
+                error('Specify bayesian type to be used before processing data');
+            end
             trlDta = cell(size(obj.windows,1),1);
             trlTimeVects = cell(size(obj.windows,1),1);
             for win = 1:size(obj.windows,1)
-                [trlDta{win}, trlTimeVects{win}] = obj.PP_TrialMatrix_Spiking(obj.windows{win}, obj.alignments{win});
+                if obj.bayesType == 1 || strcmp(obj.bayesType, 'Poisson') || strcmp(obj.bayesType, 'poisson') || strcmp(obj.bayesType, 'P') || strcmp(obj.bayesType, 'p')
+                    [trlDta{win}, trlTimeVects{win}] = obj.PP_TrialMatrix_Spiking(obj.windows{win}, obj.alignments{win});
+                elseif obj.bayesType == 2 || strcmp(obj.bayesType, 'Bernoulli') || strcmp(obj.bayesType, 'bernoulli') || strcmp(obj.bayesType, 'B') || strcmp(obj.bayesType, 'b')
+                    [trlDta{win}, trlTimeVects{win}] = obj.PP_TrialMatrix_SpikeBin(obj.windows{win}, obj.alignments{win});
+                elseif obj.bayesType == 3 || strcmp(obj.bayesType, 'Gaussian') || strcmp(obj.bayesType, 'gaussian') || strcmp(obj.bayesType, 'G') || strcmp(obj.bayesType, 'g')
+                    [trlDta{win}, trlTimeVects{win}] = obj.PP_TrialMatrix_SpikeTimeZ(obj.windows{win}, obj.alignments{win});
+                end                
             end
             ssnSpikes = nan(size(cell2mat(trlTimeVects),1), size(obj.ensembleMatrix,2), length(obj.trialInfo));
             ssnID = nan(size(cell2mat(trlTimeVects),1), 5, length(obj.trialInfo));
@@ -184,21 +195,26 @@ classdef MLB_SM < SeqMem
             end
             [ssnSpikes, ssnID] = obj.PP_ConcatTrialData;
             obj.likeTrlSpikes = {nan(size(ssnSpikes,1)*size(obj.fiscTrials,1), size(ssnSpikes,2), size(obj.fiscTrials,2))};
-            obj.likeIDvects = {nan(size(ssnID,1)*size(obj.fiscTrials,1), size(ssnID,2), size(obj.fiscTrials,2))};
+            obj.likeTrlIDs = {nan(size(obj.fiscTrials,1), 1, size(obj.fiscTrials,2))};
+            obj.decodeIDvects = [];
             for seq = 1:size(obj.fiscTrials,2)
                 tempSeqData = cell(size(obj.fiscTrials,1),1);
                 tempSeqIDlog = cell(size(obj.fiscTrials,1),1);
+                tempDecodeIDvect = cell(size(obj.fiscTrials,1),1);
                 for pos = 1:size(obj.fiscTrials,1)
                     tempSeqData{pos} = ssnSpikes(:,:,obj.fiscTrials(pos,seq));
-                    tempSeqIDlog{pos} = ssnID(:,:,obj.fiscTrials(pos,seq));
+                    tempSeqIDlog{pos} = ssnID(1,end,obj.fiscTrials(pos,seq));
+                    tempDecodeIDvect{pos} = ssnID(:,:,obj.fiscTrials(pos,seq));
                 end
                 obj.likeTrlSpikes{1}(:,:,seq) = cell2mat(tempSeqData);
-                obj.likeIDvects{1}(:,:,seq) = cell2mat(tempSeqIDlog);
+                obj.likeTrlIDs{1}(:,:,seq) = cell2mat(tempSeqIDlog);
             end
+            tempDecodeIDvect = cell2mat(tempDecodeIDvect);
+            obj.decodeIDvects{1} = tempDecodeIDvect(:,1:end-1);
             iscLog = ([obj.trialInfo.TranspositionDistance]==0 & [obj.trialInfo.Performance]==1);
             iscLog(obj.fiscTrials) = false;
             obj.obsvTrlSpikes = {ssnSpikes(:,:,iscLog)};
-            obj.obsvIDvects = {ssnID(:,:,iscLog)};
+            obj.obsvTrlIDs = {ssnID(1,end,iscLog)};
         end
         %% Set Likelihoods as SubSampled ISC
         function SetLikes_SubSample(obj)
@@ -242,23 +258,28 @@ classdef MLB_SM < SeqMem
             end
             obj.likeTrlSpikes = repmat({nan(size(ssnSpikes,1)*size(likeTrials,1), size(ssnSpikes,2), size(likeTrials,2))}, [1,obj.numPerms]);
             obj.obsvTrlSpikes = cell(1,obj.numPerms);
-            obj.likeIDvects = repmat({nan(size(ssnID,1)*size(likeTrials,1), size(ssnID,2), size(likeTrials,2))}, [1,obj.numPerms]);
-            obj.obsvIDvects = cell(1,obj.numPerms);
+            obj.likeTrlIDs = repmat({nan(size(likeTrials,1), 1, size(likeTrials,2))}, [1,obj.numPerms]);
+            obj.obsvTrlIDs = cell(1,obj.numPerms);
+            obj.decodeIDvects = cell(1,obj.numPerms);
             for perm = 1:obj.numPerms
                 tempOdrTrlSpikes = odrTrlSpikes;
                 tempOdrTrlIDs = odrTrlIDs;
                 for seq = 1:size(likeTrials,2)
                     tempLikeSpikes = cell(length(odrIDs),1);
                     tempLikeIDs = cell(length(odrIDs),1);
+                    tempDecodeIDvect = cell(length(odrIDs),1);
                     for odr = 1:size(likeTrials,1)
                         tempLikeSpikes{odr} = tempOdrTrlSpikes{odr}(:,:,likeTrials(odr,seq));
                         tempOdrTrlSpikes{odr}(:,:,likeTrials(odr,seq)) = nan;
-                        tempLikeIDs{odr} = tempOdrTrlIDs{odr}(:,:,likeTrials(odr,seq));
+                        tempLikeIDs{odr} = tempOdrTrlIDs{odr}(1,end,likeTrials(odr,seq));
+                        tempDecodeIDvect{odr} = tempOdrTrlIDs{odr}(:,:,likeTrials(odr,seq));
                         tempOdrTrlIDs{odr}(:,:,likeTrials(odr,seq)) = nan;
                     end               
                     obj.likeTrlSpikes{perm}(:,:,seq) = cell2mat(tempLikeSpikes);
-                    obj.likeIDvects{perm}(:,:,seq) = cell2mat(tempLikeIDs);
+                    obj.likeTrlIDs{perm}(:,:,seq) = cell2mat(tempLikeIDs);
                 end
+                tempDecodeIDvect = cell2mat(tempDecodeIDvect);
+                obj.decodeIDvects{perm} = tempDecodeIDvect(:,1:end-1);
                 if obj.ssType == 1
                     for odr = 1:size(tempOdrTrlSpikes,1)
                         tempPool = randi(size(tempOdrTrlSpikes{odr},3), [1,likeliSize]);
@@ -277,7 +298,7 @@ classdef MLB_SM < SeqMem
                 tempObsvIDs = cell2mat(reshape(tempOdrTrlIDs, [1,1,numel(tempOdrTrlIDs)]));
                 obsvLog = sum(sum(isnan(tempObsvSpikes)))==0;
                 obj.obsvTrlSpikes{perm} = tempObsvSpikes(:,:,obsvLog);
-                obj.obsvIDvects{perm} = tempObsvIDs(:,:,obsvLog);
+                obj.obsvTrlIDs{perm} = tempObsvIDs(1,end,obsvLog);
             end
         end
     end
@@ -285,7 +306,7 @@ classdef MLB_SM < SeqMem
         %% Process via Leave-1-Out
         function Process_LikelyLOO(obj)
             obj.post = repmat({nan(size(obj.likeTrlSpikes{1},1), size(obj.likeTrlSpikes{1},1), size(obj.likeTrlSpikes{1},3))}, size(obj.likeTrlSpikes));
-            obj.postIDvects = repmat({nan(size(obj.likeIDvects{1}))}, size(obj.likeIDvects));
+            obj.postTrlIDs = repmat({nan(size(obj.likeTrlIDs{1}))}, size(obj.likeTrlIDs));
             for perm = 1:length(obj.likeTrlSpikes)
                 for seq = 1:size(obj.likeTrlSpikes{perm},3)
                     tempObsv = obj.likeTrlSpikes{perm}(:,:,seq);
@@ -296,16 +317,16 @@ classdef MLB_SM < SeqMem
                     elseif obj.bayesType == 2 || strcmp(obj.bayesType, 'Bernoulli') || strcmp(obj.bayesType, 'bernoulli') || strcmp(obj.bayesType, 'B') || strcmp(obj.bayesType, 'b')
                         obj.post{perm}(:,:,seq) = obj.CalcStaticBayesPost_Bernoulli(mean(tempLike,3), tempObsv);
                     elseif obj.bayesType == 3 || strcmp(obj.bayesType, 'Gaussian') || strcmp(obj.bayesType, 'gaussian') || strcmp(obj.bayesType, 'G') || strcmp(obj.bayesType, 'g')
-                        obj.post{perm}(:,:,seq) = CalcStaticBayesPost_Gaussian(mean(tempLike,3), std(tempLike,0,3), tempObsv);
+                        obj.post{perm}(:,:,seq) = obj.CalcStaticBayesPost_Gaussian(mean(tempLike,3), std(tempLike,0,3), tempObsv);
                     end
-                    obj.postIDvects{perm}(:,:,seq) = obj.likeIDvects{perm}(:,:,seq);
+                    obj.postTrlIDs{perm}(:,:,seq) = obj.likeTrlIDs{perm}(:,:,seq);
                 end
             end
         end
         %% Process all Observations
         function Process_Observes(obj)
             obj.post = cell(size(obj.obsvTrlSpikes));
-            obj.postIDvects = cell(size(obj.obsvTrlSpikes));
+            obj.postTrlIDs = cell(size(obj.obsvTrlSpikes));
             for perm = 1:length(obj.likeTrlSpikes)
                 if obj.bayesType == 1 || strcmp(obj.bayesType, 'Poisson') || strcmp(obj.bayesType, 'poisson') || strcmp(obj.bayesType, 'P') || strcmp(obj.bayesType, 'p')
                     obj.post{perm} = obj.CalcStaticBayesPost_Poisson(mean(obj.likeTrlSpikes{perm},3), obj.obsvTrlSpikes{perm});
@@ -314,7 +335,7 @@ classdef MLB_SM < SeqMem
                 elseif obj.bayesType == 3 || strcmp(obj.bayesType, 'Gaussian') || strcmp(obj.bayesType, 'gaussian') || strcmp(obj.bayesType, 'G') || strcmp(obj.bayesType, 'g')
                     obj.post{perm} = obj.CalcStaticBayesPost_Gaussian(mean(obj.likeTrlSpikes{perm},3), std(obj.likeTrlSpikes{perm},0,3), obj.obsvTrlSpikes{perm});
                 end
-                obj.postIDvects{perm} = obj.obsvTrlSpikes{perm};
+                obj.postTrlIDs{perm} = obj.obsvTrlIDs{perm};
             end
         end
     end
@@ -381,7 +402,8 @@ classdef MLB_SM < SeqMem
                     for u = 1:size(likely,2)
                         indiv_neurons(:,u) = (likely(:,u).^obsv(t,u,trl)).*((1-likely(:,u)).^(1-obsv(t,u,trl)));
                     end
-                    post(t,:,trl) = prod(indiv_neurons,2);
+                    tempPost = prod(indiv_neurons,2);
+                    post(t,:,trl) = tempPost./sum(tempPost);
                 end
             end
         end
@@ -403,15 +425,18 @@ classdef MLB_SM < SeqMem
             %       second_term(:,i) = exp(sum(indiv_neurons,1));
             %   end
             %   posteriors = first_term.*second_term;
+            varLikely(varLikely==0) = min(varLikely(varLikely~=0));
+%             varLikely(varLikely==0) = nan;
+%             meanLikely(varLikely==0) = nan;
             post = nan(size(obsv,1), size(meanLikely,1), size(obsv,3));
             for trl = 1:size(obsv,3)
                 for t = 1:size(obsv,1)
-                    first_term = prod(1./(varLikely.*((2*pi)^0.5)),2);
+                    first_term = prod(1./(varLikely*sqrt(2*pi)),2, 'omitnan');
                     second_term = nan(size(meanLikely));
-                    for u = 1:size(likely,2)
-                        second_term(:,u) = -0.5.*(((obsv(t,u)-meanLikely(:,u))./varLikely(:,u)).^2);
+                    for u = 1:size(meanLikely,2)
+                        second_term(:,u) = -0.5.*(((obsv(t,u,trl)-meanLikely(:,u))./varLikely(:,u)).^2);
                     end
-                    second_term = exp(sum(second_term,2));
+                    second_term = exp(sum(second_term,2, 'omitnan'));
                     tempPost = first_term.*second_term;
                     post(t,:,trl) = tempPost./sum(tempPost);
                 end
