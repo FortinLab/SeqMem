@@ -377,7 +377,7 @@ classdef MLB_SM < SeqMem
             post = nan(size(obsv,1), size(likely,1), size(obsv,3));
             for trl = 1:size(obsv,3)
                 for t = 1:size(obsv,1)
-                    indiv_neurons = nan(size(obsv,1), size(likely,1));
+                    indiv_neurons = nan(size(likely));
                     for u = 1:size(likely,2)
                         indiv_neurons(:,u) = (likely(:,u).^obsv(t,u,trl)).*((1-likely(:,u)).^(1-obsv(t,u,trl)));
                     end
@@ -407,12 +407,13 @@ classdef MLB_SM < SeqMem
             for trl = 1:size(obsv,3)
                 for t = 1:size(obsv,1)
                     first_term = prod(1./(varLikely.*((2*pi)^0.5)),2);
-                    second_term = nan(size(likely));
+                    second_term = nan(size(meanLikely));
                     for u = 1:size(likely,2)
                         second_term(:,u) = -0.5.*(((obsv(t,u)-meanLikely(:,u))./varLikely(:,u)).^2);
                     end
                     second_term = exp(sum(second_term,2));
-                    post(t,:,trl) = first_term.*second_term;
+                    tempPost = first_term.*second_term;
+                    post(t,:,trl) = tempPost./sum(tempPost);
                 end
             end                        
         end
