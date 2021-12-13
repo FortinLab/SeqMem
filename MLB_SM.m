@@ -6,7 +6,8 @@ classdef MLB_SM < SeqMem
         binType = 'box'
         numPerms = 10
         ssProportion = 0.5
-        ssType
+        ssType % 0 = use all ISC for decoding; 1 = use subsampled ISC types
+        bayesType %1 = Poisson: use with raw spike counts; 2 = Bernoulli: use with binarized spike counts; 3 = Gaussian: Use with z-scored spike counts
         windows
         alignments
     end
@@ -148,7 +149,7 @@ classdef MLB_SM < SeqMem
             trlDta = cell(size(obj.windows,1),1);
             trlTimeVects = cell(size(obj.windows,1),1);
             for win = 1:size(obj.windows,1)
-                [trlDta{win}, trlTimeVects{win}] = obj.PP_TrialMatrix_Spiking(obj.windows(win,:), obj.alignments{win});
+                [trlDta{win}, trlTimeVects{win}] = obj.PP_TrialMatrix_Spiking(obj.windows{win}, obj.alignments{win});
             end
             ssnSpikes = nan(size(cell2mat(trlTimeVects),1), size(obj.ensembleMatrix,2), length(obj.trialInfo));
             ssnID = nan(size(cell2mat(trlTimeVects),1), 5, length(obj.trialInfo));
@@ -290,7 +291,13 @@ classdef MLB_SM < SeqMem
                     tempObsv = obj.likeTrlSpikes{perm}(:,:,seq);
                     tempLike = obj.likeTrlSpikes{perm};
                     tempLike(:,:,seq) = [];
-                    obj.post{perm}(:,:,seq) = obj.CalcStaticBayesPost_Poisson(mean(tempLike,3), tempObsv);
+                    if obj.bayesType == 1 || strcmp(obj.bayesType, 'Poisson') || strcmp(obj.bayesType, 'poisson') || strcmp(obj.bayesType, 'P') || strcmp(obj.bayesType, 'p')
+                        obj.post{perm}(:,:,seq) = obj.CalcStaticBayesPost_Poisson(mean(tempLike,3), tempObsv);
+                    elseif obj.bayesType == 2 || strcmp(obj.bayesType, 'Bernoulli') || strcmp(obj.bayesType, 'bernoulli') || strcmp(obj.bayesType, 'B') || strcmp(obj.bayesType, 'b')
+                        obj.post{perm}(:,:,seq) = obj.CalcStaticBayesPost_Bernoulli(mean(tempLike,3), tempObsv);
+                    elseif obj.bayesType == 3 || strcmp(obj.bayesType, 'Gaussian') || strcmp(obj.bayesType, 'gaussian') || strcmp(obj.bayesType, 'G') || strcmp(obj.bayesType, 'g')
+                        obj.post{perm}(:,:,seq) = CalcStaticBayesPost_Gaussian(mean(tempLike,3), std(tempLike,0,3), tempObsv);
+                    end
                     obj.postIDvects{perm}(:,:,seq) = obj.likeIDvects{perm}(:,:,seq);
                 end
             end
@@ -300,7 +307,13 @@ classdef MLB_SM < SeqMem
             obj.post = cell(size(obj.obsvTrlSpikes));
             obj.postIDvects = cell(size(obj.obsvTrlSpikes));
             for perm = 1:length(obj.likeTrlSpikes)
-                obj.post{perm} = obj.CalcStaticBayesPost_Poisson(mean(obj.likeTrlSpikes{perm},3), obj.obsvTrlSpikes{perm});
+                if obj.bayesType == 1 || strcmp(obj.bayesType, 'Poisson') || strcmp(obj.bayesType, 'poisson') || strcmp(obj.bayesType, 'P') || strcmp(obj.bayesType, 'p')
+                    obj.post{perm} = obj.CalcStaticBayesPost_Poisson(mean(obj.likeTrlSpikes{perm},3), obj.obsvTrlSpikes{perm});
+                elseif obj.bayesType == 2 || strcmp(obj.bayesType, 'Bernoulli') || strcmp(obj.bayesType, 'bernoulli') || strcmp(obj.bayesType, 'B') || strcmp(obj.bayesType, 'b')
+                    obj.post{perm} = obj.CalcStaticBayesPost_Bernoulli(mean(obj.likeTrlSpikes{perm},3), obj.obsvTrlSpikes{perm});
+                elseif obj.bayesType == 3 || strcmp(obj.bayesType, 'Gaussian') || strcmp(obj.bayesType, 'gaussian') || strcmp(obj.bayesType, 'G') || strcmp(obj.bayesType, 'g')
+                    obj.post{perm} = obj.CalcStaticBayesPost_Gaussian(mean(obj.likeTrlSpikes{perm},3), std(obj.likeTrlSpikes{perm},0,3), obj.obsvTrlSpikes{perm});
+                end
                 obj.postIDvects{perm} = obj.obsvTrlSpikes{perm};
             end
         end
@@ -351,12 +364,57 @@ classdef MLB_SM < SeqMem
             %             toc
         end
         %% Calculate Static MLB Bernoulli
-        % **** TO CREATE ****
-        function post = CalcStaticBayesPost_Bernoulli(obj,likely, obsv)
+        function post = CalcStaticBayesPost_Bernoulli(~,likely, obsv)
+            % Developed by M.Saraf... 
+            % MS code: (organized neuron X time)
+            %   for i = 1: size(expected_prob,2)
+            %       indiv_neurons = [];
+            %           for n = 1:size(expected_prob,1)
+            %               indiv_neurons(n,:) = (expected_prob(n,:).^test_data(n,i)).*((1-expected_prob(n,:)).^(1-test_data(n,i)));
+            %           end
+            %       posteriors(i,:) = prod(indiv_neurons,1);
+            %   end (edited)
+            post = nan(size(obsv,1), size(likely,1), size(obsv,3));
+            for trl = 1:size(obsv,3)
+                for t = 1:size(obsv,1)
+                    indiv_neurons = nan(size(obsv,1), size(likely,1));
+                    for u = 1:size(likely,2)
+                        indiv_neurons(:,u) = (likely(:,u).^obsv(t,u,trl)).*((1-likely(:,u)).^(1-obsv(t,u,trl)));
+                    end
+                    post(t,:,trl) = prod(indiv_neurons,2);
+                end
+            end
         end
         %% Calculate Static MLB Gaussian
-        % **** TO CREATE ****
-        function post = CalcStaticBayesPost_Gaussian(obj,likely, obsv)
+        function post = CalcStaticBayesPost_Gaussian(~,meanLikely, varLikely, obsv)
+            % Developed by M.Saraf...
+            % MS Code: (organized neuron X time)
+            % %get the first term:
+            %   first_term = prod(1./(sigma.*(2*pi)^0.5),1);
+            % %get the second term :
+            %   second_term = [];
+            %   for i = 1: size(mu,2)
+            %       indiv_neurons = [];
+            %       for n = 1:size(mu,1)
+            %           a = test_data(n,i) - (mu(n,:));
+            %           b = sigma(n,:);
+            %           indiv_neurons(n,:) = (-0.5).*(a./b).^2;
+            %       end
+            %       second_term(:,i) = exp(sum(indiv_neurons,1));
+            %   end
+            %   posteriors = first_term.*second_term;
+            post = nan(size(obsv,1), size(meanLikely,1), size(obsv,3));
+            for trl = 1:size(obsv,3)
+                for t = 1:size(obsv,1)
+                    first_term = prod(1./(varLikely.*((2*pi)^0.5)),2);
+                    second_term = nan(size(likely));
+                    for u = 1:size(likely,2)
+                        second_term(:,u) = -0.5.*(((obsv(t,u)-meanLikely(:,u))./varLikely(:,u)).^2);
+                    end
+                    second_term = exp(sum(second_term,2));
+                    post(t,:,trl) = first_term.*second_term;
+                end
+            end                        
         end
         %% Calculate Iterative MLB Poisson
         % **** TO CREATE ****
