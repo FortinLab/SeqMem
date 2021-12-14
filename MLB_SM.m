@@ -20,6 +20,7 @@ classdef MLB_SM < SeqMem
         obsvTrlIDs
         post
         postTrlIDs
+        decode
         decodeIDvects
     end
     methods
