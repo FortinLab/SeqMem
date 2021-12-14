@@ -8,7 +8,7 @@ fileDirs = [{'D:\WorkBigDataFiles\PFC\GE11_Session132'},...
     {'D:\WorkBigDataFiles\PFC\GE13_Session083'},...
     {'D:\WorkBigDataFiles\PFC\GE14_Session123'},...
     {'D:\WorkBigDataFiles\PFC\GE17_Session095'},...
-    {'D:\WorkBigDataFiles\PFC\Session096'}];
+    {'D:\WorkBigDataFiles\PFC\GE24_Session096'}];
 
 binSize = 100;
 dsRate = 20;
@@ -76,7 +76,6 @@ for ani = 1:length(fileDirs)
     %% Decode ISC via FISC 
     mlb.Process_Observes;
     fiscISC_Posts{ani} = mlb.post;
-    mlb.trialInfo(mlb.postTrlIDs{1})
     trlOdrVect = [mlb.trialInfo(reshape(mlb.postTrlIDs{1}, [1,numel(mlb.postTrlIDs{1})])).Odor];
     trlOdrs = unique(trlOdrVect);
     trlPosVect = [mlb.trialInfo(reshape(mlb.postTrlIDs{1}, [1,numel(mlb.postTrlIDs{1})])).Position];
