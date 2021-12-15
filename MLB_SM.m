@@ -16,8 +16,10 @@ classdef MLB_SM < SeqMem
         trialIDs = [{'Time'}, {'Window'}, {'Position'}, {'Odor'}];
         likeTrlSpikes
         likeTrlIDs
+        likeTimeVect
         obsvTrlSpikes
         obsvTrlIDs
+        obsvTimeVect
         post
         postTrlIDs
         decode
@@ -212,10 +214,12 @@ classdef MLB_SM < SeqMem
             end
             tempDecodeIDvect = cell2mat(tempDecodeIDvect);
             obj.decodeIDvects{1} = tempDecodeIDvect(:,1:end-1);
+            obj.likeTimeVect = tempDecodeIDvect(:,1);
             iscLog = ([obj.trialInfo.TranspositionDistance]==0 & [obj.trialInfo.Performance]==1);
             iscLog(obj.fiscTrials) = false;
             obj.obsvTrlSpikes = {ssnSpikes(:,:,iscLog)};
             obj.obsvTrlIDs = {ssnID(1,end,iscLog)};
+            obj.obsvTimeVect = ssnID(:,1,1);
         end
         %% Set Likelihoods as SubSampled ISC
         function SetLikes_SubSample(obj)
