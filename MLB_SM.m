@@ -4,7 +4,7 @@ classdef MLB_SM < SeqMem
         binSize
         dsRate
         binType = 'box'
-        numPerms = 10
+        numPerms
         ssProportion = 0.5
         ssType % 0 = use all ISC for decoding; 1 = use subsampled ISC types
         bayesType %1 = Poisson: use with raw spike counts; 2 = Bernoulli: use with binarized spike counts; 3 = Gaussian: Use with z-scored spike counts
@@ -226,6 +226,9 @@ classdef MLB_SM < SeqMem
             if isempty(obj.ssType)
                 error('Specify sub-sampling method for selecting observations');
             end
+            if isempty(obj.numPerms) 
+                error('Specify number of subsampling iterations');
+            end
             % Set likelihoods & observations using sets of subsampled ISC trials
             [ssnSpikes, ssnID] = obj.PP_ConcatTrialData;
             % Determine number of trials used for subsampled likelihoods
@@ -305,6 +308,13 @@ classdef MLB_SM < SeqMem
                 obj.obsvTrlSpikes{perm} = tempObsvSpikes(:,:,obsvLog);
                 obj.obsvTrlIDs{perm} = tempObsvIDs(1,end,obsvLog);
             end
+        end
+        %% Set Observations as all trials
+        function SetObserves_Session(obj)
+            [ssnSpikes, ssnID] = obj.PP_ConcatTrialData;
+            obj.obsvTrlSpikes = repmat({ssnSpikes}, [1,length(obj.likeTrlSpikes)]);
+            obj.obsvTrlIDs = repmat({ssnID(1,end,:)}, [1,length(obj.likeTrlSpikes)]);
+            obj.obsvTimeVect = ssnID(:,1,1);
         end
     end
     methods % MLB Processing Methods

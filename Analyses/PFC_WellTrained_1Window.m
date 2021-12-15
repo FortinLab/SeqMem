@@ -1,26 +1,29 @@
-fileDirs = [{'D:\WorkBigDataFiles\PFC\Files To Process\GE11\GE11_Session132'},...
-    {'D:\WorkBigDataFiles\PFC\Files To Process\GE13\GE13_Session083'},...
-    {'D:\WorkBigDataFiles\PFC\Files To Process\GE14\GE14_Session123'},...
-    {'D:\WorkBigDataFiles\PFC\Files To Process\GE17\GE17_Session095'},...
-    {'D:\WorkBigDataFiles\PFC\Files To Process\GE24\Session096'}];
+% fileDirs = [{'D:\WorkBigDataFiles\PFC\Files To Process\GE11\GE11_Session132'},...
+%     {'D:\WorkBigDataFiles\PFC\Files To Process\GE13\GE13_Session083'},...
+%     {'D:\WorkBigDataFiles\PFC\Files To Process\GE14\GE14_Session123'},...
+%     {'D:\WorkBigDataFiles\PFC\Files To Process\GE17\GE17_Session095'},...
+%     {'D:\WorkBigDataFiles\PFC\Files To Process\GE24\Session096'}];
 
-% fileDirs = [{'D:\WorkBigDataFiles\PFC\GE11_Session132'},...
-%     {'D:\WorkBigDataFiles\PFC\GE13_Session083'},...
-%     {'D:\WorkBigDataFiles\PFC\GE14_Session123'},...
-%     {'D:\WorkBigDataFiles\PFC\GE17_Session095'},...
-%     {'D:\WorkBigDataFiles\PFC\GE24_Session096'}];
+fileDirs = [{'D:\WorkBigDataFiles\PFC\GE11_Session132'},...
+    {'D:\WorkBigDataFiles\PFC\GE13_Session083'},...
+    {'D:\WorkBigDataFiles\PFC\GE14_Session123'},...
+    {'D:\WorkBigDataFiles\PFC\GE17_Session095'},...
+    {'D:\WorkBigDataFiles\PFC\GE24_Session096'}];
 
 binSize = 200;
 dsRate = 50;
-trlWindow = {[-800 1500]};
-alignment = {'PokeIn'};
+% trlWindow = {[-800 1500]};
+% alignment = {'PokeIn'};
+trlWindow = {[-2000 800]};
+alignment = {'PokeOut'};
 lfpWindow = [16 32];
-numPerms = 10;
+numPerms = 100;
 ssProportion = 0.4;
 ssType = 1; % 0 = use all ISC for decoding; 1 = use subsampled ISC types
 bayesType = 1; %1 = Poisson: use with raw spike counts; 2 = Bernoulli: use with binarized spike counts; 3 = Gaussian: Use with z-scored spike counts
 
-cLims = [0 0.05];
+postCLim = [0 0.05];
+decodeCLim = [0 0.2];
 
 %% Create Output Variables
 % fiscLOO analysis
@@ -54,6 +57,7 @@ for ani = 1:length(fileDirs)
     %% Decode FISC via Leave-1-Out
 %     trialIDs = [{'Time'}, {'Window'}, {'Position'}, {'Odor'}];
     mlb.SetLikes_FISC;
+%     mlb.bayesType = 3; % Comment In to decode using Gaussian rather than Poisson
     mlb.Process_LikelyLOO;
     fiscLOO_Posts(ani) = mlb.post;
     % Decode Time
@@ -129,7 +133,9 @@ for ani = 1:length(fileDirs)
     end
     
     %% Decode ISC via Sub-Sampling
+%     mlb.bayesType = 1;  % Comment In to decode using Gaussian rather than Poisson
     mlb.SetLikes_SubSample;
+%     mlb.bayesType = 3;  % Comment In to decode using Gaussian rather than Poisson
     mlb.Process_Observes;
     tempPosts = cell2mat(reshape(mlb.post, [1,1,numel(mlb.post)]));
     postTrlIDs = cell2mat(reshape(mlb.postTrlIDs, [1,1,numel(mlb.postTrlIDs)]));
@@ -181,11 +187,9 @@ end
 
 %% Plot FISC Leave-One-Out
 figure;
-sp1 = subplot(5,4,1:16);
-imagesc(mean(cell2mat(reshape(fiscLOO_Posts, [1,1,numel(fiscLOO_Posts)])),3, 'omitnan'), cLims);
+sp1 = subplot(5,5,[2:5,7:10,12:15, 17:20]);
+imagesc(mean(cell2mat(reshape(fiscLOO_Posts, [1,1,numel(fiscLOO_Posts)])),3, 'omitnan'), postCLim);
 set(gca, 'ydir', 'normal', 'ytick', [], 'xtick', []);
-xlabel('Decoded Time');
-ylabel('True Time');
 hold on
 piNdx = find(mlb.likeTimeVect==0)+0.5;
 posNdx = find(diff(mlb.likeTimeVect)<0)+0.5;
@@ -197,8 +201,23 @@ for ndx = 1:length(piNdx)
         plot(get(gca, 'xlim'),repmat(posNdx(ndx), [1,2]), '-k','linewidth', 2);
     end
 end
+title('Posteriors');
 
-sp2 = subplot(5,4,17:20);
+sp2 = subplot(5,5,1:5:16);
+imagesc(mlb.obsvTimeVect, 1:length(mlb.likeTimeVect), mean(cell2mat(fiscLOO_Decodes(1,1,:)),3), decodeCLim);
+hold on;
+plot([0 0], get(gca,'ylim'), '--k', 'linewidth', 2);
+for ndx = 1:length(piNdx)
+    plot(get(gca, 'xlim'), repmat(piNdx(ndx), [1,2]), '--k', 'linewidth', 2);
+    if ndx<length(piNdx)
+        plot(get(gca, 'xlim'), repmat(posNdx(ndx),[1,2]), '-k', 'linewidth', 2);
+    end
+end    
+set(gca, 'ydir', 'normal', 'ytick', []);
+title('Temporal Accuracy');
+ylabel('True Time');
+
+sp3 = subplot(5,5,22:25);
 tempPosAcc = cell2mat(fiscLOO_Decodes(2,1,:));
 for p = 1:size(fiscLOO_Decodes{2,1,1},2)
     meanPosAcc = mean(tempPosAcc(:,p,:),3, 'omitnan');
@@ -216,13 +235,16 @@ for p = 1:size(fiscLOO_Decodes{2,1,1},2)
         end
     end
 end
-set(gca, 'ytick', [], 'xtick', [], 'color', 'none');
+set(gca, 'xtick', [], 'color', 'none');
+xlabel('Decoded Time');
+title('Position Accuracy');
 box off
 axis tight
-linkaxes([sp1 sp2],'x');
+linkaxes([sp1 sp3],'x');
+linkaxes([sp1 sp2],'y');
 
-annotation(gcf,'textbox', [0.05 0.95 0.8 0.05],...
-    'String', sprintf("FISC Leave-One-Out Group:\n     binSize = %.0fms, dsRate = %.0fms, Trial Window = (%.0fms:%.0fms to %s), \n     NumPerms = %.0f, Subsample Proportion = %.01f, Subsample Type = %.0f, BayesType = %.0f",...
+annotation(gcf,'textbox', [0.1 0.95 0.9 0.05],...
+    'String', sprintf("FISC Leave-One-Out Group: binSize = %.0fms, dsRate = %.0fms, Trial Window = (%.0fms:%.0fms to %s), NumPerms = %.0f, Subsample Proportion = %.01f, Subsample Type = %.0f, BayesType = %.0f",...
     binSize, dsRate, trlWindow{1}(1), trlWindow{1}(2), alignment{1}, numPerms, ssProportion, ssType, bayesType),...
     'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left');
 
@@ -232,17 +254,31 @@ tempPosAcc = fiscISC_Decodes(2,1,:);
 sps = nan(1,4);
 for p = 1:size(fiscISC_Posts{1},3)
     tempPost = mean(cell2mat(reshape(cellfun(@(a)a(:,:,p),fiscISC_Posts,'uniformoutput', 0), [1,1,length(fileDirs)])),3, 'omitnan');
-    subplot(5,4,(1:4)+(size(fiscISC_Posts{1},3)*(size(fiscISC_Posts{1},3)-p)));
-    imagesc(tempPost, cLims);
+    subplot(5,5,(2:5)+(5*(size(fiscISC_Posts{1},3)-p)));
+    imagesc(tempPost, postCLim);
     hold on
+    plot(get(gca, 'xlim'), repmat(find(mlb.obsvTimeVect==0)+0.5, [1,2]), '--k', 'linewidth', 2);
     set(gca, 'ydir', 'normal', 'xtick', [], 'ytick', []);
-    ylabel(sprintf('%s/%i', mlb.Rosetta{p}, p));
     piNdx = find(mlb.likeTimeVect==0)+0.5;
     for ndx = 1:length(piNdx)
         plot(repmat(piNdx(ndx), [1,2]), get(gca, 'ylim'), '--k','linewidth', 2);
     end
+    if p==size(fiscISC_Posts{1},3)
+        title('Posteriors');
+    end
+    
+    subplot(5,5,5*(size(fiscISC_Posts{1},3)-p)+1)
+    imagesc(mlb.obsvTimeVect,mlb.obsvTimeVect,mean(cell2mat(cellfun(@(a)a(:,:,p), fiscISC_Decodes(1,1,:), 'uniformoutput',0)),3), decodeCLim);
+    hold on;
+    plot([0 0], get(gca, 'ylim'), '--k', 'linewidth', 2);
+    plot(get(gca, 'xlim'), [0 0], '--k', 'linewidth', 2);
+    set(gca, 'ydir', 'normal');
+    ylabel(sprintf('%s/%i', mlb.Rosetta{p}, p));
+    if p==size(fiscISC_Posts{1},3)
+        title('Temporal Accuracy');
+    end
 
-    sps(p) = subplot(5,4,(4*4)+p);
+    sps(p) = subplot(5,5,(5*4)+p+1);
     tempAcc = cell2mat(reshape(cellfun(@(a)a(:,:,p),tempPosAcc, 'uniformoutput', 0), [1,1,length(fileDirs)]));
     for o = 1:size(tempAcc,2)
         meanPosAcc = mean(tempAcc(:,o,:),3, 'omitnan');
@@ -265,7 +301,7 @@ end
 linkaxes(sps, 'xy');
 
 annotation(gcf,'textbox', [0.05 0.95 0.8 0.05],...
-    'String', sprintf("FISC Decode ISC Group:\n     binSize = %.0fms, dsRate = %.0fms, Trial Window = (%.0fms:%.0fms to %s), \n     NumPerms = %.0f, Subsample Proportion = %.01f, Subsample Type = %.0f, BayesType = %.0f",...
+    'String', sprintf("FISC Decode ISC Group: binSize = %.0fms, dsRate = %.0fms, Trial Window = (%.0fms:%.0fms to %s), NumPerms = %.0f, Subsample Proportion = %.01f, Subsample Type = %.0f, BayesType = %.0f",...
     binSize, dsRate, trlWindow{1}(1), trlWindow{1}(2), alignment{1}, numPerms, ssProportion, ssType, bayesType),...
     'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left');
 
@@ -275,17 +311,32 @@ tempPosAcc = iscBS_Decodes(2,1,:);
 sps = nan(1,4);
 for p = 1:size(iscBS_Posts{1},3)
     tempPost = mean(cell2mat(reshape(cellfun(@(a)a(:,:,p),iscBS_Posts,'uniformoutput', 0), [1,1,length(fileDirs)])),3, 'omitnan');
-    subplot(5,4,(1:4)+(size(iscBS_Posts{1},3)*(size(iscBS_Posts{1},3)-p)));
-    imagesc(tempPost, cLims);
+    subplot(5,5,(2:5)+(5*(size(fiscISC_Posts{1},3)-p)));
+    imagesc(tempPost, postCLim);
     hold on
+    plot(get(gca, 'xlim'), repmat(find(mlb.obsvTimeVect==0)+0.5, [1,2]), '--k', 'linewidth', 2);
     set(gca, 'ydir', 'normal', 'xtick', [], 'ytick', []);
     ylabel(sprintf('%s/%i', mlb.Rosetta{p}, p));
     piNdx = find(mlb.likeTimeVect==0)+0.5;
     for ndx = 1:length(piNdx)
         plot(repmat(piNdx(ndx), [1,2]), get(gca, 'ylim'), '--k','linewidth', 2);
     end
+    if p==size(fiscISC_Posts{1},3)
+        title('Posteriors');
+    end
 
-    sps(p) = subplot(5,4,(4*4)+p);
+    subplot(5,5,5*(size(iscBS_Posts{1},3)-p)+1)
+    imagesc(mlb.obsvTimeVect,mlb.obsvTimeVect,mean(cell2mat(cellfun(@(a)a(:,:,p), iscBS_Decodes(1,1,:), 'uniformoutput',0)),3), decodeCLim);
+    hold on;
+    plot([0 0], get(gca, 'ylim'), '--k', 'linewidth', 2);
+    plot(get(gca, 'xlim'), [0 0], '--k', 'linewidth', 2);
+    set(gca, 'ydir', 'normal');
+    ylabel(sprintf('%s/%i', mlb.Rosetta{p}, p));
+    if p==size(iscBS_Posts{1},3)
+        title('Temporal Accuracy');
+    end
+
+    sps(p) = subplot(5,5,(5*4)+p+1);
     tempAcc = cell2mat(reshape(cellfun(@(a)a(:,:,p),tempPosAcc, 'uniformoutput', 0), [1,1,length(fileDirs)]));
     for o = 1:size(tempAcc,2)
         meanPosAcc = mean(tempAcc(:,o,:),3, 'omitnan');
@@ -308,7 +359,7 @@ end
 linkaxes(sps, 'xy');
 
 annotation(gcf,'textbox', [0.05 0.95 0.8 0.05],...
-    'String', sprintf("Subsampled ISC Group:\n     binSize = %.0fms, dsRate = %.0fms, Trial Window = (%.0fms:%.0fms to %s), \n     NumPerms = %.0f, Subsample Proportion = %.01f, Subsample Type = %.0f, BayesType = %.0f",...
+    'String', sprintf("Subsampled ISC Group: binSize = %.0fms, dsRate = %.0fms, Trial Window = (%.0fms:%.0fms to %s), NumPerms = %.0f, Subsample Proportion = %.01f, Subsample Type = %.0f, BayesType = %.0f",...
     binSize, dsRate, trlWindow{1}(1), trlWindow{1}(2), alignment{1}, numPerms, ssProportion, ssType, bayesType),...
     'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left');
 
