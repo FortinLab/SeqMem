@@ -308,6 +308,8 @@ classdef MLB_SM < SeqMem
                 obj.obsvTrlSpikes{perm} = tempObsvSpikes(:,:,obsvLog);
                 obj.obsvTrlIDs{perm} = tempObsvIDs(1,end,obsvLog);
             end
+            obj.likeTimeVect = tempDecodeIDvect(:,1);
+            obj.obsvTimeVect = ssnID(:,1,1);
         end
         %% Set Observations as all trials
         function SetObserves_Session(obj)
