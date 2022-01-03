@@ -12,12 +12,12 @@ fileDirs = [{'D:\WorkBigDataFiles\PFC\Files To Process\GE11\GE11_Session132'},..
 
 binSize = 200;
 dsRate = 1;
-trlWindow = {[0 1200]};
+trlWindow = {[-800 1500]};
 alignment = {'PokeIn'};
 % trlWindow = {[-2000 800]};
 % alignment = {'PokeOut'};
 
-frThresh = 0.2/(binSize/1000);
+frThresh = 1/(binSize/1000);
 % frThresh = 0.001;
 %% Data Vectors
 popVects = cell(length(fileDirs),1);
@@ -55,6 +55,7 @@ grpPVsort = cell2mat(popVectsSortVect);
 % grpPVmaxFR(sum(grpPVmaxFR>=frThresh,2)>=1,:) = 100;
 % grpPVmaxFR(grpPVmaxFR~=100)=0;
 grpPVmaxFR = cell2mat(popVectsThreshVect);
+
 figure;
 ndxCorr = nan(mlb.seqLength);
 pvCorr = nan(mlb.seqLength);
@@ -127,6 +128,7 @@ annotation(gcf,'textbox', [0.05 0.95 0.8 0.05],...
 
 rateTimeRemap = nan(size(grpPVmaxFR,1),2);
 timeRateRemap = nan(size(grpPVmaxFR,1),2);
+meanMaxFR = mean(grpPVmaxFR,2);
 for u = 1:size(grpPVmaxFR,1)
     diffMtx = squareform(pdist(grpPVmaxFR(u,:)'));
     rateTimeRemap(u,1) = max(max(diffMtx));
@@ -139,13 +141,18 @@ for u = 1:size(grpPVmaxFR,1)
     timeRateRemap(u,2) = abs(grpPVmaxFR(u,r(1))-grpPVmaxFR(u,c(1)));
 end
 figure; 
-subplot(1,2,1)
+subplot(2,2,1)
 corrScatPlot(rateTimeRemap(:,1), rateTimeRemap(:,2), 'Max \DeltaFR', 'Max \DeltaLatency', []);
 title('Latency Remapping at Max Rate Remap')
-subplot(1,2,2)
+subplot(2,2,2)
 corrScatPlot(timeRateRemap(:,1), timeRateRemap(:,2), 'Max \DeltaLatency', 'Max \DeltaFR', []);
 title('Rate Remapping at Max Latency Remap');
-
+subplot(2,2,3)
+corrScatPlot(meanMaxFR, rateTimeRemap(:,1), 'Mean Max FR', 'Max \DeltaFR', []);
+title('Mean FR vs Rate Remap');
+subplot(2,2,4)
+corrScatPlot(meanMaxFR, timeRateRemap(:,1), 'Mean Max FR', 'Max \DeltaLatency',[]);
+title('Mean FR vs Latency Remap');
 annotation(gcf,'textbox', [0.05 0.95 0.8 0.05],...
     'String', sprintf("Rate vs Time Remapping:\n     binSize = %.0fms, dsRate = %.0fms, Trial Window = (%.0fms:%.0fms to %s), FR Threshold = %.02f spk/s",...
     binSize, dsRate, trlWindow{1}(1), trlWindow{1}(2), alignment{1}, frThresh),...
@@ -166,6 +173,7 @@ annotation(gcf,'textbox', [0.05 0.95 0.8 0.05],...
     'String', sprintf("Rate vs Temporal Remapping:\n     binSize = %.0fms, dsRate = %.0fms, Trial Window = (%.0fms:%.0fms to %s), FR Threshold = %.02f spk/s",...
     binSize, dsRate, trlWindow{1}(1), trlWindow{1}(2), alignment{1}, frThresh),...
     'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left');
+
 
 
     
