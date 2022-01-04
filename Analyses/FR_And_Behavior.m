@@ -17,7 +17,7 @@ alignment = {'PokeIn'};
 % trlWindow = {[-2000 800]};
 % alignment = {'PokeOut'};
 
-frThresh = 1/(binSize/1000);
+frThresh = 0.2/(binSize/1000);
 % frThresh = 0.001;
 %% Data Vectors
 popVects = cell(length(fileDirs),1);
