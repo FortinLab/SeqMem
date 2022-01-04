@@ -45,6 +45,10 @@ classdef SeqMem < handle
         lagLatVectMean
         lagLatVectSFPraw        
         lagLatVectSFPmean 
+        % Trial After OutSeq: Accuracy & Latency
+        taoAcc
+        taoLatRaw
+        taoLatMean
         % d' Accuracy
         dPrime
         dPrimeSFP
@@ -74,7 +78,7 @@ classdef SeqMem < handle
             128/255, 66/255, 151/255;...
             241/255, 103/255, 36/255];
         Rosetta = [{'A'},{'B'},{'C'},{'D'},{'E'},{'F'},{'G'},{'H'},{'I'},{'J'},{'K'},{'L'},{'M'},{'N'},{'O'},{'P'},{'Q'},{'R'},{'S'},{'T'},{'U'},{'V'},{'W'},{'X'},{'Y'},{'Z'}];
-        RosettaLF = [{'a'},{'b'},{'c'},{'d'},{'e'},{'f'},{'g'},{'h'},{'i'},{'j'},{'k'},{'l'},{'m'},{'n'},{'o'},{'p'},{'q'},{'r'},{'s'},{'t'},{'u'},{'v'},{'w'},{'x'},{'y'},{'z'}];
+        RosettaLC = [{'a'},{'b'},{'c'},{'d'},{'e'},{'f'},{'g'},{'h'},{'i'},{'j'},{'k'},{'l'},{'m'},{'n'},{'o'},{'p'},{'q'},{'r'},{'s'},{'t'},{'u'},{'v'},{'w'},{'x'},{'y'},{'z'}];
     end
     %% Object Creation Method
     methods
@@ -378,21 +382,21 @@ classdef SeqMem < handle
                             obj.responseMatrixSFP(2,2,curSeq) = obj.responseMatrixSFP(2,2,curSeq) + sum([obj.trialInfo(odrTrlLog & posTrlLog).Performance]==1);
                             obj.responseMatrixSFP(2,1,curSeq) = obj.responseMatrixSFP(2,1,curSeq) + sum([obj.trialInfo(odrTrlLog & posTrlLog).Performance]==0);
                         end
-                        obj.lagAccVectSFP(curSeq,obj.lagVect==(curOdrNdx-pos),1) = obj.lagAccVectSFP(curSeq,obj.lagVect==(curOdrNdx-pos),1) + sum([obj.trialInfo(odrTrlLog & posTrlLog).Performance]==1);
-                        obj.lagAccVectSFP(curSeq,obj.lagVect==(curOdrNdx-pos),2) = obj.lagAccVectSFP(curSeq,obj.lagVect==(curOdrNdx-pos),1) + sum([obj.trialInfo(odrTrlLog & posTrlLog).Performance]==0);
+                        obj.lagAccVectSFP(curSeq,obj.lagVect==(pos-curOdrNdx),1) = obj.lagAccVectSFP(curSeq,obj.lagVect==(pos-curOdrNdx),1) + sum([obj.trialInfo(odrTrlLog & posTrlLog).Performance]==1);
+                        obj.lagAccVectSFP(curSeq,obj.lagVect==(pos-curOdrNdx),2) = obj.lagAccVectSFP(curSeq,obj.lagVect==(pos-curOdrNdx),1) + sum([obj.trialInfo(odrTrlLog & posTrlLog).Performance]==0);
                         
-                        obj.lagLatVectSFPraw{curSeq,obj.lagVect==(curOdrNdx-pos),1} = [obj.lagLatVectSFPraw{curSeq,obj.lagVect==(curOdrNdx-pos),1}, [obj.trialInfo(odrTrlLog & posTrlLog & [obj.trialInfo.Performance]==1).PokeDuration]];
-                        obj.lagLatVectSFPraw{curSeq,obj.lagVect==(curOdrNdx-pos),2} = [obj.lagLatVectSFPraw{curSeq,obj.lagVect==(curOdrNdx-pos),2}, [obj.trialInfo(odrTrlLog & posTrlLog & [obj.trialInfo.Performance]==0).PokeDuration]];
+                        obj.lagLatVectSFPraw{curSeq,obj.lagVect==(pos-curOdrNdx),1} = [obj.lagLatVectSFPraw{curSeq,obj.lagVect==(pos-curOdrNdx),1}; [obj.trialInfo(odrTrlLog & posTrlLog & [obj.trialInfo.Performance]==1).PokeDuration]'];
+                        obj.lagLatVectSFPraw{curSeq,obj.lagVect==(pos-curOdrNdx),2} = [obj.lagLatVectSFPraw{curSeq,obj.lagVect==(pos-curOdrNdx),2}; [obj.trialInfo(odrTrlLog & posTrlLog & [obj.trialInfo.Performance]==0).PokeDuration]'];
                     end
                     
                     obj.transMatAcc(odr,pos) = mean([obj.trialInfo(odrTrlLog & posTrlLog).Performance]);
-                    obj.lagAccVect(curSeq,obj.lagVect==(curOdrNdx-pos),1) = obj.lagAccVect(curSeq,obj.lagVect==(curOdrNdx-pos),1) + sum([obj.trialInfo(odrTrlLog & posTrlLog).Performance]==1);
-                    obj.lagAccVect(curSeq,obj.lagVect==(curOdrNdx-pos),2) = obj.lagAccVect(curSeq,obj.lagVect==(curOdrNdx-pos),2) + sum([obj.trialInfo(odrTrlLog & posTrlLog).Performance]==0);                  
+                    obj.lagAccVect(curSeq,obj.lagVect==(pos-curOdrNdx),1) = obj.lagAccVect(curSeq,obj.lagVect==(pos-curOdrNdx),1) + sum([obj.trialInfo(odrTrlLog & posTrlLog).Performance]==1);
+                    obj.lagAccVect(curSeq,obj.lagVect==(pos-curOdrNdx),2) = obj.lagAccVect(curSeq,obj.lagVect==(pos-curOdrNdx),2) + sum([obj.trialInfo(odrTrlLog & posTrlLog).Performance]==0);                  
                     
-                    obj.transMatLatRaw{odr,pos,1} = [obj.trialInfo(odrTrlLog & posTrlLog & [obj.trialInfo.Performance]==1).PokeDuration];
-                    obj.transMatLatRaw{odr,pos,2} = [obj.trialInfo(odrTrlLog & posTrlLog & [obj.trialInfo.Performance]==0).PokeDuration];
-                    obj.lagLatVectRaw{curSeq,obj.lagVect==(curOdrNdx-pos),1} = [obj.lagLatVectRaw{curSeq,obj.lagVect==(curOdrNdx-pos),1}, [obj.trialInfo(odrTrlLog & posTrlLog & [obj.trialInfo.Performance]==1).PokeDuration]];
-                    obj.lagLatVectRaw{curSeq,obj.lagVect==(curOdrNdx-pos),2} = [obj.lagLatVectRaw{curSeq,obj.lagVect==(curOdrNdx-pos),2}, [obj.trialInfo(odrTrlLog & posTrlLog & [obj.trialInfo.Performance]==0).PokeDuration]];
+                    obj.transMatLatRaw{odr,pos,1} = [obj.trialInfo(odrTrlLog & posTrlLog & [obj.trialInfo.Performance]==1).PokeDuration]';
+                    obj.transMatLatRaw{odr,pos,2} = [obj.trialInfo(odrTrlLog & posTrlLog & [obj.trialInfo.Performance]==0).PokeDuration]';
+                    obj.lagLatVectRaw{curSeq,obj.lagVect==(pos-curOdrNdx),1} = [obj.lagLatVectRaw{curSeq,obj.lagVect==(pos-curOdrNdx),1}; [obj.trialInfo(odrTrlLog & posTrlLog & [obj.trialInfo.Performance]==1).PokeDuration]'];
+                    obj.lagLatVectRaw{curSeq,obj.lagVect==(pos-curOdrNdx),2} = [obj.lagLatVectRaw{curSeq,obj.lagVect==(pos-curOdrNdx),2}; [obj.trialInfo(odrTrlLog & posTrlLog & [obj.trialInfo.Performance]==0).PokeDuration]'];
                 end
             end
             obj.transMatLatMean = cellfun(@(a)mean(a, 'omitnan'), obj.transMatLatRaw, 'uniformoutput', 0);
@@ -424,6 +428,11 @@ classdef SeqMem < handle
                     [obj.riByOdr(seq,op),~,~] = obj.CalculateRI(obj.responseMatrixByOdr{seq,op});
                 end
             end
+            % Evaluate Trial After OutSeq (TAO) Trials Directly
+            taoTrls = obj.trialInfo(find([obj.trialInfo.TranspositionDistance]~=0 & [obj.trialInfo.Performance]==1 & [obj.trialInfo.Position]~=obj.seqLength)+1);
+            obj.taoAcc = mean([taoTrls.Performance]);
+            obj.taoLatRaw = [{[taoTrls([taoTrls.Performance]==1).PokeDuration]'}, {[taoTrls([taoTrls.Performance]==0).PokeDuration]'}];
+            obj.taoLatMean = [mean([taoTrls([taoTrls.Performance]==1).PokeDuration]), mean([taoTrls([taoTrls.Performance]==0).PokeDuration])];
         end
         %% Calculate dPrime
         function [dPrm, h, fa] = CalculateDprime(~, responseMatrix)
@@ -507,7 +516,7 @@ classdef SeqMem < handle
                 semVal = nan;
                 return
             end
-            if nargin==1
+            if nargin==2
                 nVal = 0;
                 dim = 1;
             elseif nargin==2
