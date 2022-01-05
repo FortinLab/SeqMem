@@ -18,7 +18,7 @@ alignment = {'PokeIn'};
 % alignment = {'PokeOut'};
 % binType = 'gauss';
 binType = 'box';
-sfpYN = 0;
+sfpYN = 1;
 
 frThresh = 0.2/(binSize/1000);
 % frThresh = 0.001;
@@ -130,7 +130,7 @@ end
 figure;
 % Session ROC 
 rocMean_Plot = subplot(6,3,[1,4]);
-scatter(roc(:,2), roc(:,1), 'ko');
+scatter(roc(:,2), roc(:,1), 20, 'ko');
 hold on;
 errorbar(mean(roc(:,2)), mean(roc(:,1)),...
     std(roc(:,1)), std(roc(:,1)),...
@@ -144,7 +144,7 @@ text(mean(roc(:,2))+0.05, mean(roc(:,1))+0.05, sprintf('d''=%.02f +/- %.02fStD',
 smiMean_Bar = subplot(6,3,7);
 bar(mean(smi), 'facecolor', 'none');
 hold on;
-scatter(normrnd(1,0.05, size(smi)), smi, 'ko');
+scatter(normrnd(1,0.05, size(smi)), smi, 20, 'ko');
 errorbar(mean(smi), std(smi), 'color', 'k', 'capsize', 0);
 title(sprintf('SMI = %.02f +/- %.02fStD', mean(smi), std(smi)));
 set(gca, 'ylim', [0 1]);
@@ -153,7 +153,7 @@ ylabel('SMI');
 dPrmMean_Bar = subplot(6,3,10);
 bar(mean(dPrm), 'facecolor', 'none');
 hold on;
-scatter(normrnd(1,0.05, size(dPrm)), dPrm, 'ko');
+scatter(normrnd(1,0.05, size(dPrm)), dPrm, 20, 'ko');
 errorbar(mean(dPrm), std(dPrm), 'color', 'k', 'capsize', 0);
 title(sprintf('d''=%.02f +/- %.02fStD', mean(dPrm), std(dPrm)));
 set(gca, 'ylim', [0 5]);
@@ -162,14 +162,24 @@ ylabel('d''');
 riMean_Bar = subplot(6,3,13);
 bar(mean(ri), 'facecolor', 'none');
 hold on;
-scatter(normrnd(1,0.05, size(ri)), ri, 'ko');
+scatter(normrnd(1,0.05, size(ri)), ri, 20, 'ko');
 errorbar(mean(ri), std(ri), 'color', 'k', 'capsize', 0);
 title(sprintf('d''=%.02f +/- %.02fStD', mean(ri), std(ri)));
 set(gca, 'ylim', [-1 1]);
 ylabel('RI');
 % Session Poke Latencies
 lat_Bar = subplot(6,3,16);
-
+pokesISC = cell2mat(pokeLatRaw(:,1,1));
+pokesISI = cell2mat(pokeLatRaw(:,2,1));
+pokesOSC = cell2mat(pokeLatRaw(:,1,2));
+pokesOSI = cell2mat(pokeLatRaw(:,2,2));
+bar([mean(pokesISC), mean(pokesISI), mean(pokesOSC), mean(pokesOSI)], 'facecolor', 'none');
+hold on;
+scatter(lat_Bar,normrnd(1,0.05, size(pokesISC)), pokesISC, 20, 'o', 'MarkerEdgeColor', 'none', 'MarkerFaceColor', 'k', 'MarkerFaceAlpha', 0.2);
+scatter(lat_Bar,normrnd(2,0.05, size(pokesISI)), pokesISI, 20, 'o', 'MarkerEdgeColor', 'none', 'MarkerFaceColor', 'k', 'MarkerFaceAlpha', 0.2);
+scatter(lat_Bar,normrnd(3,0.05, size(pokesOSC)), pokesOSC, 20, 'o', 'MarkerEdgeColor', 'none', 'MarkerFaceColor', 'k', 'MarkerFaceAlpha', 0.2);
+scatter(lat_Bar,normrnd(4,0.05, size(pokesOSI)), pokesOSI, 20, 'o', 'MarkerEdgeColor', 'none', 'MarkerFaceColor', 'k', 'MarkerFaceAlpha', 0.2);
+set(gca, 'ylim', [0 2], 'xtick', 1:4, 'xticklabel', [{'ISC'}, {'ISI'}, {'OSC'}, {'OSI'}], 'xticklabelrotation', 45);
 
 
 % OP ROC
@@ -201,13 +211,13 @@ latPos_Bar = subplot(6,3,18);
 hold(latPos_Bar, 'on');
 for op = 1:4
     % OP ROC
-    scatter(rocOdr_Plot, rocOPodr(:,op,2), rocOPodr(:,op,1),...
+    scatter(rocOdr_Plot, rocOPodr(:,op,2), rocOPodr(:,op,1), 20,...
         'markerfacecolor', 'none', 'markeredgecolor', mlb.PositionColors(op,:), 'marker', 'o');    
     errorbar(rocOdr_Plot, mean(rocOPodr(:,op,2)), mean(rocOPodr(:,op,1)),...
         std(rocOPodr(:,op,1)), std(rocOPodr(:,op,1)),...
         std(rocOPodr(:,op,2)), std(rocOPodr(:,op,2)), 'o', 'linewidth', 2, 'color', mlb.PositionColors(op,:), 'MarkerFaceColor', mlb.PositionColors(op,:));
     if op~=1
-        scatter(rocPos_Plot, rocOPpos(:,op,2), rocOPpos(:,op,1),...
+        scatter(rocPos_Plot, rocOPpos(:,op,2), rocOPpos(:,op,1), 20,...
             'markerfacecolor', 'none', 'markeredgecolor', mlb.PositionColors(op,:), 'marker', 'o');
         errorbar(rocPos_Plot, mean(rocOPpos(:,op,2)), mean(rocOPpos(:,op,1)),...
             std(rocOPpos(:,op,1)), std(rocOPpos(:,op,1)),...
@@ -215,33 +225,62 @@ for op = 1:4
     end
     % OP SMI
     bar(smiOdr_Bar, op, mean(smiByOP(:,op,2)), 'edgecolor', 'k', 'facecolor', mlb.PositionColors(op,:));
-    scatter(smiOdr_Bar, ones([size(smiByOP,1),1]).*op, smiByOP(:,op,2), 'markerfacecolor', mlb.PositionColors(op,:), 'markeredgecolor', 'k', 'marker', 'o');
+    scatter(smiOdr_Bar, ones([size(smiByOP,1),1]).*op, smiByOP(:,op,2), 20, 'markerfacecolor', mlb.PositionColors(op,:), 'markeredgecolor', 'k', 'marker', 'o');
     errorbar(smiOdr_Bar, op, mean(smiByOP(:,op,2)), std(smiByOP(:,op,2)), 'color', 'k', 'capsize', 0);
     if op~=1        
         bar(smiPos_Bar, op, mean(smiByOP(:,op,1)), 'edgecolor', 'k', 'facecolor', mlb.PositionColors(op,:));
-        scatter(smiPos_Bar, ones([size(smiByOP,1),1]).*op, smiByOP(:,op,1), 'markerfacecolor', mlb.PositionColors(op,:), 'markeredgecolor', 'k', 'marker', 'o');
+        scatter(smiPos_Bar, ones([size(smiByOP,1),1]).*op, smiByOP(:,op,1), 20, 'markerfacecolor', mlb.PositionColors(op,:), 'markeredgecolor', 'k', 'marker', 'o');
         errorbar(smiPos_Bar, op, mean(smiByOP(:,op,1)), std(smiByOP(:,op,1)), 'color', 'k', 'capsize', 0);        
     end
     % OP D-Prime
     bar(dPrmOdr_Bar, op, mean(dPrmByOP(:,op,2)), 'edgecolor', 'k', 'facecolor', mlb.PositionColors(op,:));
-    scatter(dPrmOdr_Bar, ones([size(dPrmByOP,1),1]).*op, dPrmByOP(:,op,2), 'markerfacecolor', mlb.PositionColors(op,:), 'markeredgecolor', 'k', 'marker', 'o');
+    scatter(dPrmOdr_Bar, ones([size(dPrmByOP,1),1]).*op, dPrmByOP(:,op,2), 20, 'markerfacecolor', mlb.PositionColors(op,:), 'markeredgecolor', 'k', 'marker', 'o');
     errorbar(dPrmOdr_Bar, op, mean(dPrmByOP(:,op,2)), std(dPrmByOP(:,op,2)), 'color', 'k', 'capsize', 0);
     if op~=1
         bar(dPrmPos_Bar, op, mean(dPrmByOP(:,op,1)), 'edgecolor', 'k', 'facecolor', mlb.PositionColors(op,:));
-        scatter(dPrmPos_Bar, ones([size(dPrmByOP,1),1]).*op, dPrmByOP(:,op,1), 'markerfacecolor', mlb.PositionColors(op,:), 'markeredgecolor', 'k', 'marker', 'o');
+        scatter(dPrmPos_Bar, ones([size(dPrmByOP,1),1]).*op, dPrmByOP(:,op,1), 20, 'markerfacecolor', mlb.PositionColors(op,:), 'markeredgecolor', 'k', 'marker', 'o');
         errorbar(dPrmPos_Bar, op, mean(dPrmByOP(:,op,1)), std(dPrmByOP(:,op,1)), 'color', 'k', 'capsize', 0);
     end
     % OP RI
     bar(riOdr_Bar, op, mean(riByOP(:,op,2)), 'edgecolor', 'k', 'facecolor', mlb.PositionColors(op,:));
-    scatter(riOdr_Bar, ones([size(riByOP,1),1]).*op, riByOP(:,op,2), 'markerfacecolor', mlb.PositionColors(op,:), 'markeredgecolor', 'k', 'marker', 'o');
+    scatter(riOdr_Bar, ones([size(riByOP,1),1]).*op, riByOP(:,op,2), 20, 'markerfacecolor', mlb.PositionColors(op,:), 'markeredgecolor', 'k', 'marker', 'o');
     errorbar(riOdr_Bar, op, mean(riByOP(:,op,2)), std(riByOP(:,op,2)), 'color', 'k', 'capsize', 0);
     if op~=1
         bar(riPos_Bar, op, mean(riByOP(:,op,1)), 'edgecolor', 'k', 'facecolor', mlb.PositionColors(op,:));
-        scatter(riPos_Bar, ones([size(riByOP,1),1]).*op, riByOP(:,op,1), 'markerfacecolor', mlb.PositionColors(op,:), 'markeredgecolor', 'k', 'marker', 'o');
+        scatter(riPos_Bar, ones([size(riByOP,1),1]).*op, riByOP(:,op,1), 20, 'markerfacecolor', mlb.PositionColors(op,:), 'markeredgecolor', 'k', 'marker', 'o');
         errorbar(riPos_Bar, op, mean(riByOP(:,op,1)), std(riByOP(:,op,1)), 'color', 'k', 'capsize', 0);
     end
     % OP Latencies
+    tempISClat = cell2mat(reshape(tMatLatC(op,op,:), [size(tMatLatC,3),1]));
+    bar(latOdr_Bar, op-0.3, mean(tempISClat), 0.2, 'edgecolor', 'k', 'facecolor', mlb.PositionColors(op,:));
+    scatter(latOdr_Bar, normrnd(op-0.3,0.01, size(tempISClat)), tempISClat, 21, 'MarkerEdgeColor', 'k', 'MarkerEdgeAlpha', 0.2, 'MarkerFaceColor', mlb.PositionColors(op,:), 'MarkerFaceAlpha', 0.2) 
+    tempISIlat = cell2mat(reshape(tMatLatI(op,op,:), [size(tMatLatI,3),1]));
+    tempISIlat(tempISIlat>10) = []; %%%%%% THIS IS A TEMPORARY FIX... NEED TO GET DATA CURATION INTEGRATED INTO THE STATMATRIX CREATOR SCRIPT %%%%%%
+    bar(latOdr_Bar, op-0.1, mean(tempISIlat), 0.2, 'edgecolor', 'k', 'facecolor', mlb.PositionColors(op,:));
+    scatter(latOdr_Bar, normrnd(op-0.1,0.01, size(tempISIlat)), tempISIlat, 20, 'MarkerEdgeColor', 'k', 'MarkerEdgeAlpha', 0.2, 'MarkerFaceColor', mlb.PositionColors(op,:), 'MarkerFaceAlpha', 0.2) 
+    osLog = true(1,mlb.seqLength);
+    osLog(op) = false;
+    tempOSClat = cell2mat(reshape(tMatLatC(op,osLog,:), [size(tMatLatC,3)*sum(osLog),1]));
+    bar(latOdr_Bar, op+0.1, mean(tempOSClat), 0.2, 'edgecolor', 'k', 'facecolor', mlb.PositionColors(op,:));
+    scatter(latOdr_Bar, normrnd(op+0.1,0.01, size(tempOSClat)), tempOSClat, 20, 'MarkerEdgeColor', 'k', 'MarkerEdgeAlpha', 0.2, 'MarkerFaceColor', mlb.PositionColors(op,:), 'MarkerFaceAlpha', 0.2) 
+    tempOSIlat = cell2mat(reshape(tMatLatI(op,osLog,:), [size(tMatLatI,3)*sum(osLog),1]));
+    bar(latOdr_Bar, op+0.3, mean(tempOSIlat), 0.2, 'edgecolor', 'k', 'facecolor', mlb.PositionColors(op,:));
+    scatter(latOdr_Bar, normrnd(op+0.3,0.01, size(tempOSIlat)), tempOSIlat, 20, 'MarkerEdgeColor', 'k', 'MarkerEdgeAlpha', 0.2, 'MarkerFaceColor', mlb.PositionColors(op,:), 'MarkerFaceAlpha', 0.2) 
     
+    bar(latPos_Bar, op-0.3, mean(tempISClat), 0.2, 'edgecolor', 'k', 'facecolor', mlb.PositionColors(op,:));
+    scatter(latPos_Bar, normrnd(op-0.3,0.01, size(tempISClat)), tempISClat, 20, 'MarkerEdgeColor', 'k', 'MarkerEdgeAlpha', 0.2, 'MarkerFaceColor', mlb.PositionColors(op,:), 'MarkerFaceAlpha', 0.2) 
+    bar(latPos_Bar, op-0.1, mean(tempISIlat), 0.2, 'edgecolor', 'k', 'facecolor', mlb.PositionColors(op,:));
+    scatter(latPos_Bar, normrnd(op-0.1,0.01, size(tempISIlat)), tempISIlat, 20, 'MarkerEdgeColor', 'k', 'MarkerEdgeAlpha', 0.2, 'MarkerFaceColor', mlb.PositionColors(op,:), 'MarkerFaceAlpha', 0.2) 
+    if op~=1
+        osLog = true(mlb.seqLength,1);
+        osLog(op) = false;
+        tempOSClat = cell2mat(reshape(tMatLatC(osLog,op,:), [size(tMatLatC,3)*sum(osLog),1]));
+        bar(latPos_Bar, op+0.1, mean(tempOSClat), 0.2, 'edgecolor', 'k', 'facecolor', mlb.PositionColors(op,:));
+        scatter(latPos_Bar, normrnd(op+0.1,0.01, size(tempOSClat)), tempOSClat, 20, 'MarkerEdgeColor', 'k', 'MarkerEdgeAlpha', 0.2, 'MarkerFaceColor', mlb.PositionColors(op,:), 'MarkerFaceAlpha', 0.2)
+        tempOSIlat = cell2mat(reshape(tMatLatI(osLog,op,:), [size(tMatLatI,3)*sum(osLog),1]));
+        bar(latPos_Bar, op+0.3, mean(tempOSIlat), 0.2, 'edgecolor', 'k', 'facecolor', mlb.PositionColors(op,:));
+        scatter(latPos_Bar, normrnd(op+0.3,0.01, size(tempOSIlat)), tempOSIlat, 20, 'MarkerEdgeColor', 'k', 'MarkerEdgeAlpha', 0.2, 'MarkerFaceColor', mlb.PositionColors(op,:), 'MarkerFaceAlpha', 0.2)
+    end
 end
 plot(smiOdr_Bar, smiByOP(:,:,2)', 'k');
 plot(smiPos_Bar, smiByOP(:,:,1)', 'k');
@@ -259,11 +298,14 @@ title([dPrmOdr_Bar,dPrmPos_Bar], 'd''');
 ylabel([dPrmOdr_Bar,dPrmPos_Bar], 'd''');
 title([riOdr_Bar,riPos_Bar], 'RI');
 ylabel([riOdr_Bar,riPos_Bar], 'RI');
+title([lat_Bar,latOdr_Bar, latPos_Bar], 'Poke Duration');
+ylabel([lat_Bar,latOdr_Bar, latPos_Bar], 'Duration (ms)');
 set([rocOdr_Plot,rocPos_Plot], 'xlim', [0 1], 'ylim', [0 1]);
 set([smiOdr_Bar, smiPos_Bar], 'xlim', [0 mlb.seqLength+1], 'xtick', 1:mlb.seqLength, 'ylim', [0 1]);
 set([dPrmOdr_Bar, dPrmPos_Bar], 'xlim', [0 mlb.seqLength+1], 'xtick', 1:mlb.seqLength, 'ylim', [0 5]);
 set([riOdr_Bar, riPos_Bar], 'xlim', [0 mlb.seqLength+1], 'xtick', 1:mlb.seqLength, 'ylim', [-1 1]);
-set([smiOdr_Bar, dPrmOdr_Bar, riOdr_Bar], 'xticklabel', mlb.Rosetta(1:mlb.seqLength))
+set([latOdr_Bar, latPos_Bar], 'xlim', [0 mlb.seqLength+1], 'xtick', 1:mlb.seqLength, 'ylim', [0 2.5]);
+set([smiOdr_Bar, dPrmOdr_Bar, riOdr_Bar, latOdr_Bar], 'xticklabel', mlb.Rosetta(1:mlb.seqLength))
 xlabel([smiOdr_Bar, dPrmOdr_Bar, riOdr_Bar, latOdr_Bar], 'Odor')
 xlabel([smiPos_Bar, dPrmPos_Bar, riPos_Bar, latPos_Bar], 'Position')
 
@@ -272,8 +314,60 @@ annotation(gcf,'textbox', [0.05 0.95 0.8 0.05],...
     'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left');
 
 % Behavior Summary 2
+figure; 
+subplot(1,2,1)
+bar(mean(taoAcc), 'facecolor', 'none', 'edgecolor', 'k');
+hold on;
+errorbar(mean(taoAcc), std(taoAcc), 'capsize', 0, 'color', 'k');
+title('TAO Accuracy (Mean +/- StD)');
+ylabel('Accuracy (% correct trials)');
 
+subplot(1,2,2)
+bar(1,mean(cell2mat(taoLat(:,1))), 'facecolor', 'none', 'edgecolor', 'k');
+hold on;
+scatter(normrnd(1,0.1, size(cell2mat(taoLat(:,1)))), cell2mat(taoLat(:,1)), 20, 'markeredgecolor','none', 'markerfacecolor','k', 'markerfacealpha', 0.2);
+bar(2, mean(cell2mat(taoLat(:,2))), 'facecolor', 'none', 'edgecolor', 'k');
+scatter(normrnd(2,0.1, size(cell2mat(taoLat(:,2)))), cell2mat(taoLat(:,2)), 20, 'markeredgecolor','none', 'markerfacecolor','k', 'markerfacealpha', 0.2);
+errorbar(1:2, [mean(cell2mat(taoLat(:,1))), mean(cell2mat(taoLat(:,2)))], [std(cell2mat(taoLat(:,1))), std(cell2mat(taoLat(:,2)))], 'linestyle', 'none', 'color', 'k', 'capsize', 0);
+title('TAO Response Latency');
+ylabel('Poke Duration (s)');
+set(gca, 'xtick', 1:2, 'xticklabel', [{'Correct'}, {'Incorrect'}], 'xticklabelrotation', 45);
 
+annotation(gcf,'textbox', [0.05 0.95 0.8 0.05],...
+    'String', sprintf("Behavior Summary 2: SFP = %i", sfpYN),...
+    'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left');
+
+%% Behavior Summary 3
+figure;
+sp1 = subplot(2,1,1);
+bar(mlb.lagVect, mean(lagAcc), 'edgecolor', 'k', 'facecolor', 'none');
+hold on;
+errorbar(mlb.lagVect, mean(lagAcc), std(lagAcc), 'linestyle', 'none', 'color', 'k', 'capsize', 0);
+ylabel('Accuracy (% correct trials)');
+title('Lag Accuracy (Mean +/- StD)');
+box off;
+
+sp2 = subplot(2,1,2);
+hold on;
+for lag = 1:length(mlb.lagVect)
+    curCorrLag = cell2mat(lagLat(:,lag,1));
+    curCorrLag(curCorrLag>10) = [];
+    curInCorrLag = cell2mat(lagLat(:,lag,2));
+    curInCorrLag(curInCorrLag>10) = [];
+    bar(mlb.lagVect(lag)-0.1, mean(curCorrLag), 0.2, 'facecolor', 'none', 'edgecolor', 'k');
+    scatter(normrnd(mlb.lagVect(lag)-0.1, 0.01, size(curCorrLag)), curCorrLag, 20, 'markeredgecolor', 'none', 'markerfacecolor', 'k', 'markerfacealpha', 0.2);
+    bar(mlb.lagVect(lag)+0.1, mean(curInCorrLag), 0.2, 'facecolor', 'none', 'edgecolor', 'k');
+    scatter(normrnd(mlb.lagVect(lag)+0.1, 0.01, size(curInCorrLag)), curInCorrLag, 20, 'markeredgecolor', 'none', 'markerfacecolor', 'k', 'markerfacealpha', 0.2);
+end
+title('Lag Poke Duration');
+linkaxes([sp1 sp2], 'x');
+set([sp1 sp2], 'xlim', [min(mlb.lagVect)-1, max(mlb.lagVect)+1], 'xtick', mlb.lagVect);
+xlabel('Lag');
+ylabel('Poke Duration (s)');
+
+annotation(gcf,'textbox', [0.05 0.95 0.8 0.05],...
+    'String', sprintf("Behavior Summary 2: SFP = %i", sfpYN),...
+    'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left');
 %% Plot PopVects
 grpPV = cell2mat(popVects);
 % grpPVsort = timeVect(cell2mat(popVectsSortVect));

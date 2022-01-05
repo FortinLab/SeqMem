@@ -342,7 +342,7 @@ classdef SeqMem < handle
             obj.responseMatrixByOdr = repmat({zeros(2,2)}, [obj.numSeqs, obj.seqLength]);
             obj.transMatAcc = nan(length(odrs), length(poss));
             obj.lagAccVect = zeros(obj.numSeqs,length(obj.lagVect),2);
-            obj.lagAccVectSFP = zeros(obj.numSeqs,length(obj.lagVect));
+            obj.lagAccVectSFP = zeros(obj.numSeqs,length(obj.lagVect),2);
             obj.transMatLatRaw = cell(length(odrs), length(poss), 2);
             obj.lagLatVectRaw = cell(obj.numSeqs,length(obj.lagVect),2);
             obj.lagLatVectSFPraw = cell(obj.numSeqs,length(obj.lagVect),2);
@@ -383,7 +383,7 @@ classdef SeqMem < handle
                             obj.responseMatrixSFP(2,1,curSeq) = obj.responseMatrixSFP(2,1,curSeq) + sum([obj.trialInfo(odrTrlLog & posTrlLog).Performance]==0);
                         end
                         obj.lagAccVectSFP(curSeq,obj.lagVect==(pos-curOdrNdx),1) = obj.lagAccVectSFP(curSeq,obj.lagVect==(pos-curOdrNdx),1) + sum([obj.trialInfo(odrTrlLog & posTrlLog).Performance]==1);
-                        obj.lagAccVectSFP(curSeq,obj.lagVect==(pos-curOdrNdx),2) = obj.lagAccVectSFP(curSeq,obj.lagVect==(pos-curOdrNdx),1) + sum([obj.trialInfo(odrTrlLog & posTrlLog).Performance]==0);
+                        obj.lagAccVectSFP(curSeq,obj.lagVect==(pos-curOdrNdx),2) = obj.lagAccVectSFP(curSeq,obj.lagVect==(pos-curOdrNdx),2) + sum([obj.trialInfo(odrTrlLog & posTrlLog).Performance]==0);
                         
                         obj.lagLatVectSFPraw{curSeq,obj.lagVect==(pos-curOdrNdx),1} = [obj.lagLatVectSFPraw{curSeq,obj.lagVect==(pos-curOdrNdx),1}; [obj.trialInfo(odrTrlLog & posTrlLog & [obj.trialInfo.Performance]==1).PokeDuration]'];
                         obj.lagLatVectSFPraw{curSeq,obj.lagVect==(pos-curOdrNdx),2} = [obj.lagLatVectSFPraw{curSeq,obj.lagVect==(pos-curOdrNdx),2}; [obj.trialInfo(odrTrlLog & posTrlLog & [obj.trialInfo.Performance]==0).PokeDuration]'];
