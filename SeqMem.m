@@ -16,6 +16,7 @@ classdef SeqMem < handle
         tsVect
         behavMatrix
         behavMatrixColIDs
+        plxData
         ensembleMatrix
         ensembleMatrixColIDs
         lfpMatrix
@@ -92,7 +93,9 @@ classdef SeqMem < handle
             obj.pathDir = path;
             obj.behavMatFile = fileNames{cellfun(@(a)~isempty(a), strfind(fileNames, 'BehaviorMatrix'))};
             behavMatrix = load([obj.pathDir '\' obj.behavMatFile], 'behavMatrix');
+            plxData = load([obj.pathDir '\' obj.behavMatFile], 'plxData');
             obj.tsVect = behavMatrix.behavMatrix(:,1);
+            obj.plxData = plxData.plxData;
             obj.behavMatrix = behavMatrix.behavMatrix(:,2:end);
             behavMatrixColIDs = load([obj.pathDir '\' obj.behavMatFile], 'behavMatrixColIDs');
             obj.behavMatrixColIDs = behavMatrixColIDs.behavMatrixColIDs(2:end);
@@ -251,7 +254,7 @@ classdef SeqMem < handle
             %% Create obj.behavMatrixTrialStruct
             obj.trialInfo = struct( 'TrialNum', trialNum, 'SequenceNum', seqNum,...
                 'Odor', trialOdor, 'Position', trialPosition, 'Performance', trialPerf,...
-                'PokeDuration', pokeDuration, 'WithdrawLatency', withdrawLat,...
+                'TargetDuration', {obj.plxData.Raw.TargetDuration}, 'PokeDuration', pokeDuration, 'WithdrawLatency', withdrawLat,...
                 'PokeInIndex', trialPokeInNdx, 'OdorIndex', trialOdorNdx, 'PokeOutIndex', trialPokeOutNdx,...
                 'RewardIndex', trialRewardNdx, 'RewardSignalIndex', trialRwdSigNdx,...
                 'RearRewardIndex', trialRearRwdNdx, 'ErrorIndex', trialErrorNdx,...

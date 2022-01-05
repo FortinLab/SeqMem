@@ -18,7 +18,9 @@ alignment = {'PokeIn'};
 % alignment = {'PokeOut'};
 % binType = 'gauss';
 binType = 'box';
-sfpYN = 1;
+sfpYN = 0;
+behavLatType = 'rel';
+% behavLatType = 'abs';
 
 frThresh = 0.2/(binSize/1000);
 % frThresh = 0.001;
@@ -75,6 +77,13 @@ for ani = 1:length(fileDirs)
     popVectsSortVect{ani} = peakNdx;
     popVectsThreshVect{ani} = peakRt;
     %% Extract behavioral variables    
+    if strcmp(behavLatType, 'rel')
+        relPokeDur = arrayfun(@(a)a.PokeDuration - a.TargetDuration, mlb.trialInfo);
+        for trl = 1:length(mlb.trialInfo)
+            mlb.trialInfo(trl).PokeDuration = relPokeDur(trl);
+        end
+        mlb.SummarizeSessionBehavior;
+    end
     tmLatC = mlb.transMatLatRaw(:,:,1);
     tmLatIC = mlb.transMatLatRaw(:,:,2);
     for op = 1:mlb.seqLength
@@ -126,6 +135,11 @@ for ani = 1:length(fileDirs)
 end
 
 %% Plot Behavior
+%%%%% Bandaid to mask an error in the poke duration code for one trial... probably more affected... but until I get the curation code up this is how we'll process things
+tMatLatC = cellfun(@(a){a(a<10)}, tMatLatC);
+tMatLatI = cellfun(@(a){a(a<10)}, tMatLatI);
+lagLat = cellfun(@(a){a(a<10)}, lagLat);
+pokeLatRaw = cellfun(@(a){a(a<10)}, pokeLatRaw);
 % Behavior Summary 1
 figure;
 % Session ROC 
@@ -169,6 +183,8 @@ set(gca, 'ylim', [-1 1]);
 ylabel('RI');
 % Session Poke Latencies
 lat_Bar = subplot(6,3,16);
+aniPokeLat = cellfun(@(a)mean(a, 'omitnan'), pokeLatRaw);
+aniPokeLat = [aniPokeLat(:,:,1), aniPokeLat(:,:,2)];
 pokesISC = cell2mat(pokeLatRaw(:,1,1));
 pokesISI = cell2mat(pokeLatRaw(:,2,1));
 pokesOSC = cell2mat(pokeLatRaw(:,1,2));
@@ -179,8 +195,14 @@ scatter(lat_Bar,normrnd(1,0.05, size(pokesISC)), pokesISC, 20, 'o', 'MarkerEdgeC
 scatter(lat_Bar,normrnd(2,0.05, size(pokesISI)), pokesISI, 20, 'o', 'MarkerEdgeColor', 'none', 'MarkerFaceColor', 'k', 'MarkerFaceAlpha', 0.2);
 scatter(lat_Bar,normrnd(3,0.05, size(pokesOSC)), pokesOSC, 20, 'o', 'MarkerEdgeColor', 'none', 'MarkerFaceColor', 'k', 'MarkerFaceAlpha', 0.2);
 scatter(lat_Bar,normrnd(4,0.05, size(pokesOSI)), pokesOSI, 20, 'o', 'MarkerEdgeColor', 'none', 'MarkerFaceColor', 'k', 'MarkerFaceAlpha', 0.2);
-set(gca, 'ylim', [0 2], 'xtick', 1:4, 'xticklabel', [{'ISC'}, {'ISI'}, {'OSC'}, {'OSI'}], 'xticklabelrotation', 45);
-
+for ani = 1:size(aniPokeLat,1)
+    plot(aniPokeLat(ani,:), 'marker', 'o', 'MarkerEdgeColor', 'k', 'color', 'k', 'MarkerFaceColor', 'k');
+end
+if strcmp(behavLatType,'rel')
+    set(gca, 'ylim', [-1.5 1.5], 'xtick', 1:4, 'xticklabel', [{'ISC'}, {'ISI'}, {'OSC'}, {'OSI'}], 'xticklabelrotation', 45);
+else
+    set(gca, 'ylim', [0 2], 'xtick', 1:4, 'xticklabel', [{'ISC'}, {'ISI'}, {'OSC'}, {'OSI'}], 'xticklabelrotation', 45);
+end
 
 % OP ROC
 rocOdr_Plot = subplot(6,3,[2,5]);
@@ -251,35 +273,64 @@ for op = 1:4
         errorbar(riPos_Bar, op, mean(riByOP(:,op,1)), std(riByOP(:,op,1)), 'color', 'k', 'capsize', 0);
     end
     % OP Latencies
-    tempISClat = cell2mat(reshape(tMatLatC(op,op,:), [size(tMatLatC,3),1]));
-    bar(latOdr_Bar, op-0.3, mean(tempISClat), 0.2, 'edgecolor', 'k', 'facecolor', mlb.PositionColors(op,:));
-    scatter(latOdr_Bar, normrnd(op-0.3,0.01, size(tempISClat)), tempISClat, 21, 'MarkerEdgeColor', 'k', 'MarkerEdgeAlpha', 0.2, 'MarkerFaceColor', mlb.PositionColors(op,:), 'MarkerFaceAlpha', 0.2) 
-    tempISIlat = cell2mat(reshape(tMatLatI(op,op,:), [size(tMatLatI,3),1]));
-    tempISIlat(tempISIlat>10) = []; %%%%%% THIS IS A TEMPORARY FIX... NEED TO GET DATA CURATION INTEGRATED INTO THE STATMATRIX CREATOR SCRIPT %%%%%%
-    bar(latOdr_Bar, op-0.1, mean(tempISIlat), 0.2, 'edgecolor', 'k', 'facecolor', mlb.PositionColors(op,:));
-    scatter(latOdr_Bar, normrnd(op-0.1,0.01, size(tempISIlat)), tempISIlat, 20, 'MarkerEdgeColor', 'k', 'MarkerEdgeAlpha', 0.2, 'MarkerFaceColor', mlb.PositionColors(op,:), 'MarkerFaceAlpha', 0.2) 
+    iscAni = permute(cellfun(@(a)mean(a), tMatLatC(op,op,:)), [3,1,2]);
+    isiAni = permute(cellfun(@(a)mean(a), tMatLatI(op,op,:)), [3,1,2]);
     osLog = true(1,mlb.seqLength);
     osLog(op) = false;
+    tempOSCani = permute(tMatLatC(op,osLog,:), [2,1,3]);
+    tempOSIani = permute(tMatLatI(op,osLog,:), [2,1,3]);
+    oscAni = nan(size(tempOSCani,1),1);
+    osiAni = nan(size(tempOSIani,1),1);
+    for a = 1:size(tempOSCani,3)
+        oscAni(a) = mean(cell2mat(tempOSCani(:,:,a)));
+        osiAni(a) = mean(cell2mat(tempOSIani(:,:,a)));
+    end
+
+    tempISClat = cell2mat(reshape(tMatLatC(op,op,:), [size(tMatLatC,3),1]));
+    bar(latOdr_Bar, op-0.3, mean(tempISClat), 0.2, 'edgecolor', 'k', 'facecolor', mlb.PositionColors(op,:));
+    scatter(latOdr_Bar, normrnd(op-0.3,0.01, size(tempISClat)), tempISClat, 20, 'MarkerEdgeColor', 'k', 'MarkerEdgeAlpha', 0.2, 'MarkerFaceColor', mlb.PositionColors(op,:), 'MarkerFaceAlpha', 0.2);
+    
+    scatter(latOdr_Bar, normrnd(op-0.3,0, size(iscAni)), iscAni, 20, 'MarkerEdgeColor', 'k', 'MarkerFaceColor', 'k');
+    tempISIlat = cell2mat(reshape(tMatLatI(op,op,:), [size(tMatLatI,3),1]));
+    bar(latOdr_Bar, op-0.1, mean(tempISIlat), 0.2, 'edgecolor', 'k', 'facecolor', mlb.PositionColors(op,:));
+    scatter(latOdr_Bar, normrnd(op-0.1,0.01, size(tempISIlat)), tempISIlat, 20, 'MarkerEdgeColor', 'k', 'MarkerEdgeAlpha', 0.2, 'MarkerFaceColor', mlb.PositionColors(op,:), 'MarkerFaceAlpha', 0.2);
+    scatter(latOdr_Bar, normrnd(op-0.1,0, size(isiAni)), isiAni, 20, 'MarkerEdgeColor', 'k', 'MarkerFaceColor', 'k');
     tempOSClat = cell2mat(reshape(tMatLatC(op,osLog,:), [size(tMatLatC,3)*sum(osLog),1]));
     bar(latOdr_Bar, op+0.1, mean(tempOSClat), 0.2, 'edgecolor', 'k', 'facecolor', mlb.PositionColors(op,:));
-    scatter(latOdr_Bar, normrnd(op+0.1,0.01, size(tempOSClat)), tempOSClat, 20, 'MarkerEdgeColor', 'k', 'MarkerEdgeAlpha', 0.2, 'MarkerFaceColor', mlb.PositionColors(op,:), 'MarkerFaceAlpha', 0.2) 
+    scatter(latOdr_Bar, normrnd(op+0.1,0.01, size(tempOSClat)), tempOSClat, 20, 'MarkerEdgeColor', 'k', 'MarkerEdgeAlpha', 0.2, 'MarkerFaceColor', mlb.PositionColors(op,:), 'MarkerFaceAlpha', 0.2);
+    scatter(latOdr_Bar, normrnd(op+0.1,0, size(oscAni)), oscAni, 20, 'MarkerEdgeColor', 'k', 'MarkerFaceColor', 'k');
     tempOSIlat = cell2mat(reshape(tMatLatI(op,osLog,:), [size(tMatLatI,3)*sum(osLog),1]));
     bar(latOdr_Bar, op+0.3, mean(tempOSIlat), 0.2, 'edgecolor', 'k', 'facecolor', mlb.PositionColors(op,:));
-    scatter(latOdr_Bar, normrnd(op+0.3,0.01, size(tempOSIlat)), tempOSIlat, 20, 'MarkerEdgeColor', 'k', 'MarkerEdgeAlpha', 0.2, 'MarkerFaceColor', mlb.PositionColors(op,:), 'MarkerFaceAlpha', 0.2) 
+    scatter(latOdr_Bar, normrnd(op+0.3,0.01, size(tempOSIlat)), tempOSIlat, 20, 'MarkerEdgeColor', 'k', 'MarkerEdgeAlpha', 0.2, 'MarkerFaceColor', mlb.PositionColors(op,:), 'MarkerFaceAlpha', 0.2);
+    scatter(latOdr_Bar, normrnd(op+0.3,0, size(osiAni)), osiAni, 20, 'MarkerEdgeColor', 'k', 'MarkerFaceColor', 'k');
+    plot(latOdr_Bar, repmat(op-0.3:0.2:op+0.3,[length(fileDirs),1])', [iscAni, isiAni, oscAni, osiAni]', 'k');
     
     bar(latPos_Bar, op-0.3, mean(tempISClat), 0.2, 'edgecolor', 'k', 'facecolor', mlb.PositionColors(op,:));
-    scatter(latPos_Bar, normrnd(op-0.3,0.01, size(tempISClat)), tempISClat, 20, 'MarkerEdgeColor', 'k', 'MarkerEdgeAlpha', 0.2, 'MarkerFaceColor', mlb.PositionColors(op,:), 'MarkerFaceAlpha', 0.2) 
+    scatter(latPos_Bar, normrnd(op-0.3,0.01, size(tempISClat)), tempISClat, 20, 'MarkerEdgeColor', 'k', 'MarkerEdgeAlpha', 0.2, 'MarkerFaceColor', mlb.PositionColors(op,:), 'MarkerFaceAlpha', 0.2);
+    scatter(latPos_Bar, normrnd(op-0.3,0, size(iscAni)), iscAni, 20, 'MarkerEdgeColor', 'k', 'MarkerFaceColor', 'k');
     bar(latPos_Bar, op-0.1, mean(tempISIlat), 0.2, 'edgecolor', 'k', 'facecolor', mlb.PositionColors(op,:));
-    scatter(latPos_Bar, normrnd(op-0.1,0.01, size(tempISIlat)), tempISIlat, 20, 'MarkerEdgeColor', 'k', 'MarkerEdgeAlpha', 0.2, 'MarkerFaceColor', mlb.PositionColors(op,:), 'MarkerFaceAlpha', 0.2) 
+    scatter(latPos_Bar, normrnd(op-0.1,0.01, size(tempISIlat)), tempISIlat, 20, 'MarkerEdgeColor', 'k', 'MarkerEdgeAlpha', 0.2, 'MarkerFaceColor', mlb.PositionColors(op,:), 'MarkerFaceAlpha', 0.2);
+    scatter(latPos_Bar, normrnd(op-0.1,0, size(isiAni)), isiAni, 20, 'MarkerEdgeColor', 'k', 'MarkerFaceColor', 'k');
     if op~=1
         osLog = true(mlb.seqLength,1);
         osLog(op) = false;
+        tempOSCani = tMatLatC(osLog,op,:);
+        tempOSIani = tMatLatI(osLog,op,:);
+        oscAni = nan(size(tempOSCani,1),1);
+        osiAni = nan(size(tempOSIani,1),1);
+        for a = 1:size(tempOSCani,3)
+            oscAni(a) = mean(cell2mat(tempOSCani(:,:,a)));
+            osiAni(a) = mean(cell2mat(tempOSIani(:,:,a)));
+        end
         tempOSClat = cell2mat(reshape(tMatLatC(osLog,op,:), [size(tMatLatC,3)*sum(osLog),1]));
         bar(latPos_Bar, op+0.1, mean(tempOSClat), 0.2, 'edgecolor', 'k', 'facecolor', mlb.PositionColors(op,:));
         scatter(latPos_Bar, normrnd(op+0.1,0.01, size(tempOSClat)), tempOSClat, 20, 'MarkerEdgeColor', 'k', 'MarkerEdgeAlpha', 0.2, 'MarkerFaceColor', mlb.PositionColors(op,:), 'MarkerFaceAlpha', 0.2)
+        scatter(latPos_Bar, normrnd(op+0.1,0, size(oscAni)), oscAni, 20, 'MarkerEdgeColor', 'k', 'MarkerFaceColor', 'k');
         tempOSIlat = cell2mat(reshape(tMatLatI(osLog,op,:), [size(tMatLatI,3)*sum(osLog),1]));
         bar(latPos_Bar, op+0.3, mean(tempOSIlat), 0.2, 'edgecolor', 'k', 'facecolor', mlb.PositionColors(op,:));
         scatter(latPos_Bar, normrnd(op+0.3,0.01, size(tempOSIlat)), tempOSIlat, 20, 'MarkerEdgeColor', 'k', 'MarkerEdgeAlpha', 0.2, 'MarkerFaceColor', mlb.PositionColors(op,:), 'MarkerFaceAlpha', 0.2)
+        scatter(latPos_Bar, normrnd(op+0.3,0, size(osiAni)), osiAni, 20, 'MarkerEdgeColor', 'k', 'MarkerFaceColor', 'k');
+        plot(latPos_Bar, repmat(op-0.3:0.2:op+0.3,[length(fileDirs),1])', [iscAni, isiAni, oscAni, osiAni]', 'k');
     end
 end
 plot(smiOdr_Bar, smiByOP(:,:,2)', 'k');
@@ -304,7 +355,11 @@ set([rocOdr_Plot,rocPos_Plot], 'xlim', [0 1], 'ylim', [0 1]);
 set([smiOdr_Bar, smiPos_Bar], 'xlim', [0 mlb.seqLength+1], 'xtick', 1:mlb.seqLength, 'ylim', [0 1]);
 set([dPrmOdr_Bar, dPrmPos_Bar], 'xlim', [0 mlb.seqLength+1], 'xtick', 1:mlb.seqLength, 'ylim', [0 5]);
 set([riOdr_Bar, riPos_Bar], 'xlim', [0 mlb.seqLength+1], 'xtick', 1:mlb.seqLength, 'ylim', [-1 1]);
-set([latOdr_Bar, latPos_Bar], 'xlim', [0 mlb.seqLength+1], 'xtick', 1:mlb.seqLength, 'ylim', [0 2.5]);
+if strcmp(behavLatType,'rel')
+    set([latOdr_Bar, latPos_Bar], 'xlim', [0 mlb.seqLength+1], 'xtick', 1:mlb.seqLength, 'ylim', [-1.5 1.5]);
+else
+    set([latOdr_Bar, latPos_Bar], 'xlim', [0 mlb.seqLength+1], 'xtick', 1:mlb.seqLength, 'ylim', [0 2.5]);
+end
 set([smiOdr_Bar, dPrmOdr_Bar, riOdr_Bar, latOdr_Bar], 'xticklabel', mlb.Rosetta(1:mlb.seqLength))
 xlabel([smiOdr_Bar, dPrmOdr_Bar, riOdr_Bar, latOdr_Bar], 'Odor')
 xlabel([smiPos_Bar, dPrmPos_Bar, riPos_Bar, latPos_Bar], 'Position')
@@ -318,6 +373,7 @@ figure;
 subplot(1,2,1)
 bar(mean(taoAcc), 'facecolor', 'none', 'edgecolor', 'k');
 hold on;
+scatter(normrnd(1,0.1,size(taoAcc)), taoAcc, 20, 'markeredgecolor', 'none', 'markerfacecolor','k');
 errorbar(mean(taoAcc), std(taoAcc), 'capsize', 0, 'color', 'k');
 title('TAO Accuracy (Mean +/- StD)');
 ylabel('Accuracy (% correct trials)');
@@ -337,36 +393,110 @@ annotation(gcf,'textbox', [0.05 0.95 0.8 0.05],...
     'String', sprintf("Behavior Summary 2: SFP = %i", sfpYN),...
     'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left');
 
-%% Behavior Summary 3
+%  Behavior Summary 3
 figure;
 sp1 = subplot(2,1,1);
 bar(mlb.lagVect, mean(lagAcc), 'edgecolor', 'k', 'facecolor', 'none');
 hold on;
 errorbar(mlb.lagVect, mean(lagAcc), std(lagAcc), 'linestyle', 'none', 'color', 'k', 'capsize', 0);
+for lag = 1:length(mlb.lagVect)
+    scatter(normrnd(mlb.lagVect(lag), 0.01, size(lagAcc(:,lag))), lagAcc(:,lag), 'markeredgecolor', 'none', 'markerfacecolor', 'k');
+end
+    
+plot(mlb.lagVect, lagAcc', 'color', 'k');
 ylabel('Accuracy (% correct trials)');
-title('Lag Accuracy (Mean +/- StD)');
+title('Accuracy By Lag (Mean +/- StD)');
 box off;
 
 sp2 = subplot(2,1,2);
 hold on;
 for lag = 1:length(mlb.lagVect)
     curCorrLag = cell2mat(lagLat(:,lag,1));
-    curCorrLag(curCorrLag>10) = [];
     curInCorrLag = cell2mat(lagLat(:,lag,2));
-    curInCorrLag(curInCorrLag>10) = [];
     bar(mlb.lagVect(lag)-0.1, mean(curCorrLag), 0.2, 'facecolor', 'none', 'edgecolor', 'k');
     scatter(normrnd(mlb.lagVect(lag)-0.1, 0.01, size(curCorrLag)), curCorrLag, 20, 'markeredgecolor', 'none', 'markerfacecolor', 'k', 'markerfacealpha', 0.2);
     bar(mlb.lagVect(lag)+0.1, mean(curInCorrLag), 0.2, 'facecolor', 'none', 'edgecolor', 'k');
     scatter(normrnd(mlb.lagVect(lag)+0.1, 0.01, size(curInCorrLag)), curInCorrLag, 20, 'markeredgecolor', 'none', 'markerfacecolor', 'k', 'markerfacealpha', 0.2);
 end
-title('Lag Poke Duration');
+title('Poke Duration By Lag');
 linkaxes([sp1 sp2], 'x');
 set([sp1 sp2], 'xlim', [min(mlb.lagVect)-1, max(mlb.lagVect)+1], 'xtick', mlb.lagVect);
 xlabel('Lag');
 ylabel('Poke Duration (s)');
 
 annotation(gcf,'textbox', [0.05 0.95 0.8 0.05],...
-    'String', sprintf("Behavior Summary 2: SFP = %i", sfpYN),...
+    'String', sprintf("Behavior Summary 3: SFP = %i", sfpYN),...
+    'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left');
+
+%  Behavior Summary 4
+figure;
+sp1 = subplot(2,1,1);
+bar(mlb.lagVect, mean(lagAcc), 'edgecolor', 'k', 'facecolor', 'none');
+hold on;
+errorbar(mlb.lagVect, mean(lagAcc), std(lagAcc), 'linestyle', 'none', 'color', 'k', 'capsize', 0);
+for lag = 1:length(mlb.lagVect)
+    scatter(normrnd(mlb.lagVect(lag), 0, size(lagAcc(:,lag))), lagAcc(:,lag), 'markeredgecolor', 'none', 'markerfacecolor', 'k');
+end
+    
+plot(mlb.lagVect, lagAcc', 'color', 'k');
+ylabel('Accuracy (% correct trials)');
+title('Accuracy By Lag (Mean +/- StD)');
+box off;
+
+sp2 = subplot(2,1,2);
+hold on;
+meanAniLag = cellfun(@(a)mean(a), lagLat);
+for lag = 1:length(mlb.lagVect)
+    curCorrLag = meanAniLag(:,lag,1);
+    curInCorrLag = meanAniLag(:,lag,2);
+    bar(mlb.lagVect(lag)-0.1, mean(curCorrLag, 'omitnan'), 0.2, 'facecolor', 'none', 'edgecolor', 'k');
+    scatter(normrnd(mlb.lagVect(lag)-0.1, 0, size(curCorrLag)), curCorrLag, 20, 'markeredgecolor', 'none', 'markerfacecolor', 'k');
+    bar(mlb.lagVect(lag)+0.1, mean(curInCorrLag, 'omitnan'), 0.2, 'facecolor', 'none', 'edgecolor', 'k');
+    scatter(normrnd(mlb.lagVect(lag)+0.1, 0, size(curInCorrLag)), curInCorrLag, 20, 'markeredgecolor', 'none', 'markerfacecolor', 'k');
+end
+plot(mlb.lagVect-0.1, meanAniLag(:,:,1)', 'color', 'k');
+plot(mlb.lagVect+0.1, meanAniLag(:,:,2)', '--k');
+title('Poke Duration By Lag');
+linkaxes([sp1 sp2], 'x');
+set([sp1 sp2], 'xlim', [min(mlb.lagVect)-1, max(mlb.lagVect)+1], 'xtick', mlb.lagVect);
+xlabel('Lag');
+ylabel('Poke Duration (s)');
+
+annotation(gcf,'textbox', [0.05 0.95 0.8 0.05],...
+    'String', sprintf("Behavior Summary 4: SFP = %i", sfpYN),...
+    'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left');
+
+% Behavior Summary 5
+nonISlagAcc = lagAcc;
+nonISlagAcc(:,mlb.lagVect==0) = [];
+nonISClagLat = meanAniLag(:,:,1);
+nonISClagLat(:,mlb.lagVect==0) = [];
+figure;
+corrScatPlot(nonISlagAcc(:), nonISClagLat(:), 'Accuracy', 'OSC Latency', []);
+
+annotation(gcf,'textbox', [0.05 0.95 0.8 0.05],...
+    'String', sprintf("Behavior Summary 5: SFP = %i", sfpYN),...
+    'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left');
+
+% Behavior Summary 6
+figure; 
+if strcmp(behavLatType,'rel')
+    histBins = -1.5:0.05:1;
+else
+    histBins = 0:0.05:2;
+end
+histogram(cell2mat(pokeLatRaw(:,1,1)),histBins); 
+hold on; 
+histogram(cell2mat(pokeLatRaw(:,2,1)),histBins); 
+histogram(cell2mat(pokeLatRaw(:,1,2)),histBins); 
+histogram(cell2mat(pokeLatRaw(:,2,2)),histBins);
+legend([{'InSeq Correct'}, {'InSeq Incorrect'}, {'OutSeq Correct'}, {'OutSeq Incorrect'}]);
+xlabel('Time (s)');
+ylabel('Trial Counts');
+title('Poke Duration by Trial Type');
+
+annotation(gcf,'textbox', [0.05 0.95 0.8 0.05],...
+    'String', sprintf("Behavior Summary 6: SFP = %i", sfpYN),...
     'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left');
 %% Plot PopVects
 grpPV = cell2mat(popVects);
