@@ -10,9 +10,15 @@ fileDirs = [{'D:\WorkBigDataFiles\PFC\GE11_Session132'},...
     {'D:\WorkBigDataFiles\PFC\GE17_Session095'},...
     {'D:\WorkBigDataFiles\PFC\GE24_Session096'}];
 
-binSize = 200;
+% fileDirs = [
+%     {'D:\WorkBigDataFiles\PFC\GE13_Session083'},...
+%     {'D:\WorkBigDataFiles\PFC\GE14_Session123'},...
+%     {'D:\WorkBigDataFiles\PFC\GE17_Session095'},...
+%     {'D:\WorkBigDataFiles\PFC\GE24_Session096'}];
+
+binSize = 20;
 dsRate = 1;
-trlWindow = {[-800 1500]};
+trlWindow = {[-1000 2000]};
 alignment = {'PokeIn'};
 % trlWindow = {[-2000 800]};
 % alignment = {'PokeOut'};
@@ -30,9 +36,10 @@ popVects = cell(length(fileDirs),1);
 popVectsSortVect = cell(length(fileDirs),1);
 popVectsThreshVect = cell(length(fileDirs),1);
 % Behavior
-fiscPokeOutLat = nan(length(fileDirs),4);
-fiscRwdSigLat = nan(length(fileDirs),4);
-fiscRwdDelivLat = nan(length(fileDirs),4);
+fiscPokeOutLat = cell(length(fileDirs),4);
+fiscRwdSigLat = cell(length(fileDirs),4);
+fiscRwdDelivLat = cell(length(fileDirs),4);
+itiDur = cell(length(fileDirs),4);
 pokeLatRaw = cell(length(fileDirs),2,2);
 pokeLatOPrawC = cell(length(fileDirs),4,2);
 pokeLatOPrawI = cell(length(fileDirs),4,2);
@@ -87,9 +94,12 @@ for ani = 1:length(fileDirs)
     tmLatC = mlb.transMatLatRaw(:,:,1);
     tmLatIC = mlb.transMatLatRaw(:,:,2);
     for op = 1:mlb.seqLength
-        fiscPokeOutLat(ani,op) = mean([mlb.trialInfo(mlb.fiscTrials(op,:)).PokeOutIndex] - [mlb.trialInfo(mlb.fiscTrials(op,:)).PokeInIndex])/1000;
-        fiscRwdSigLat(ani,op) = mean([mlb.trialInfo(mlb.fiscTrials(op,:)).RewardSignalIndex] - [mlb.trialInfo(mlb.fiscTrials(op,:)).PokeInIndex])/1000;
-        fiscRwdDelivLat(ani,op) = mean([mlb.trialInfo(mlb.fiscTrials(op,:)).RewardIndex] - [mlb.trialInfo(mlb.fiscTrials(op,:)).PokeInIndex])/1000;
+        fiscPokeOutLat{ani,op} = ([mlb.trialInfo(mlb.fiscTrials(op,:)).PokeOutIndex] - [mlb.trialInfo(mlb.fiscTrials(op,:)).PokeInIndex])'/1000;
+        fiscRwdSigLat{ani,op} = ([mlb.trialInfo(mlb.fiscTrials(op,:)).RewardSignalIndex] - [mlb.trialInfo(mlb.fiscTrials(op,:)).PokeInIndex])'/1000;
+        fiscRwdDelivLat{ani,op} = ([mlb.trialInfo(mlb.fiscTrials(op,:)).RewardIndex] - [mlb.trialInfo(mlb.fiscTrials(op,:)).PokeInIndex])'/1000;
+        if op ~= 1
+            itiDur{ani,op} = ([mlb.trialInfo(mlb.fiscTrials(op,:)).PokeInIndex] - [mlb.trialInfo(mlb.fiscTrials(op,:)-1).PokeOutIndex])'/1000;
+        end
         smiByOP(ani,:,1) = mlb.smiByPos;
         smiByOP(ani,:,2) = mlb.smiByOdr;
         dPrmByOP(ani,:,1) = mlb.dPrimeByPos;
@@ -498,7 +508,7 @@ title('Poke Duration by Trial Type');
 annotation(gcf,'textbox', [0.05 0.95 0.8 0.05],...
     'String', sprintf("Behavior Summary 6: SFP = %i", sfpYN),...
     'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left');
-%% Plot PopVects
+%% Plot Neural
 grpPV = cell2mat(popVects);
 % grpPVsort = timeVect(cell2mat(popVectsSortVect));
 grpPVsort = cell2mat(popVectsSortVect);
@@ -506,6 +516,10 @@ grpPVsort = cell2mat(popVectsSortVect);
 % grpPVmaxFR(grpPVmaxFR~=100)=0;
 grpPVmaxFR = cell2mat(popVectsThreshVect);
 
+% Plot Ensemble Vectors
+pokeOutLats = cell2mat(fiscPokeOutLat(:));
+rwdSigLat = cell2mat(fiscRwdSigLat(:));
+rwdDelivLat = cell2mat(fiscRwdDelivLat(:));
 figure;
 ndxCorr = nan(mlb.seqLength);
 pvCorr = nan(mlb.seqLength);
@@ -515,7 +529,19 @@ for op1 = 1:mlb.seqLength
         sortedPV = sortrows([grpPVsort(:,op1), grpPVmaxFR(:,op2), grpPV(:,:,op2)]);
         subplot(mlb.seqLength,mlb.seqLength, sub2ind([mlb.seqLength, mlb.seqLength], op2, op1));
         imagesc(timeVect, 1:sum(sortedPV(:,2)>=frThresh), sortedPV(sortedPV(:,2)>=frThresh,3:end), [0 1]);
+        hold on;
+        plot([0 0], get(gca, 'ylim'), '-k');
+        plot(repmat(mean(pokeOutLats), [1 2]), get(gca, 'ylim'), '-k')
+        plot(repmat(mean(pokeOutLats)-std(pokeOutLats), [1,2]), get(gca, 'ylim'), '--k');
+        plot(repmat(mean(pokeOutLats)+std(pokeOutLats), [1,2]), get(gca, 'ylim'), '--k');
+        
+        plot(repmat(mean(rwdDelivLat), [1 2]), get(gca, 'ylim'), '-w')
+        plot(repmat(mean(rwdDelivLat)-std(rwdDelivLat), [1,2]), get(gca, 'ylim'), '--w');
+        plot(repmat(mean(rwdDelivLat)+std(rwdDelivLat), [1,2]), get(gca, 'ylim'), '--w');
+        set(gca, 'xtick', [0, mean(pokeOutLats), mean(rwdDelivLat)], 'xticklabel', [{'Poke'}, {'Exit'}, {'Rwd'}], 'xticklabelrotation', 45);
+        
         title(sprintf('Pos:%.0f, Sort:%.0f', op1, op2)); 
+        
         ndxCorr(op1,op2) = corr(grpPVsort(:,op1), grpPVsort(:,op2), 'rows', 'pairwise');
         tempX = grpPV(grpPVmaxFR(:,op2)>=frThresh,:,op1);
         tempY = grpPV(grpPVmaxFR(:,op2)>=frThresh,:,op2);
@@ -530,19 +556,31 @@ annotation(gcf,'textbox', [0.05 0.95 0.8 0.05],...
     binType, binSize, dsRate, trlWindow{1}(1), trlWindow{1}(2), alignment{1}, frThresh),...
     'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left');
 
-
+% Plot Ensemble Similarity Summaries
+pvCorrByPos = nan(mlb.seqLength, mlb.seqLength, size(grpPV,1));
+for uni = 1:size(grpPV,1)
+    for op1 = 1:mlb.seqLength
+        for op2 = 1:mlb.seqLength
+            pvCorrByPos(op2,op1,uni) = corr(grpPV(uni,:,op1)', grpPV(uni,:,op2)');
+%             pvCorrByPos(op2,op1,uni) = 1-pdist([grpPV(uni,:,op1); grpPV(uni,:,op2)], 'cosine');
+        end
+    end
+end
 figure; 
 subplot(1,2,1);
-imagesc(ndxCorr, [0 1]);
-title('Max FR Index Similarity');
+imagesc(mean(pvCorrByPos,3, 'omitnan'), [0 0.5]);
+title('Individual Cell FR Similarity');
+colorbar;
 subplot(1,2,2);
-imagesc(pvCorr, [0 1]);
+imagesc(pvCorr, [0 0.75]);
 title('Population Vector Similarity');
+colorbar;
 annotation(gcf,'textbox', [0.05 0.95 0.8 0.05],...
     'String', sprintf("Trial Position Correlations:\n     binType = %s, binSize = %.0fms, dsRate = %.0fms, Trial Window = (%.0fms:%.0fms to %s), FR Threshold = %.02f spk/s",...
     binType, binSize, dsRate, trlWindow{1}(1), trlWindow{1}(2), alignment{1}, frThresh),...
     'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left');
 
+% Plot PV Correlation Over Time
 figure;
 for op1 = 1:mlb.seqLength
     for op2 = 1:mlb.seqLength
@@ -550,6 +588,15 @@ for op1 = 1:mlb.seqLength
         plot(timeVect, reshape(pvCorrTime(op1,op2,:), [1,size(pvCorrTime,3)]));
         axis tight;
         set(gca, 'ylim', [0 1]);
+        hold on;
+        plot([0 0], get(gca, 'ylim'), '-k');
+        plot(repmat(mean(pokeOutLats), [1 2]), get(gca, 'ylim'), '-k');
+        plot(repmat(mean(pokeOutLats)-std(pokeOutLats), [1,2]), get(gca, 'ylim'), '--k');
+        plot(repmat(mean(pokeOutLats)+std(pokeOutLats), [1,2]), get(gca, 'ylim'), '--k');
+        plot(repmat(mean(rwdDelivLat), [1 2]), get(gca, 'ylim'), '-r');
+        plot(repmat(mean(rwdDelivLat)-std(rwdDelivLat), [1,2]), get(gca, 'ylim'), '--r');
+        plot(repmat(mean(rwdDelivLat)+std(rwdDelivLat), [1,2]), get(gca, 'ylim'), '--r');
+        set(gca, 'xtick', [0, mean(pokeOutLats), mean(rwdDelivLat)], 'xticklabel', [{'Poke'}, {'Exit'}, {'Rwd'}], 'xticklabelrotation', 45);
     end
 end
 annotation(gcf,'textbox', [0.05 0.95 0.8 0.05],...
@@ -557,7 +604,9 @@ annotation(gcf,'textbox', [0.05 0.95 0.8 0.05],...
     binType, binSize, dsRate, trlWindow{1}(1), trlWindow{1}(2), alignment{1}, frThresh),...
     'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left');
 
+% Plot Temporal Remapping
 figure;
+propStable = cell(mlb.seqLength);
 for op1 = 1:mlb.seqLength
     for op2 = 1:mlb.seqLength
         subplot(mlb.seqLength, mlb.seqLength, sub2ind([mlb.seqLength, mlb.seqLength], op2, op1));
@@ -567,6 +616,19 @@ for op1 = 1:mlb.seqLength
             tempCounts(:,t) = tempCounts(:,t)/sum(tempCounts(:,t));
         end
         imagesc(xedge(2:end)-mode(diff(xedge))/2, yedge(2:end)-mode(diff(yedge))/2, tempCounts, [0 0.5]);
+        propStable{op2,op1} = tempCounts(logical(eye(size(tempCounts))));
+        hold on;
+        plot([0 0], get(gca, 'ylim'), '-k');                                                plot(get(gca, 'xlim'), [0 0], '-k');                
+        plot(repmat(mean(pokeOutLats), [1 2]), get(gca, 'ylim'), '-k');                     plot(get(gca, 'xlim'), repmat(mean(pokeOutLats), [1 2]), '-k')
+        plot(repmat(mean(pokeOutLats)-std(pokeOutLats), [1,2]), get(gca, 'ylim'), '--k');   plot(get(gca, 'xlim'),repmat(mean(pokeOutLats)-std(pokeOutLats), [1,2]), '--k');
+        plot(repmat(mean(pokeOutLats)+std(pokeOutLats), [1,2]), get(gca, 'ylim'), '--k');   plot(get(gca, 'xlim'),repmat(mean(pokeOutLats)+std(pokeOutLats), [1,2]), '--k');
+        
+        plot(repmat(mean(rwdDelivLat), [1 2]), get(gca, 'ylim'), '-w');                     plot(get(gca, 'xlim'),repmat(mean(rwdDelivLat), [1 2]), '-w');
+        plot(repmat(mean(rwdDelivLat)-std(rwdDelivLat), [1,2]), get(gca, 'ylim'), '--w');   plot(get(gca, 'xlim'),repmat(mean(rwdDelivLat)-std(rwdDelivLat), [1,2]), '--w');
+        plot(repmat(mean(rwdDelivLat)+std(rwdDelivLat), [1,2]), get(gca, 'ylim'), '--w');   plot(get(gca, 'xlim'),repmat(mean(rwdDelivLat)+std(rwdDelivLat), [1,2]), '--w');
+        set(gca, 'xtick', [0, mean(pokeOutLats), mean(rwdDelivLat)], 'xticklabel', [{'Poke'}, {'Exit'}, {'Rwd'}], 'xticklabelrotation', 20,...
+            'ytick', [0, mean(pokeOutLats), mean(rwdDelivLat)], 'yticklabel', [{'Poke'}, {'Exit'}, {'Rwd'}]);
+        
         set(gca, 'ydir','normal');
     end
 end
@@ -575,7 +637,22 @@ annotation(gcf,'textbox', [0.05 0.95 0.8 0.05],...
     binType, binSize, dsRate, trlWindow{1}(1), trlWindow{1}(2), alignment{1}, frThresh),...
     'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left');
 
+% Plot Proportion Stable Cells
+permPropStable = cellfun(@(a){a'},propStable);
+proStableDiag = permPropStable(~logical(eye(4)));
+figure; 
+plot(xedge(2:end)-mode(diff(xedge))/2, cell2mat(proStableDiag)');
+hold on;
+plot([0 0], get(gca, 'ylim'), '-k');
+plot(repmat(mean(pokeOutLats), [1 2]), get(gca, 'ylim'), '-k');
+plot(repmat(mean(pokeOutLats)-std(pokeOutLats), [1,2]), get(gca, 'ylim'), '--k');
+plot(repmat(mean(pokeOutLats)+std(pokeOutLats), [1,2]), get(gca, 'ylim'), '--k');
+plot(repmat(mean(rwdDelivLat), [1 2]), get(gca, 'ylim'), '-r');
+plot(repmat(mean(rwdDelivLat)-std(rwdDelivLat), [1,2]), get(gca, 'ylim'), '--r');
+plot(repmat(mean(rwdDelivLat)+std(rwdDelivLat), [1,2]), get(gca, 'ylim'), '--r');
 
+
+% Plot Max Rate & Time Remapping
 rateTimeRemap = nan(size(grpPVmaxFR,1),2);
 timeRateRemap = nan(size(grpPVmaxFR,1),2);
 meanMaxFR = mean(grpPVmaxFR,2);
@@ -608,6 +685,7 @@ annotation(gcf,'textbox', [0.05 0.95 0.8 0.05],...
     binType, binSize, dsRate, trlWindow{1}(1), trlWindow{1}(2), alignment{1}, frThresh),...
     'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left');
 
+% Plot Rate & Time Remapping Across Positions
 figure;
 for op1 = 1:mlb.seqLength
     for op2 = 1:mlb.seqLength
