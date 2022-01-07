@@ -12,10 +12,10 @@ fileDirs = [{'D:\WorkBigDataFiles\PFC\GE11_Session132'},...
 
 binSize = 200;
 dsRate = 50;
-% trlWindow = {[-800 1500]};
-% alignment = {'PokeIn'};
-trlWindow = {[-2000 800]};
-alignment = {'PokeOut'};
+trlWindow = {[-1000 2000]};
+alignment = {'PokeIn'};
+% trlWindow = {[-2000 800]};
+% alignment = {'PokeOut'};
 lfpWindow = [16 32];
 numPerms = 100;
 ssProportion = 0.4;
@@ -26,6 +26,8 @@ postCLim = [0 0.05];
 decodeCLim = [0 0.2];
 
 %% Create Output Variables
+fiscPokeOutLat = cell(length(fileDirs),1);
+fiscRwdDelivLat = cell(length(fileDirs),1);
 % fiscLOO analysis
 fiscLOO_Posts = cell(size(fileDirs));
 fiscLOO_Decodes = cell(3,1,length(fileDirs));
@@ -54,6 +56,9 @@ for ani = 1:length(fileDirs)
     mlb.ssType = ssType;
     mlb.bayesType = bayesType;
     
+    %% Extract Behavioral Variables
+    fiscPokeOutLat{ani} = ([mlb.trialInfo(mlb.fiscTrials).PokeOutIndex] - [mlb.trialInfo(mlb.fiscTrials).PokeInIndex])'/1000;
+    fiscRwdDelivLat{ani} = ([mlb.trialInfo(mlb.fiscTrials).RewardIndex] - [mlb.trialInfo(mlb.fiscTrials).PokeInIndex])'/1000;
     %% Decode FISC via Leave-1-Out
 %     trialIDs = [{'Time'}, {'Window'}, {'Position'}, {'Odor'}];
     mlb.SetLikes_FISC;
@@ -184,7 +189,10 @@ for ani = 1:length(fileDirs)
     end
 end
 
-
+pokeOutLats = cell2mat(fiscPokeOutLat(:));
+nearestPOtime = mlb.obsvTimeVect(find(mlb.obsvTimeVect<median(pokeOutLats),1,'last'));
+rwdDelivLat = cell2mat(fiscRwdDelivLat(:));
+nearestRWDtime = mlb.obsvTimeVect(find(mlb.obsvTimeVect<median(rwdDelivLat),1,'last'));
 %% Plot FISC Leave-One-Out
 figure;
 sp1 = subplot(5,5,[2:5,7:10,12:15, 17:20]);
@@ -192,10 +200,17 @@ imagesc(mean(cell2mat(reshape(fiscLOO_Posts, [1,1,numel(fiscLOO_Posts)])),3, 'om
 set(gca, 'ydir', 'normal', 'ytick', [], 'xtick', []);
 hold on
 piNdx = find(mlb.likeTimeVect==0)+0.5;
+poNdx = find(mlb.likeTimeVect==nearestPOtime)+0.5;
+rwdNdx = find(mlb.likeTimeVect==nearestRWDtime)+0.5;
 posNdx = find(diff(mlb.likeTimeVect)<0)+0.5;
 for ndx = 1:length(piNdx)
     plot(repmat(piNdx(ndx), [1,2]), get(gca, 'ylim'), '--k','linewidth', 2);
+    plot(repmat(poNdx(ndx), [1,2]), get(gca, 'ylim'), '--k','linewidth', 2);
+    plot(repmat(rwdNdx(ndx), [1,2]), get(gca, 'ylim'), ':k','linewidth', 2);
     plot(get(gca, 'xlim'),repmat(piNdx(ndx), [1,2]), '--k','linewidth', 2);
+    plot(get(gca, 'xlim'),repmat(poNdx(ndx), [1,2]), '--k','linewidth', 2);
+    plot(get(gca, 'xlim'),repmat(rwdNdx(ndx), [1,2]), ':k','linewidth', 2);
+
     if ndx<length(piNdx)
         plot(repmat(posNdx(ndx), [1,2]), get(gca, 'ylim'), '-k','linewidth', 2);
         plot(get(gca, 'xlim'),repmat(posNdx(ndx), [1,2]), '-k','linewidth', 2);
@@ -207,8 +222,12 @@ sp2 = subplot(5,5,1:5:16);
 imagesc(mlb.obsvTimeVect, 1:length(mlb.likeTimeVect), mean(cell2mat(fiscLOO_Decodes(1,1,:)),3), decodeCLim);
 hold on;
 plot([0 0], get(gca,'ylim'), '--k', 'linewidth', 2);
+plot(repmat(nearestPOtime, [1,2]), get(gca, 'ylim'), '--k', 'linewidth', 2);
+plot(repmat(nearestRWDtime, [1,2]), get(gca, 'ylim'), ':k', 'linewidth', 2);
 for ndx = 1:length(piNdx)
     plot(get(gca, 'xlim'), repmat(piNdx(ndx), [1,2]), '--k', 'linewidth', 2);
+    plot(get(gca, 'xlim'),repmat(poNdx(ndx), [1,2]), '--k','linewidth', 2);
+    plot(get(gca, 'xlim'),repmat(rwdNdx(ndx), [1,2]), ':k','linewidth', 2);
     if ndx<length(piNdx)
         plot(get(gca, 'xlim'), repmat(posNdx(ndx),[1,2]), '-k', 'linewidth', 2);
     end
@@ -230,8 +249,10 @@ for p = 1:size(fiscLOO_Decodes{2,1,1},2)
     piNdx = find(mlb.likeTimeVect==0);
     for ndx = 1:length(piNdx)
         plot(repmat(piNdx(ndx), [1,2]),[0 1], '--k','linewidth', 1);
+        plot(repmat(poNdx(ndx), [1,2]), get(gca, 'ylim'), '--k','linewidth', 1);
+        plot(repmat(rwdNdx(ndx), [1,2]), get(gca, 'ylim'), ':k','linewidth', 1);
         if ndx<length(piNdx)
-            plot(repmat(posNdx(ndx), [1,2]), get(gca, 'ylim'), '-k','linewidth', 1);
+            plot(repmat(posNdx(ndx), [1,2]), get(gca, 'ylim'), '-k','linewidth', 2);
         end
     end
 end
@@ -260,8 +281,15 @@ for p = 1:size(fiscISC_Posts{1},3)
     plot(get(gca, 'xlim'), repmat(find(mlb.obsvTimeVect==0)+0.5, [1,2]), '--k', 'linewidth', 2);
     set(gca, 'ydir', 'normal', 'xtick', [], 'ytick', []);
     piNdx = find(mlb.likeTimeVect==0)+0.5;
+    poNdx = find(mlb.likeTimeVect==nearestPOtime)+0.5;
+    rwdNdx = find(mlb.likeTimeVect==nearestRWDtime)+0.5;
     for ndx = 1:length(piNdx)
         plot(repmat(piNdx(ndx), [1,2]), get(gca, 'ylim'), '--k','linewidth', 2);
+        plot(repmat(poNdx(ndx), [1,2]), get(gca, 'ylim'), '--k','linewidth', 2);
+        plot(repmat(rwdNdx(ndx), [1,2]), get(gca, 'ylim'), ':k','linewidth', 2);
+        if ndx<length(piNdx)
+            plot(repmat(posNdx(ndx), [1,2]), get(gca, 'ylim'), '-k','linewidth', 2);
+        end
     end
     if p==size(fiscISC_Posts{1},3)
         title('Posteriors');
@@ -271,7 +299,11 @@ for p = 1:size(fiscISC_Posts{1},3)
     imagesc(mlb.obsvTimeVect,mlb.obsvTimeVect,mean(cell2mat(cellfun(@(a)a(:,:,p), fiscISC_Decodes(1,1,:), 'uniformoutput',0)),3), decodeCLim);
     hold on;
     plot([0 0], get(gca, 'ylim'), '--k', 'linewidth', 2);
+    plot(repmat(nearestPOtime, [1,2]), get(gca, 'ylim'), '--k', 'linewidth', 2);
+    plot(repmat(nearestRWDtime, [1,2]), get(gca, 'ylim'), ':k', 'linewidth', 2);
     plot(get(gca, 'xlim'), [0 0], '--k', 'linewidth', 2);
+    plot(get(gca, 'xlim'), repmat(nearestPOtime, [1,2]), '--k', 'linewidth', 2);
+    plot(get(gca, 'xlim'), repmat(nearestRWDtime, [1,2]), ':k', 'linewidth', 2);
     set(gca, 'ydir', 'normal');
     ylabel(sprintf('%s/%i', mlb.Rosetta{p}, p));
     if p==size(fiscISC_Posts{1},3)
@@ -283,18 +315,19 @@ for p = 1:size(fiscISC_Posts{1},3)
     for o = 1:size(tempAcc,2)
         meanPosAcc = mean(tempAcc(:,o,:),3, 'omitnan');
         varPosAcc = mlb.SEMcalc(tempAcc(:,o,:),0,3);
-        plot(meanPosAcc, 'color', mlb.PositionColors(o,:));
+        plot(mlb.obsvTimeVect, meanPosAcc, 'color', mlb.PositionColors(o,:));
         hold on;
-        patch('XData', [1:size(tempAcc,1), size(tempAcc,1):-1:1],...
+        patch('XData', [mlb.obsvTimeVect; flipud(mlb.obsvTimeVect)]',...
             'YData', [(meanPosAcc+varPosAcc)', flipud(meanPosAcc-varPosAcc)'], 'edgecolor', mlb.PositionColors(o,:),...
             'facecolor', mlb.PositionColors(o,:), 'facealpha', 0.5);
         set(gca, 'xtick', [], 'color', 'none');
         box off
         axis tight
         title(sprintf('%s/%i', mlb.Rosetta{p}, p));
-        piNdx = find(mlb.obsvTimeVect==0)+0.5;
         for ndx = 1:length(piNdx)
-            plot(repmat(piNdx(ndx), [1,2]), [0 1], '--k');
+            plot([0 0], [0 1], '--k');
+            plot(repmat(nearestPOtime, [1,2]), get(gca, 'ylim'), '--k', 'linewidth', 1);
+            plot(repmat(nearestRWDtime, [1,2]), get(gca, 'ylim'), ':k', 'linewidth', 1);
         end
     end
 end
@@ -320,6 +353,11 @@ for p = 1:size(iscBS_Posts{1},3)
     piNdx = find(mlb.likeTimeVect==0)+0.5;
     for ndx = 1:length(piNdx)
         plot(repmat(piNdx(ndx), [1,2]), get(gca, 'ylim'), '--k','linewidth', 2);
+        plot(repmat(poNdx(ndx), [1,2]), get(gca, 'ylim'), '--k','linewidth', 2);
+        plot(repmat(rwdNdx(ndx), [1,2]), get(gca, 'ylim'), ':k','linewidth', 2);
+        if ndx<length(piNdx)
+            plot(repmat(posNdx(ndx), [1,2]), get(gca, 'ylim'), '-k','linewidth', 2);
+        end
     end
     if p==size(fiscISC_Posts{1},3)
         title('Posteriors');
@@ -329,7 +367,11 @@ for p = 1:size(iscBS_Posts{1},3)
     imagesc(mlb.obsvTimeVect,mlb.obsvTimeVect,mean(cell2mat(cellfun(@(a)a(:,:,p), iscBS_Decodes(1,1,:), 'uniformoutput',0)),3), decodeCLim);
     hold on;
     plot([0 0], get(gca, 'ylim'), '--k', 'linewidth', 2);
+    plot(repmat(nearestPOtime, [1,2]), get(gca, 'ylim'), '--k', 'linewidth', 2);
+    plot(repmat(nearestRWDtime, [1,2]), get(gca, 'ylim'), ':k', 'linewidth', 2);
     plot(get(gca, 'xlim'), [0 0], '--k', 'linewidth', 2);
+    plot(get(gca, 'xlim'), repmat(nearestPOtime, [1,2]), '--k', 'linewidth', 2);
+    plot(get(gca, 'xlim'), repmat(nearestRWDtime, [1,2]), ':k', 'linewidth', 2);
     set(gca, 'ydir', 'normal');
     ylabel(sprintf('%s/%i', mlb.Rosetta{p}, p));
     if p==size(iscBS_Posts{1},3)
@@ -341,18 +383,19 @@ for p = 1:size(iscBS_Posts{1},3)
     for o = 1:size(tempAcc,2)
         meanPosAcc = mean(tempAcc(:,o,:),3, 'omitnan');
         varPosAcc = mlb.SEMcalc(tempAcc(:,o,:),0,3);
-        plot(meanPosAcc, 'color', mlb.PositionColors(o,:));
+        plot(mlb.obsvTimeVect, meanPosAcc, 'color', mlb.PositionColors(o,:));
         hold on;
-        patch('XData', [1:size(tempAcc,1), size(tempAcc,1):-1:1],...
+        patch('XData', [mlb.obsvTimeVect; flipud(mlb.obsvTimeVect)]',...
             'YData', [(meanPosAcc+varPosAcc)', flipud(meanPosAcc-varPosAcc)'], 'edgecolor', mlb.PositionColors(o,:),...
             'facecolor', mlb.PositionColors(o,:), 'facealpha', 0.5);
         set(gca, 'xtick', [], 'color', 'none');
         box off
         axis tight
         title(sprintf('%s/%i', mlb.Rosetta{p}, p));
-        piNdx = find(mlb.obsvTimeVect==0)+0.5;
         for ndx = 1:length(piNdx)
-            plot(repmat(piNdx(ndx), [1,2]), [0 1], '--k');
+            plot([0 0], [0 1], '--k');
+            plot(repmat(nearestPOtime, [1,2]), get(gca, 'ylim'), '--k', 'linewidth', 1);
+            plot(repmat(nearestRWDtime, [1,2]), get(gca, 'ylim'), ':k', 'linewidth', 1);
         end
     end
 end
