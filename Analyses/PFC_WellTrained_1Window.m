@@ -3,13 +3,18 @@
 %     {'D:\WorkBigDataFiles\PFC\Files To Process\GE14\GE14_Session123'},...
 %     {'D:\WorkBigDataFiles\PFC\Files To Process\GE17\GE17_Session095'},...
 %     {'D:\WorkBigDataFiles\PFC\Files To Process\GE24\Session096'}];
-
+% 
 fileDirs = [{'D:\WorkBigDataFiles\PFC\GE11_Session132'},...
     {'D:\WorkBigDataFiles\PFC\GE13_Session083'},...
     {'D:\WorkBigDataFiles\PFC\GE14_Session123'},...
     {'D:\WorkBigDataFiles\PFC\GE17_Session095'},...
     {'D:\WorkBigDataFiles\PFC\GE24_Session096'}];
-
+% 
+% fileDirs = [
+%     {'D:\WorkBigDataFiles\PFC\GE13_Session083'},...
+%     {'D:\WorkBigDataFiles\PFC\GE14_Session123'},...
+%     {'D:\WorkBigDataFiles\PFC\GE17_Session095'},...
+%     {'D:\WorkBigDataFiles\PFC\GE24_Session096'}];
 binSize = 200;
 dsRate = 50;
 trlWindow = {[-1000 2000]};
@@ -26,8 +31,15 @@ postCLim = [0 0.05];
 decodeCLim = [0 0.2];
 
 %% Create Output Variables
+% Behavior Variables
 fiscPokeOutLat = cell(length(fileDirs),1);
 fiscRwdDelivLat = cell(length(fileDirs),1);
+smi = nan(length(fileDirs),1);
+dPrm = nan(length(fileDirs),1);
+ri = nan(length(fileDirs),1);
+smiByOP = nan(length(fileDirs),4,2);
+dPrmByOP = nan(length(fileDirs),4,2);
+riByOP = nan(length(fileDirs),4,2);
 % fiscLOO analysis
 fiscLOO_Posts = cell(size(fileDirs));
 fiscLOO_Decodes = cell(3,1,length(fileDirs));
@@ -59,6 +71,17 @@ for ani = 1:length(fileDirs)
     %% Extract Behavioral Variables
     fiscPokeOutLat{ani} = ([mlb.trialInfo(mlb.fiscTrials).PokeOutIndex] - [mlb.trialInfo(mlb.fiscTrials).PokeInIndex])'/1000;
     fiscRwdDelivLat{ani} = ([mlb.trialInfo(mlb.fiscTrials).RewardIndex] - [mlb.trialInfo(mlb.fiscTrials).PokeInIndex])'/1000;
+    smi(ani) = mlb.smi;
+    dPrm(ani) = mlb.dPrime;
+    ri(ani) = mlb.ri;
+    for op = 1:mlb.seqLength
+        smiByOP(ani,:,1) = mlb.smiByPos;
+        smiByOP(ani,:,2) = mlb.smiByOdr;
+        dPrmByOP(ani,:,1) = mlb.dPrimeByPos;
+        dPrmByOP(ani,:,2) = mlb.dPrimeByOdr;
+        riByOP(ani,:,1) = mlb.riByPos;
+        riByOP(ani,:,2) = mlb.riByOdr;
+    end
     %% Decode FISC via Leave-1-Out
 %     trialIDs = [{'Time'}, {'Window'}, {'Position'}, {'Odor'}];
     mlb.SetLikes_FISC;
@@ -269,6 +292,91 @@ annotation(gcf,'textbox', [0.1 0.95 0.9 0.05],...
     binSize, dsRate, trlWindow{1}(1), trlWindow{1}(2), alignment{1}, numPerms, ssProportion, ssType, bayesType),...
     'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left');
 
+%%
+opSMIcorrVect = nan(size(mlb.obsvTimeVect));
+opDPcorrVect = nan(size(mlb.obsvTimeVect));
+opRIcorrVect = nan(size(mlb.obsvTimeVect));
+for t = 1:length(mlb.obsvTimeVect)
+    tempDecode = nan(length(fileDirs), mlb.seqLength);
+    tempTimeNdx = find(mlb.likeTimeVect==mlb.obsvTimeVect(t));
+    for ani = 1:length(fileDirs)
+        for op = 1:mlb.seqLength
+            tempDecode(ani,op) = tempPosAcc(tempTimeNdx(op),op,ani);
+        end
+    end    
+    opSMIcorrVect(t) = corr(tempDecode(:), reshape(smiByOP(:,:,1), [numel(smiByOP(:,:,1)),1]), 'Rows', 'pairwise');
+    opDPcorrVect(t) = corr(tempDecode(:), reshape(dPrmByOP(:,:,1), [numel(dPrmByOP(:,:,1)),1]), 'Rows', 'pairwise');
+    opRIcorrVect(t) = corr(tempDecode(:), reshape(riByOP(:,:,1), [numel(riByOP(:,:,1)),1]), 'Rows', 'pairwise');
+end
+figure; 
+subplot(3,1,1)
+plot(mlb.obsvTimeVect, opSMIcorrVect, '-k', 'linewidth', 2);
+hold on;
+plot(mlb.obsvTimeVect, opDPcorrVect, '--k', 'linewidth', 2);
+plot(mlb.obsvTimeVect, opRIcorrVect, ':k', 'linewidth', 2);
+title('Behavior Correlates vs Position');
+
+
+opSMIcorrVect = nan(size(mlb.obsvTimeVect));
+opDPcorrVect = nan(size(mlb.obsvTimeVect));
+opRIcorrVect = nan(size(mlb.obsvTimeVect));
+for t = 1:length(mlb.obsvTimeVect)
+    tempDecode = nan(length(fileDirs), mlb.seqLength);
+    tempTimeNdx = find(mlb.likeTimeVect==mlb.obsvTimeVect(t));
+    for ani = 1:length(fileDirs)
+        for op = 1:mlb.seqLength
+            tempDecode(ani,op) = tempPosAcc(tempTimeNdx(op),op,ani);
+        end
+    end    
+    opSMIcorrVect(t) = corr(tempDecode(:), reshape(smiByOP(:,:,2), [numel(smiByOP(:,:,2)),1]), 'Rows', 'pairwise');
+    opDPcorrVect(t) = corr(tempDecode(:), reshape(dPrmByOP(:,:,2), [numel(dPrmByOP(:,:,2)),1]), 'Rows', 'pairwise');
+    opRIcorrVect(t) = corr(tempDecode(:), reshape(riByOP(:,:,2), [numel(riByOP(:,:,2)),1]), 'Rows', 'pairwise');
+end
+subplot(3,1,2)
+plot(mlb.obsvTimeVect, opSMIcorrVect, '-k', 'linewidth', 2);
+hold on;
+plot(mlb.obsvTimeVect, opDPcorrVect, '--k', 'linewidth', 2);
+plot(mlb.obsvTimeVect, opRIcorrVect, ':k', 'linewidth', 2);
+title('Behavior Correlates vs Odor');
+
+opSMIcorrVect = nan(size(mlb.obsvTimeVect));
+opDPcorrVect = nan(size(mlb.obsvTimeVect));
+opRIcorrVect = nan(size(mlb.obsvTimeVect));
+for t = 1:length(mlb.obsvTimeVect)
+    tempDecode = nan(length(fileDirs), mlb.seqLength-1);
+    tempTimeNdx = find(mlb.likeTimeVect==mlb.obsvTimeVect(t));
+    for ani = 1:length(fileDirs)
+        for op = 2:mlb.seqLength
+            tempDecode(ani,op-1) = tempPosAcc(tempTimeNdx(op),op,ani);
+        end
+    end    
+    opSMIcorrVect(t) = corr(tempDecode(:), reshape(smiByOP(:,2:end,2), [numel(smiByOP(:,2:end,2)),1]), 'Rows', 'pairwise');
+    opDPcorrVect(t) = corr(tempDecode(:), reshape(dPrmByOP(:,2:end,2), [numel(dPrmByOP(:,2:end,2)),1]), 'Rows', 'pairwise');
+    opRIcorrVect(t) = corr(tempDecode(:), reshape(riByOP(:,2:end,2), [numel(riByOP(:,2:end,2)),1]), 'Rows', 'pairwise');
+end
+subplot(3,1,3)
+plot(mlb.obsvTimeVect, opSMIcorrVect, '-k', 'linewidth', 2);
+hold on;
+plot(mlb.obsvTimeVect, opDPcorrVect, '--k', 'linewidth', 2);
+plot(mlb.obsvTimeVect, opRIcorrVect, ':k', 'linewidth', 2);
+title('Behavior Correlates vs Odors B-D');
+
+linkaxes;
+for sp = 1:3
+    subplot(3,1,sp)
+    plot(get(gca, 'xlim'), [0 0], '-k');
+    plot([0 0], get(gca, 'ylim'), '--k');
+    plot(repmat(nearestPOtime, [1,2]), get(gca, 'ylim'), '--k', 'linewidth', 1);
+    plot(repmat(nearestRWDtime, [1,2]), get(gca, 'ylim'), ':k', 'linewidth', 1);
+end
+legend([{'SMI'}, {'d'''}, {'RI'}]);
+
+
+annotation(gcf,'textbox', [0.1 0.95 0.9 0.05],...
+    'String', sprintf("FISC Leave-One-Out Group: binSize = %.0fms, dsRate = %.0fms, Trial Window = (%.0fms:%.0fms to %s), NumPerms = %.0f, Subsample Proportion = %.01f, Subsample Type = %.0f, BayesType = %.0f",...
+    binSize, dsRate, trlWindow{1}(1), trlWindow{1}(2), alignment{1}, numPerms, ssProportion, ssType, bayesType),...
+    'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left');
+
 %% Plot FISC ISC Analysis
 figure;
 tempPosAcc = fiscISC_Decodes(2,1,:);
@@ -332,6 +440,89 @@ for p = 1:size(fiscISC_Posts{1},3)
     end
 end
 linkaxes(sps, 'xy');
+
+annotation(gcf,'textbox', [0.05 0.95 0.8 0.05],...
+    'String', sprintf("FISC Decode ISC Group: binSize = %.0fms, dsRate = %.0fms, Trial Window = (%.0fms:%.0fms to %s), NumPerms = %.0f, Subsample Proportion = %.01f, Subsample Type = %.0f, BayesType = %.0f",...
+    binSize, dsRate, trlWindow{1}(1), trlWindow{1}(2), alignment{1}, numPerms, ssProportion, ssType, bayesType),...
+    'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left');
+
+
+%%
+opSMIcorrVect = nan(size(mlb.obsvTimeVect));
+opDPcorrVect = nan(size(mlb.obsvTimeVect));
+opRIcorrVect = nan(size(mlb.obsvTimeVect));
+for t = 1:length(mlb.obsvTimeVect)
+    tempDecode = nan(length(fileDirs), mlb.seqLength);
+    for ani = 1:length(fileDirs)
+        for op = 1:mlb.seqLength
+            tempDecode(ani,op) = fiscISC_Decodes{2,1,ani}(t,op,op);
+        end
+    end    
+    opSMIcorrVect(t) = corr(tempDecode(:), reshape(smiByOP(:,:,1), [numel(smiByOP(:,:,1)),1]), 'Rows', 'pairwise');
+    opDPcorrVect(t) = corr(tempDecode(:), reshape(dPrmByOP(:,:,1), [numel(dPrmByOP(:,:,1)),1]), 'Rows', 'pairwise');
+    opRIcorrVect(t) = corr(tempDecode(:), reshape(riByOP(:,:,1), [numel(riByOP(:,:,1)),1]), 'Rows', 'pairwise');
+end
+figure; 
+subplot(3,1,1)
+plot(mlb.obsvTimeVect, opSMIcorrVect, '-k', 'linewidth', 2);
+hold on;
+plot(mlb.obsvTimeVect, opDPcorrVect, '--k', 'linewidth', 2);
+plot(mlb.obsvTimeVect, opRIcorrVect, ':k', 'linewidth', 2);
+title('Behavior Correlates vs Position');
+
+
+opSMIcorrVect = nan(size(mlb.obsvTimeVect));
+opDPcorrVect = nan(size(mlb.obsvTimeVect));
+opRIcorrVect = nan(size(mlb.obsvTimeVect));
+for t = 1:length(mlb.obsvTimeVect)
+    tempDecode = nan(length(fileDirs), mlb.seqLength);
+    for ani = 1:length(fileDirs)
+        for op = 1:mlb.seqLength
+            tempDecode(ani,op) = fiscISC_Decodes{3,1,ani}(t,op,op);
+        end
+    end    
+    opSMIcorrVect(t) = corr(tempDecode(:), reshape(smiByOP(:,:,2), [numel(smiByOP(:,:,2)),1]), 'Rows', 'pairwise');
+    opDPcorrVect(t) = corr(tempDecode(:), reshape(dPrmByOP(:,:,2), [numel(dPrmByOP(:,:,2)),1]), 'Rows', 'pairwise');
+    opRIcorrVect(t) = corr(tempDecode(:), reshape(riByOP(:,:,2), [numel(riByOP(:,:,2)),1]), 'Rows', 'pairwise');
+end
+subplot(3,1,2)
+plot(mlb.obsvTimeVect, opSMIcorrVect, '-k', 'linewidth', 2);
+hold on;
+plot(mlb.obsvTimeVect, opDPcorrVect, '--k', 'linewidth', 2);
+plot(mlb.obsvTimeVect, opRIcorrVect, ':k', 'linewidth', 2);
+title('Behavior Correlates vs Odor');
+
+opSMIcorrVect = nan(size(mlb.obsvTimeVect));
+opDPcorrVect = nan(size(mlb.obsvTimeVect));
+opRIcorrVect = nan(size(mlb.obsvTimeVect));
+for t = 1:length(mlb.obsvTimeVect)
+    tempDecode = nan(length(fileDirs), mlb.seqLength-1);
+    for ani = 1:length(fileDirs)
+        for op = 2:mlb.seqLength
+            tempDecode(ani,op-1) = fiscISC_Decodes{3,1,ani}(t,op,op);
+        end
+    end    
+    opSMIcorrVect(t) = corr(tempDecode(:), reshape(smiByOP(:,2:end,2), [numel(smiByOP(:,2:end,2)),1]), 'Rows', 'pairwise');
+    opDPcorrVect(t) = corr(tempDecode(:), reshape(dPrmByOP(:,2:end,2), [numel(dPrmByOP(:,2:end,2)),1]), 'Rows', 'pairwise');
+    opRIcorrVect(t) = corr(tempDecode(:), reshape(riByOP(:,2:end,2), [numel(riByOP(:,2:end,2)),1]), 'Rows', 'pairwise');
+end
+subplot(3,1,3)
+plot(mlb.obsvTimeVect, opSMIcorrVect, '-k', 'linewidth', 2);
+hold on;
+plot(mlb.obsvTimeVect, opDPcorrVect, '--k', 'linewidth', 2);
+plot(mlb.obsvTimeVect, opRIcorrVect, ':k', 'linewidth', 2);
+title('Behavior Correlates vs Odors B-D');
+
+linkaxes;
+for sp = 1:3
+    subplot(3,1,sp)
+    plot(get(gca, 'xlim'), [0 0], '-k');
+    plot([0 0], get(gca, 'ylim'), '--k');
+    plot(repmat(nearestPOtime, [1,2]), get(gca, 'ylim'), '--k', 'linewidth', 1);
+    plot(repmat(nearestRWDtime, [1,2]), get(gca, 'ylim'), ':k', 'linewidth', 1);
+end
+legend([{'SMI'}, {'d'''}, {'RI'}]);
+
 
 annotation(gcf,'textbox', [0.05 0.95 0.8 0.05],...
     'String', sprintf("FISC Decode ISC Group: binSize = %.0fms, dsRate = %.0fms, Trial Window = (%.0fms:%.0fms to %s), NumPerms = %.0f, Subsample Proportion = %.01f, Subsample Type = %.0f, BayesType = %.0f",...
@@ -406,5 +597,86 @@ annotation(gcf,'textbox', [0.05 0.95 0.8 0.05],...
     binSize, dsRate, trlWindow{1}(1), trlWindow{1}(2), alignment{1}, numPerms, ssProportion, ssType, bayesType),...
     'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left');
 
+
+%%
+opSMIcorrVect = nan(size(mlb.obsvTimeVect));
+opDPcorrVect = nan(size(mlb.obsvTimeVect));
+opRIcorrVect = nan(size(mlb.obsvTimeVect));
+for t = 1:length(mlb.obsvTimeVect)
+    tempDecode = nan(length(fileDirs), mlb.seqLength);
+    for ani = 1:length(fileDirs)
+        for op = 1:mlb.seqLength
+            tempDecode(ani,op) = iscBS_Decodes{2,1,ani}(t,op,op);
+        end
+    end    
+    opSMIcorrVect(t) = corr(tempDecode(:), reshape(smiByOP(:,:,1), [numel(smiByOP(:,:,1)),1]), 'Rows', 'pairwise');
+    opDPcorrVect(t) = corr(tempDecode(:), reshape(dPrmByOP(:,:,1), [numel(dPrmByOP(:,:,1)),1]), 'Rows', 'pairwise');
+    opRIcorrVect(t) = corr(tempDecode(:), reshape(riByOP(:,:,1), [numel(riByOP(:,:,1)),1]), 'Rows', 'pairwise');
+end
+figure; 
+subplot(3,1,1)
+plot(mlb.obsvTimeVect, opSMIcorrVect, '-k', 'linewidth', 2);
+hold on;
+plot(mlb.obsvTimeVect, opDPcorrVect, '--k', 'linewidth', 2);
+plot(mlb.obsvTimeVect, opRIcorrVect, ':k', 'linewidth', 2);
+title('Behavior Correlates vs Position');
+
+
+opSMIcorrVect = nan(size(mlb.obsvTimeVect));
+opDPcorrVect = nan(size(mlb.obsvTimeVect));
+opRIcorrVect = nan(size(mlb.obsvTimeVect));
+for t = 1:length(mlb.obsvTimeVect)
+    tempDecode = nan(length(fileDirs), mlb.seqLength);
+    for ani = 1:length(fileDirs)
+        for op = 1:mlb.seqLength
+            tempDecode(ani,op) = iscBS_Decodes{3,1,ani}(t,op,op);
+        end
+    end    
+    opSMIcorrVect(t) = corr(tempDecode(:), reshape(smiByOP(:,:,2), [numel(smiByOP(:,:,2)),1]), 'Rows', 'pairwise');
+    opDPcorrVect(t) = corr(tempDecode(:), reshape(dPrmByOP(:,:,2), [numel(dPrmByOP(:,:,2)),1]), 'Rows', 'pairwise');
+    opRIcorrVect(t) = corr(tempDecode(:), reshape(riByOP(:,:,2), [numel(riByOP(:,:,2)),1]), 'Rows', 'pairwise');
+end
+subplot(3,1,2)
+plot(mlb.obsvTimeVect, opSMIcorrVect, '-k', 'linewidth', 2);
+hold on;
+plot(mlb.obsvTimeVect, opDPcorrVect, '--k', 'linewidth', 2);
+plot(mlb.obsvTimeVect, opRIcorrVect, ':k', 'linewidth', 2);
+title('Behavior Correlates vs Odor');
+
+opSMIcorrVect = nan(size(mlb.obsvTimeVect));
+opDPcorrVect = nan(size(mlb.obsvTimeVect));
+opRIcorrVect = nan(size(mlb.obsvTimeVect));
+for t = 1:length(mlb.obsvTimeVect)
+    tempDecode = nan(length(fileDirs), mlb.seqLength-1);
+    for ani = 1:length(fileDirs)
+        for op = 2:mlb.seqLength
+            tempDecode(ani,op-1) = iscBS_Decodes{3,1,ani}(t,op,op);
+        end
+    end    
+    opSMIcorrVect(t) = corr(tempDecode(:), reshape(smiByOP(:,2:end,2), [numel(smiByOP(:,2:end,2)),1]), 'Rows', 'pairwise');
+    opDPcorrVect(t) = corr(tempDecode(:), reshape(dPrmByOP(:,2:end,2), [numel(dPrmByOP(:,2:end,2)),1]), 'Rows', 'pairwise');
+    opRIcorrVect(t) = corr(tempDecode(:), reshape(riByOP(:,2:end,2), [numel(riByOP(:,2:end,2)),1]), 'Rows', 'pairwise');
+end
+subplot(3,1,3)
+plot(mlb.obsvTimeVect, opSMIcorrVect, '-k', 'linewidth', 2);
+hold on;
+plot(mlb.obsvTimeVect, opDPcorrVect, '--k', 'linewidth', 2);
+plot(mlb.obsvTimeVect, opRIcorrVect, ':k', 'linewidth', 2);
+title('Behavior Correlates vs Odors B-D');
+
+linkaxes;
+for sp = 1:3
+    subplot(3,1,sp)
+    plot(get(gca, 'xlim'), [0 0], '-k');
+    plot([0 0], get(gca, 'ylim'), '--k');
+    plot(repmat(nearestPOtime, [1,2]), get(gca, 'ylim'), '--k', 'linewidth', 1);
+    plot(repmat(nearestRWDtime, [1,2]), get(gca, 'ylim'), ':k', 'linewidth', 1);
+end
+legend([{'SMI'}, {'d'''}, {'RI'}]);
+
+annotation(gcf,'textbox', [0.05 0.95 0.8 0.05],...
+    'String', sprintf("Subsampled ISC Group: binSize = %.0fms, dsRate = %.0fms, Trial Window = (%.0fms:%.0fms to %s), NumPerms = %.0f, Subsample Proportion = %.01f, Subsample Type = %.0f, BayesType = %.0f",...
+    binSize, dsRate, trlWindow{1}(1), trlWindow{1}(2), alignment{1}, numPerms, ssProportion, ssType, bayesType),...
+    'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left');
 
 
