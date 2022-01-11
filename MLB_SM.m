@@ -277,11 +277,11 @@ classdef MLB_SM < SeqMem
                     tempLikeIDs = cell(length(odrIDs),1);
                     tempDecodeIDvect = cell(length(odrIDs),1);
                     for odr = 1:size(likeTrials,1)
-                        tempLikeSpikes{odr} = tempOdrTrlSpikes{odr}(:,:,likeTrials(odr,seq));
-                        tempOdrTrlSpikes{odr}(:,:,likeTrials(odr,seq)) = nan;
-                        tempLikeIDs{odr} = tempOdrTrlIDs{odr}(1,end,likeTrials(odr,seq));
-                        tempDecodeIDvect{odr} = tempOdrTrlIDs{odr}(:,:,likeTrials(odr,seq));
-                        tempOdrTrlIDs{odr}(:,:,likeTrials(odr,seq)) = nan;
+                        tempLikeSpikes{odr} = tempOdrTrlSpikes{odr}(:,:,likeTrials(odr,seq,perm));
+                        tempOdrTrlSpikes{odr}(:,:,likeTrials(odr,seq,perm)) = nan;
+                        tempLikeIDs{odr} = tempOdrTrlIDs{odr}(1,end,likeTrials(odr,seq,perm));
+                        tempDecodeIDvect{odr} = tempOdrTrlIDs{odr}(:,:,likeTrials(odr,seq,perm));
+                        tempOdrTrlIDs{odr}(:,:,likeTrials(odr,seq,perm)) = nan;
                     end               
                     obj.likeTrlSpikes{perm}(:,:,seq) = cell2mat(tempLikeSpikes);
                     obj.likeTrlIDs{perm}(:,:,seq) = cell2mat(tempLikeIDs);
@@ -346,11 +346,11 @@ classdef MLB_SM < SeqMem
             obj.postTrlIDs = cell(size(obj.obsvTrlSpikes));
             for perm = 1:length(obj.likeTrlSpikes)
                 if obj.bayesType == 1 || strcmp(obj.bayesType, 'Poisson') || strcmp(obj.bayesType, 'poisson') || strcmp(obj.bayesType, 'P') || strcmp(obj.bayesType, 'p')
-                    obj.post{perm} = obj.CalcStaticBayesPost_Poisson(mean(obj.likeTrlSpikes{perm},3), obj.obsvTrlSpikes{perm});
+                    obj.post{perm} = obj.CalcStaticBayesPost_Poisson(mean(obj.likeTrlSpikes{perm},3, 'omitnan'), obj.obsvTrlSpikes{perm});
                 elseif obj.bayesType == 2 || strcmp(obj.bayesType, 'Bernoulli') || strcmp(obj.bayesType, 'bernoulli') || strcmp(obj.bayesType, 'B') || strcmp(obj.bayesType, 'b')
-                    obj.post{perm} = obj.CalcStaticBayesPost_Bernoulli(mean(obj.likeTrlSpikes{perm},3), obj.obsvTrlSpikes{perm});
+                    obj.post{perm} = obj.CalcStaticBayesPost_Bernoulli(mean(obj.likeTrlSpikes{perm},3, 'omitnan'), obj.obsvTrlSpikes{perm});
                 elseif obj.bayesType == 3 || strcmp(obj.bayesType, 'Gaussian') || strcmp(obj.bayesType, 'gaussian') || strcmp(obj.bayesType, 'G') || strcmp(obj.bayesType, 'g')
-                    obj.post{perm} = obj.CalcStaticBayesPost_Gaussian(mean(obj.likeTrlSpikes{perm},3), std(obj.likeTrlSpikes{perm},0,3), obj.obsvTrlSpikes{perm});
+                    obj.post{perm} = obj.CalcStaticBayesPost_Gaussian(mean(obj.likeTrlSpikes{perm},3, 'omitnan'), std(obj.likeTrlSpikes{perm},0,3), obj.obsvTrlSpikes{perm});
                 end
                 obj.postTrlIDs{perm} = obj.obsvTrlIDs{perm};
             end

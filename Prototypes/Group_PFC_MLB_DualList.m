@@ -1,6 +1,6 @@
-fileDirs = [{'D:\WorkBigDataFiles\PFC\Dual_List\GE11_Session146'},...
-    {'D:\WorkBigDataFiles\PFC\Dual_List\GE13_Session103'},...
-    {'D:\WorkBigDataFiles\PFC\Dual_List\GE17_Session110'}];
+% fileDirs = [{'D:\WorkBigDataFiles\PFC\Dual_List\GE11_Session146'},...
+%     {'D:\WorkBigDataFiles\PFC\Dual_List\GE13_Session103'},...
+%     {'D:\WorkBigDataFiles\PFC\Dual_List\GE17_Session110'}];
 
 % fileDirs = [{'D:\WorkBigDataFiles\PFC\Files To Process\GE11\GE11_Session132'},...
 %     {'D:\WorkBigDataFiles\PFC\Files To Process\GE13\GE13_Session083'},...
@@ -8,10 +8,14 @@ fileDirs = [{'D:\WorkBigDataFiles\PFC\Dual_List\GE11_Session146'},...
 %     {'D:\WorkBigDataFiles\PFC\Files To Process\GE17\GE17_Session095'},...
 %     {'D:\WorkBigDataFiles\PFC\Files To Process\GE24\Session096'}];
 
+fileDirs = [{'D:\WorkBigDataFiles\PFC\Dual List Sessions\GE11_Session146'},...
+    {'D:\WorkBigDataFiles\PFC\Dual List Sessions\GE13_Session103'},...
+    {'D:\WorkBigDataFiles\PFC\Dual List Sessions\GE17_Session110'}];
+
 binSize = 200;
-dsRate = 150;
-stWin = [-500 500];
-ndWin = [500 500];
+dsRate = 50;
+stWin = [-500 1200];
+ndWin = [0 1];
 templateProportion = 0.5;
 numPerms = 10;
 
@@ -97,7 +101,7 @@ for fl = 1:length(fileDirs)
         tempPosts = cell(size(tempObsvs));
         tempOdrPostRaw = cell(size(tempObsvs));
         for oip = 1:length(tempObsvs)
-            tempOdrPost = pfcMLB.CalcStaticBayesPost(tempLike, tempObsvs{oip});
+            tempOdrPost = pfcMLB.CalcStaticBayesPost_Poisson(tempLike, tempObsvs{oip});
             permTimeDecode{oip,perm} = pfcMLB.DecodeBayesPost(tempOdrPost, timeIDvect) - repmat(trlTimeVect, [1,size(tempObsvs{oip},3)]);
             permOdrDecode{oip,perm} = pfcMLB.DecodeBayesPost(tempOdrPost, oipIDvect);
             permPosDecode{oip,perm} = pfcMLB.DecodeBayesPost(tempOdrPost, posIDvect);

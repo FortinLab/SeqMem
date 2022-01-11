@@ -10,14 +10,14 @@ fileDirs = [{'D:\WorkBigDataFiles\PFC\Dual List Sessions\GE11_Session146'},...
 
 binSize = 200;
 dsRate = 50;
-trlWindow = {[-1000 2000]};
+trlWindow = {[-1000 1500]};
 alignment = {'PokeIn'};
 % trlWindow = {[-2000 800]};
 % alignment = {'PokeOut'};
 lfpWindow = [16 32];
-numPerms = 10;
+numPerms = 100;
 ssProportion = 0.5;
-ssType = 0; % 0 = use all ISC for decoding; 1 = use subsampled ISC types
+ssType = 1; % 0 = use all ISC for decoding; 1 = use subsampled ISC types
 bayesType = 1; %1 = Poisson: use with raw spike counts; 2 = Bernoulli: use with binarized spike counts; 3 = Gaussian: Use with z-scored spike counts
 
 postCLim = [0 0.05];
@@ -103,8 +103,8 @@ for ani = 1:length(fileDirs)
     odors = unique(mlb.decodeIDvects{1}(:,4));
     odrAccuracy = nan(size(odrDecode,1),length(odors), length(odors));
     for odr = 1:length(odors)
-        for p = 1:length(odors)
-            odrAccuracy(:,p,odr) = mean(odrDecode(:,trlOdrVect==odors(odr))==odors(p),2, 'omitnan');
+        for o = 1:length(odors)
+            odrAccuracy(:,o,odr) = mean(odrDecode(:,trlOdrVect==odors(odr))==odors(o),2, 'omitnan');
         end
     end
     grpOdrDecode{ani} = odrAccuracy;     
@@ -117,7 +117,106 @@ end
 
 %%
 figure;
+sp = nan(size(trlOdrs));
+spp = nan(size(trlOdrs));
 for o = 1:length(trlOdrs)
-    subplot(length(trlOdrs),1,o);
-    imagesc(1:length(mlb.likeTimeVect), mlb.obsvTimeVect, mean(cell2mat(cellfun(@(a)a(:,:,o), grpPosts, 'uniformoutput', 0)),3), [0 0.025]);
+    subplot(4,length(trlOdrs),[sub2ind([length(trlOdrs),4],o,1), sub2ind([length(trlOdrs),4],o,2)]);
+    imagesc(mlb.obsvTimeVect, 1:length(mlb.likeTimeVect), mean(cell2mat(cellfun(@(a)a(:,:,o)', grpPosts, 'uniformoutput', 0)),3), [0 0.015]);
+    set(gca, 'yticklabel', [], 'ydir', 'normal');
+    title(trlOdrs(o));
+    sp(o) = subplot(4,length(trlOdrs),sub2ind([length(trlOdrs),4],o,3));
+    hold on;
+    grpDecode = cell2mat(cellfun(@(a)a(:,:,o), grpOdrDecode, 'uniformoutput',0));
+    for op = 1:length(trlOdrs)
+        [~,odrPos] = find(mlb.odrSeqs==trlOdrs(op));
+        meanDec = mean(grpDecode(:,op,:),3);
+        semDec = mlb.SEMcalc(grpDecode(:,op,:),0,3);
+        if trlOdrs(op)>=10
+            plot(mlb.obsvTimeVect, meanDec, 'color', mlb.PositionColors(odrPos,:), 'linestyle', '--');
+        patch('XData', [mlb.obsvTimeVect; flipud(mlb.obsvTimeVect)],...
+            'YData', [(meanDec+semDec)', flipud(meanDec-semDec)'], 'edgecolor', mlb.PositionColors(odrPos,:),...
+            'facecolor', mlb.PositionColors(odrPos,:), 'facealpha', 0.5, 'linestyle', '--');
+        else
+            plot(mlb.obsvTimeVect, meanDec, 'color', mlb.PositionColors(odrPos,:));
+        patch('XData', [mlb.obsvTimeVect; flipud(mlb.obsvTimeVect)],...
+            'YData', [(meanDec+semDec)', flipud(meanDec-semDec)'], 'edgecolor', mlb.PositionColors(odrPos,:),...
+            'facecolor', mlb.PositionColors(odrPos,:), 'facealpha', 0.5);
+        end
+    end
+    axis tight;
+    spp(o) = subplot(4,length(trlOdrs), sub2ind([length(trlOdrs),4],o,4));
+    [~,odrPos] = find(mlb.odrSeqs==trlOdrs(o));
+    grpDecodePos = cell2mat(cellfun(@(a)a(:,:,odrPos), grpPosDecode, 'uniformoutput', 0));
+    for p = 1:mlb.seqLength
+        meanDec = mean(grpDecodePos(:,p,:),3);
+        semDec = mlb.SEMcalc(grpDecodePos(:,p,:),0,3);
+        plot(mlb.obsvTimeVect, meanDec, 'color', mlb.PositionColors(p,:));
+        hold on;
+        patch('XData', [mlb.obsvTimeVect; flipud(mlb.obsvTimeVect)],...
+            'YData', [(meanDec+semDec)', flipud(meanDec-semDec)'], 'edgecolor', mlb.PositionColors(p,:),...
+            'facecolor', mlb.PositionColors(p,:), 'facealpha', 0.5);
+    end
+    axis tight;
 end
+linkaxes(sp, 'xy');
+linkaxes(spp, 'xy');
+
+annotation(gcf,'textbox', [0.1 0.95 0.9 0.05],...
+    'String', sprintf("Dual-list 1window: binSize = %.0fms, dsRate = %.0fms, Trial Window = (%.0fms:%.0fms to %s), NumPerms = %.0f, Subsample Proportion = %.01f, Subsample Type = %.0f, BayesType = %.0f",...
+    binSize, dsRate, trlWindow{1}(1), trlWindow{1}(2), alignment{1}, numPerms, ssProportion, ssType, bayesType),...
+    'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left');
+
+%%
+posOdrDiff = cell(size(fileDirs));
+aniOdrDiff = cell(size(fileDirs));
+for ani = 1:length(fileDirs)
+    tempPosOdrDiff = nan(size(grpOdrDecode{1},1),mlb.seqLength, 2);
+    for pos = 1:mlb.seqLength
+        posOdrs = mlb.odrSeqs(:,pos);
+        tempOdrDecode(:,1,1) = grpOdrDecode{ani}(:,trlOdrs==posOdrs(1), trlOdrs==posOdrs(1));
+        tempOdrDecode(:,2,1) = grpOdrDecode{ani}(:,trlOdrs==posOdrs(1), trlOdrs==posOdrs(2));
+        tempOdrDecode(:,1,2) = grpOdrDecode{ani}(:,trlOdrs==posOdrs(2), trlOdrs==posOdrs(1));
+        tempOdrDecode(:,2,2) = grpOdrDecode{ani}(:,trlOdrs==posOdrs(2), trlOdrs==posOdrs(2));
+        tempPosOdrDiff(:,pos,:) = diff(tempOdrDecode,[],2);
+    end
+    posOdrDiff{ani} = tempPosOdrDiff;
+    aniOdrDiff{ani} = mean(tempPosOdrDiff,2);
+end
+
+figure; 
+sps = nan(1,mlb.seqLength+1);
+for op = 1:mlb.seqLength
+    sps(op) = subplot(1,mlb.seqLength+1,op);
+    hold(sps(op),'on');
+    tempOPs = cell2mat(cellfun(@(a)a(:,op,:), posOdrDiff, 'uniformoutput',0));
+    tempMean = mean(tempOPs,2);
+    tempVar = mlb.SEMcalc(tempOPs,0,2);
+    
+    plot(sps(op), mlb.obsvTimeVect, tempMean(:,:,1), 'color', mlb.PositionColors(op,:));
+    patch('XData', [mlb.obsvTimeVect; flipud(mlb.obsvTimeVect)],...
+        'YData', [(tempMean(:,:,1)+tempVar(:,:,1))', flipud(tempMean(:,:,1)-tempVar(:,:,1))'],...
+        'edgecolor', mlb.PositionColors(op,:), 'facecolor', mlb.PositionColors(op,:), 'facealpha', 0.5);
+    plot(sps(op), mlb.obsvTimeVect, tempMean(:,:,2), 'color', mlb.PositionColors(op,:), 'linestyle', '--');
+    patch('XData', [mlb.obsvTimeVect; flipud(mlb.obsvTimeVect)],...
+        'YData', [(tempMean(:,:,2)+tempVar(:,:,2))', flipud(tempMean(:,:,2)-tempVar(:,:,2))'],...
+        'edgecolor', mlb.PositionColors(op,:), 'facecolor', mlb.PositionColors(op,:), 'facealpha', 0.5,...
+        'linestyle','--');
+end
+grpPosOdrDiff = cell2mat(posOdrDiff);
+% grpPosOdrDiff = cell2mat(aniOdrDiff);
+gpodMean = median(grpPosOdrDiff,2);
+gpodVar = mlb.SEMcalc(grpPosOdrDiff,0,2);
+sps(end) = subplot(1,mlb.seqLength+1, mlb.seqLength+1);
+hold(sps(end), 'on');
+plot(sps(end), mlb.obsvTimeVect, gpodMean(:,:,1), '-k');
+patch('XData', [mlb.obsvTimeVect; flipud(mlb.obsvTimeVect)],...
+    'YData', [(gpodMean(:,:,1)+gpodVar(:,:,1))', flipud(gpodMean(:,:,1)-gpodVar(:,:,1))'],...
+    'edgecolor', 'k', 'facecolor', 'k', 'facealpha', 0.5);
+plot(sps(end), mlb.obsvTimeVect, gpodMean(:,:,2), '--k');
+patch('XData', [mlb.obsvTimeVect; flipud(mlb.obsvTimeVect)],...
+    'YData', [(gpodMean(:,:,2)+gpodVar(:,:,2))', flipud(gpodMean(:,:,2)-gpodVar(:,:,2))'],...
+    'edgecolor', 'k', 'facecolor', 'k', 'facealpha', 0.5,...
+    'linestyle','--');
+linkaxes(sps, 'xy');
+        
+    
