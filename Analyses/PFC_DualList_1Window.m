@@ -10,14 +10,14 @@ fileDirs = [{'D:\WorkBigDataFiles\PFC\Dual List Sessions\GE11_Session146'},...
 
 binSize = 200;
 dsRate = 50;
-trlWindow = {[-1000 1500]};
+trlWindow = {[-1000 2000]};
 alignment = {'PokeIn'};
 % trlWindow = {[-2000 800]};
 % alignment = {'PokeOut'};
 lfpWindow = [16 32];
 numPerms = 100;
 ssProportion = 0.5;
-ssType = 1; % 0 = use all ISC for decoding; 1 = use subsampled ISC types
+ssType = 0; % 0 = use all ISC for decoding; 1 = use subsampled ISC types
 bayesType = 1; %1 = Poisson: use with raw spike counts; 2 = Bernoulli: use with binarized spike counts; 3 = Gaussian: Use with z-scored spike counts
 
 postCLim = [0 0.05];
@@ -115,6 +115,10 @@ for ani = 1:length(fileDirs)
     end
 end
 
+pokeOutLats = cell2mat(fiscPokeOutLat(:));
+nearestPOtime = mlb.obsvTimeVect(find(mlb.obsvTimeVect<median(pokeOutLats),1,'last'));
+rwdDelivLat = cell2mat(fiscRwdDelivLat(:));
+nearestRWDtime = mlb.obsvTimeVect(find(mlb.obsvTimeVect<median(rwdDelivLat),1,'last'));
 %%
 figure;
 sp = nan(size(trlOdrs));
@@ -218,5 +222,11 @@ patch('XData', [mlb.obsvTimeVect; flipud(mlb.obsvTimeVect)],...
     'edgecolor', 'k', 'facecolor', 'k', 'facealpha', 0.5,...
     'linestyle','--');
 linkaxes(sps, 'xy');
+plot([0 0], get(gca,'ylim'), '--k', 'linewidth', 2);
+plot(repmat(nearestPOtime, [1,2]), get(gca, 'ylim'), '--k', 'linewidth', 2);
+plot(repmat(nearestRWDtime, [1,2]), get(gca, 'ylim'), ':k', 'linewidth', 2);
         
-    
+annotation(gcf,'textbox', [0.1 0.95 0.9 0.05],...
+    'String', sprintf("Dual-list 1window: binSize = %.0fms, dsRate = %.0fms, Trial Window = (%.0fms:%.0fms to %s), NumPerms = %.0f, Subsample Proportion = %.01f, Subsample Type = %.0f, BayesType = %.0f",...
+    binSize, dsRate, trlWindow{1}(1), trlWindow{1}(2), alignment{1}, numPerms, ssProportion, ssType, bayesType),...
+    'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left');
