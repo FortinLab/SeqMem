@@ -355,6 +355,23 @@ classdef MLB_SM < SeqMem
                 obj.postTrlIDs{perm} = obj.obsvTrlIDs{perm};
             end
         end
+        %% Process all Observations Iteratively (cross-temporal decoding)
+        function Process_IterativeObserves(obj)
+            obj.post = cell(size(obj.obsvTrlSpikes));
+            obj.postTrlIDs = cell(size(obj.obsvTrlSpikes));
+            for perm = 1:length(obj.likeTrlSpikes)
+                if obj.bayesType == 1 || strcmp(obj.bayesType, 'Poisson') || strcmp(obj.bayesType, 'poisson') || strcmp(obj.bayesType, 'P') || strcmp(obj.bayesType, 'p')
+                    obj.post{perm} = obj.CalcIterativeBayesPost_Poisson(mean(obj.likeTrlSpikes{perm},3, 'omitnan'), obj.obsvTrlSpikes{perm}, obj.decodeIDvects{perm}(:,1), obj.decodeIDvects{perm}(:,3));
+                elseif obj.bayesType == 2 || strcmp(obj.bayesType, 'Bernoulli') || strcmp(obj.bayesType, 'bernoulli') || strcmp(obj.bayesType, 'B') || strcmp(obj.bayesType, 'b')
+                    error('Not implemented yet');
+%                     obj.post{perm} = obj.CalcIterativeBayesPost_Bernoulli(mean(obj.likeTrlSpikes{perm},3, 'omitnan'), obj.obsvTrlSpikes{perm});
+                elseif obj.bayesType == 3 || strcmp(obj.bayesType, 'Gaussian') || strcmp(obj.bayesType, 'gaussian') || strcmp(obj.bayesType, 'G') || strcmp(obj.bayesType, 'g')
+                    error('Not implemented yet');
+%                     obj.post{perm} = obj.CalcIterativeBayesPost_Gaussian(mean(obj.likeTrlSpikes{perm},3, 'omitnan'), std(obj.likeTrlSpikes{perm},0,3), obj.obsvTrlSpikes{perm});
+                end
+                obj.postTrlIDs{perm} = obj.obsvTrlIDs{perm};
+            end
+        end
     end
     methods % MLB Algorithms
         %% Calculate Static MLB (Poisson... kept in here just so all previous analyses won't break... will remove eventually as the rest of the code base gets revised).
@@ -468,7 +485,9 @@ classdef MLB_SM < SeqMem
             % For example, typical use case here is to look for temporally invariant coding where
             %   depVar = time, i.e. the algorithm will step through different time points
             %   grpVar = odor/position, i.e. the algorithm will then choose likelihoods from different levels of odor or position
-            %             tic;
+            % Note: The input "likely" is a concatenated vector containing depVar & grpVar arranged data. 
+            %   Original use case had the likely arranged with spiking bins from trial types arranged by time and concatenated together into a single
+            %   vector such that depVar (time) and grpVar (odor/position) are both 1xN vectors with N = (trial time bins X #positions).
             rateScalar = obj.binSize/obj.sampleRate;
             lvlsDepVar = unique(depVar);
             lvlsGrpVar = unique(grpVar);
@@ -511,18 +530,35 @@ classdef MLB_SM < SeqMem
     methods % Decoding Methods
         %% Decode MLB
         function [decode, maxPost] = DecodeBayesPost(~, post, id)
-            % Assumes post is in the structure of ObservTime X LikelyTime X Trial
-            decode = nan(size(post,1),size(post,3));
-            maxPost = nan(size(post,1),size(post,3));
-            for o = 1:size(post,3)
-                for d = 1:size(post,1)
-                    if ~isnan(post(d,1,o))
-                        maxPost(d,o) = max(post(d,:,o));
-                        tempDecode = find(post(d,:,o)==maxPost(d,o));
-                        select = rand(1,length(tempDecode));
-                        decode(d,o) = id(tempDecode(select==max(select)));
+            if ndims(post) == 3 % Output from StaticBayes versions are 3d
+                % Assumes post is in the structure of ObservTime X LikelyTime X Trial
+                decode = nan(size(post,1),size(post,3));
+                maxPost = nan(size(post,1),size(post,3));
+                for o = 1:size(post,3)
+                    for d = 1:size(post,1)
+                        if ~isnan(post(d,1,o))
+                            maxPost(d,o) = max(post(d,:,o));
+                            tempDecode = find(post(d,:,o)==maxPost(d,o));
+                            select = rand(1,length(tempDecode));
+                            decode(d,o) = id(tempDecode(select==max(select)));
+                        end
                     end
                 end
+            elseif ndims(post) == 4 % Output from IterativeBayes versions are 4d
+                % Assumes post is in the structure of ObservTime X LikelyTime X GrpVar X Trial
+                decode = nan(size(post,1),size(post,1),size(post,4));
+                maxPost = nan(size(post,1),size(post,1),size(post,4));
+                for trl = 1:size(post,4)
+                    curTrl = post(:,:,:,trl);
+                    for obsvTime = 1:size(curTrl,1)
+                        for likeTime = 1:size(curTrl,2)
+                            maxPost(obsvTime,likeTime,trl) = max(curTrl(obsvTime,likeTime,:));
+                            tempDecode = find(curTrl(obsvTime,likeTime,:)==maxPost(obsvTime,likeTime,trl));
+                            select = rand(1,length(tempDecode));
+                            decode(obsvTime,likeTime,trl) = tempDecode(select==max(select));
+                        end
+                    end
+                end                            
             end
         end
         %% Tabluate MLB
