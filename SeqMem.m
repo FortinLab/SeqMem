@@ -105,11 +105,17 @@ classdef SeqMem < handle
                 ensembleMatrix = load([obj.pathDir '\' obj.nsmblMatFile]);
                 if isempty(obj.popVectIncludeLog)
                     obj.ensembleMatrix = ensembleMatrix.ensembleMatrix(:,2:end);
+                    obj.ensembleMatrixColIDs = ensembleMatrix.ensembleMatrixColIDs(2:end);
+                    obj.unitInfo = ensembleMatrix.ensembleUnitSummaries;
                 else
                     obj.ensembleMatrix = ensembleMatrix.ensembleMatrix(:,[false; obj.popVectIncludeLog(:)]);
+                    obj.ensembleMatrixColIDs = ensembleMatrix.ensembleMatrixColIDs([false; obj.popVectIncludeLog(:)]);
+                    obj.unitInfo = ensembleMatrix.ensembleUnitSummaries(1,obj.popVectIncludeLog);
                 end
-                obj.ensembleMatrixColIDs = ensembleMatrix.ensembleMatrixColIDs(2:end);
-                obj.unitInfo = ensembleMatrix.ensembleUnitSummaries;
+                sortedPVvect = sortrows([mean(obj.ensembleMatrix); 1:size(obj.ensembleMatrix,2)]', 'descend');
+                obj.ensembleMatrix = obj.ensembleMatrix(:,sortedPVvect(:,2));
+                obj.ensembleMatrixColIDs = obj.ensembleMatrixColIDs(1,sortedPVvect(:,2));
+                obj.unitInfo = obj.unitInfo(1,sortedPVvect(:,2));
             end
             obj.smFiles = fileNames(cellfun(@(a)~isempty(a), regexp(fileNames, '_SM\>')))';
             obj.OrganizeTrialInfo;

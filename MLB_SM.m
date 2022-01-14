@@ -320,7 +320,7 @@ classdef MLB_SM < SeqMem
         end
     end
     methods % MLB Processing Methods
-        %% Process via Leave-1-Out
+                %% Process via Leave-1-Out
         function Process_LikelyLOO(obj)
             obj.post = repmat({nan(size(obj.likeTrlSpikes{1},1), size(obj.likeTrlSpikes{1},1), size(obj.likeTrlSpikes{1},3))}, size(obj.likeTrlSpikes));
             obj.postTrlIDs = repmat({nan(size(obj.likeTrlIDs{1}))}, size(obj.likeTrlIDs));
@@ -335,6 +335,27 @@ classdef MLB_SM < SeqMem
                         obj.post{perm}(:,:,seq) = obj.CalcStaticBayesPost_Bernoulli(mean(tempLike,3), tempObsv);
                     elseif obj.bayesType == 3 || strcmp(obj.bayesType, 'Gaussian') || strcmp(obj.bayesType, 'gaussian') || strcmp(obj.bayesType, 'G') || strcmp(obj.bayesType, 'g')
                         obj.post{perm}(:,:,seq) = obj.CalcStaticBayesPost_Gaussian(mean(tempLike,3), std(tempLike,0,3), tempObsv);
+                    end
+                    obj.postTrlIDs{perm}(:,:,seq) = obj.likeTrlIDs{perm}(:,:,seq);
+                end
+            end
+        end
+        %% Process via Leave-1-Out Iteratively
+        function Process_IterativeLikelyLOO(obj)
+            warning('This may not work..... need to code carefully');
+            obj.post = repmat({nan(size(obj.likeTrlSpikes{1},1), size(obj.likeTrlSpikes{1},1), mlb.seqLength, size(obj.likeTrlSpikes{1},3))}, size(obj.likeTrlSpikes));
+            obj.postTrlIDs = repmat({nan(size(obj.likeTrlIDs{1}))}, size(obj.likeTrlIDs));
+            for perm = 1:length(obj.likeTrlSpikes)
+                for seq = 1:size(obj.likeTrlSpikes{perm},3)
+                    tempObsv = obj.likeTrlSpikes{perm}(:,:,seq);
+                    tempLike = obj.likeTrlSpikes{perm};
+                    tempLike(:,:,seq) = [];
+                    if obj.bayesType == 1 || strcmp(obj.bayesType, 'Poisson') || strcmp(obj.bayesType, 'poisson') || strcmp(obj.bayesType, 'P') || strcmp(obj.bayesType, 'p')
+                        obj.post{perm}(:,:,:,seq) = obj.CalcIterativeBayesPost_Poisson(mean(tempLike,3, 'omitnan'), tempObsv, obj.decodeIDvects{perm}(:,1), obj.decodeIDvects{perm}(:,3));
+                    elseif obj.bayesType == 2 || strcmp(obj.bayesType, 'Bernoulli') || strcmp(obj.bayesType, 'bernoulli') || strcmp(obj.bayesType, 'B') || strcmp(obj.bayesType, 'b')
+                        error('Not Implemented Yet');
+                    elseif obj.bayesType == 3 || strcmp(obj.bayesType, 'Gaussian') || strcmp(obj.bayesType, 'gaussian') || strcmp(obj.bayesType, 'G') || strcmp(obj.bayesType, 'g')
+                        error('Not Implemented Yet');
                     end
                     obj.postTrlIDs{perm}(:,:,seq) = obj.likeTrlIDs{perm}(:,:,seq);
                 end
@@ -573,6 +594,118 @@ classdef MLB_SM < SeqMem
                     end
                 end
             end
+        end
+    end
+    methods % "Analyses"
+        %% Integrate Anti-diagonal
+        function int = IntegrateAntiDiagonal(~, mtx)
+            int = nan(1,size(mtx,1)*2);
+            for t = 1:2:size(mtx,1)*2
+                int(t) = trapz(diag(flip(mtx), t-size(mtx,1)));
+            end
+            int(isnan(int)) = [];
+        end
+        %% Quantify Persistance
+        function [avg, up, down, left, right] = QuantPersist(obj, mtx, threshold)
+            % Designed to run with output of decoding of iterative bayes
+            % Assumes matrix of decodings organized by Observation Time X Likelihood (training) Time
+            up = nan(1,size(mtx,1));
+            down = nan(1,size(mtx,1));
+            left = nan(1,size(mtx,1));
+            right = nan(1,size(mtx,1));
+            for t = 1:size(mtx,1)
+                fwdLike = mtx(t:end,t);
+                frstFwdLikeDiff = find(abs(fwdLike-fwdLike(1))>=threshold,1,'first')-1;
+                if ~isempty(frstFwdLikeDiff)
+                    up(t) = frstFwdLikeDiff;
+                end
+                revLike = flipud(mtx(1:t,t));
+                frstRevLikeDiff = find(abs(revLike-revLike(1))>=threshold,1,'first')-1;
+                if ~isempty(frstRevLikeDiff)
+                    down(t) = frstRevLikeDiff;
+                end
+                fwdObsv = mtx(t,t:end);
+                frstFwdObsvDiff = find(abs(fwdObsv-fwdObsv(1))>=threshold,1,'first')-1;
+                if ~isempty(frstFwdObsvDiff)
+                    right(t) = frstFwdObsvDiff;
+                end
+                revObsv = fliplr(mtx(t,1:t));
+                frstRevObsvDiff = find(abs(revObsv-revObsv(1))>=threshold,1,'first')-1;
+                if ~isempty(frstRevObsvDiff)
+                    left(t) = frstRevObsvDiff;
+                end                    
+            end
+            avg = max([up(:),down(:),right(:),left(:)],[],2);
+%             avg = mean([up(:),down(:),right(:),left(:)], 2, 'omitnan');
+        end
+        %% Visualize Trial Data
+        function PlotTrial(obj, spkMtx, lfpMtx, trlInfo)
+            for t = 1:length(trlInfo)
+                rwdLat = (trlInfo(t).RewardIndex-trlInfo(t).PokeInIndex)/obj.sampleRate;
+                figure;
+                subplot(4,1,1);
+                plot(obj.obsvTimeVect, lfpMtx(:,:,t), '-k');
+                set(gca, 'ylim', [min(lfpMtx(:)) max(lfpMtx(:))]);
+                hold on;
+                box off;
+                plot([0 0], get(gca, 'ylim'), '--k', 'linewidth', 2);
+                plot(repmat(trlInfo(t).TargetDuration, [1,2]), get(gca, 'ylim'), '-k', 'linewidth', 2);
+                plot(repmat(trlInfo(t).PokeDuration, [1,2]), get(gca, 'ylim'), '--k', 'linewidth', 2);
+                plot(repmat(rwdLat, [1,2]), get(gca, 'ylim'), ':k', 'linewidth', 2);
+                title(sprintf('Trial#=%i; Odor=%i; Position=%i; Performance=%i', trlInfo(t).TrialNum, trlInfo(t).Odor, trlInfo(t).Position, trlInfo(t).Performance));
+                                
+                subplot(4,1,2:4);
+                imagesc(obj.obsvTimeVect, 1:size(spkMtx,2), spkMtx(:,:,t)', [0 10*(1/(obj.binSize/obj.sampleRate))]);
+%                 set(gca, 'ydir', 'normal');
+                hold on;
+                plot([0 0], [1, size(spkMtx,2)], '--k', 'linewidth', 2);
+                plot(repmat(trlInfo(t).TargetDuration, [1,2]), [1,size(spkMtx,2)], '-k', 'linewidth', 2);
+                plot(repmat(trlInfo(t).PokeDuration, [1,2]), [1,size(spkMtx,2)], '--k', 'linewidth', 2);
+                plot(repmat(rwdLat, [1,2]), [1,size(spkMtx,2)], ':k', 'linewidth', 2);
+                drawnow;
+            end
+        end
+        %% Visualize PCA
+        function PFC_PCA(obj)
+            curData = obj.obsvTrlSpikes{1};
+            curTrlInfo = obj.trialInfo;
+            
+%             curData = curData(:,:,obj.fiscTrials(:));
+%             curTrlInfo = curTrlInfo(obj.fiscTrials(:));            
+            
+            perfLog = [curTrlInfo.Performance]==1;
+            isLog = [curTrlInfo.TranspositionDistance]==0;
+            posVect = [curTrlInfo.Position];
+            dims = [1 2 3];
+            
+            trlPV = cell(size(curData,3),1);
+            for t = 1:size(obj.obsvTrlSpikes{1},3)
+                trlPV{t} = reshape(obj.obsvTrlSpikes{1}(:,:,t), [1,numel(obj.obsvTrlSpikes{1}(:,:,t))]);
+                %     trlPV{t} = (mean(mlb.obsvTrlSpikes{1}(:,:,t),2))';
+            end
+            
+            [~,score] = pca(cell2mat(trlPV(perfLog,:)));
+%             [~,score] = pca(cell2mat(trlPV));
+            figure;
+            h = gca;                
+            hold on;
+%             scatter3(score(~perfLog & isLog,dims(1)), score(~perfLog & isLog,dims(2)), score(~perfLog & isLog,dims(3)), 'marker', 'x', 'markeredgecolor', 'k');
+%             scatter3(score(~perfLog & ~isLog,dims(1)), score(~perfLog & ~isLog,dims(2)), score(~perfLog & ~isLog,dims(3)),'marker', 'x', 'markeredgecolor', 'r');
+            isLog = isLog(perfLog);
+            posVect = posVect(perfLog);
+            perfLog = perfLog(perfLog);
+            for pos = 1:4
+                curPosLog = perfLog & isLog & posVect==pos;
+                scatter3(score(curPosLog,dims(1)), score(curPosLog,dims(2)), score(curPosLog,dims(3)), 20, 'filled', 'marker', 'o', 'markerfacecolor', obj.PositionColors(pos,:));
+                scatter3(mean(score(curPosLog,dims(1))), mean(score(curPosLog,dims(2))), mean(score(curPosLog,dims(3))), 100, 'filled', 'marker', 'o', 'markerfacecolor', obj.PositionColors(pos,:));
+            end
+            h.XRuler.FirstCrossoverValue = 0;
+            h.XRuler.SecondCrossoverValue = 0;
+            h.YRuler.FirstCrossoverValue = 0;
+            h.YRuler.SecondCrossoverValue = 0;
+            h.ZRuler.FirstCrossoverValue = 0;
+            h.ZRuler.SecondCrossoverValue = 0;
+            drawnow;
         end
     end
 end
