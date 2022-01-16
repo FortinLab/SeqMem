@@ -22,6 +22,7 @@ dsRate = 50;
 trlWindow = {[-2000 800]};
 alignment = {'PokeOut'};
 ssProportion = 0.5;
+numPerms = 10;
 ssType = 0; % 0 = use all ISC for decoding; 1 = use subsampled ISC types
 bayesType = 1; %1 = Poisson: use with raw spike counts; 2 = Bernoulli: use with binarized spike counts; 3 = Gaussian: Use with z-scored spike counts
 
@@ -54,6 +55,7 @@ for ani = 1:length(fileDirs)
     mlb.dsRate = dsRate;
     mlb.windows = trlWindow;
     mlb.alignments = alignment;
+    mlb.numPerms = numPerms;
     mlb.ssProportion = ssProportion;
     mlb.ssType = ssType;
     mlb.bayesType = bayesType;
@@ -80,7 +82,8 @@ for ani = 1:length(fileDirs)
     %% Process Neural Data
     [betaPhase, betaPower] = mlb.PP_TrialMatrix_LFP([16 32], trlWindow{1}, alignment{1});
     [thetaPhase, thetaPower] = mlb.PP_TrialMatrix_LFP([4 12], trlWindow{1}, alignment{1});
-    mlb.SetLikes_FISC;
+%     mlb.SetLikes_FISC;
+    mlb.SetLikes_SubSample;
     mlb.Process_IterativeObserves;
     grpPost{ani} = mlb.post{1};
     [decodes, maxDecode] = mlb.DecodeBayesPost(mlb.post{1});   

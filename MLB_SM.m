@@ -381,6 +381,7 @@ classdef MLB_SM < SeqMem
             obj.post = cell(size(obj.obsvTrlSpikes));
             obj.postTrlIDs = cell(size(obj.obsvTrlSpikes));
             for perm = 1:length(obj.likeTrlSpikes)
+                fprintf('Iteration #%i', perm);
                 if obj.bayesType == 1 || strcmp(obj.bayesType, 'Poisson') || strcmp(obj.bayesType, 'poisson') || strcmp(obj.bayesType, 'P') || strcmp(obj.bayesType, 'p')
                     obj.post{perm} = obj.CalcIterativeBayesPost_Poisson(mean(obj.likeTrlSpikes{perm},3, 'omitnan'), obj.obsvTrlSpikes{perm}, obj.decodeIDvects{perm}(:,1), obj.decodeIDvects{perm}(:,3));
                 elseif obj.bayesType == 2 || strcmp(obj.bayesType, 'Bernoulli') || strcmp(obj.bayesType, 'bernoulli') || strcmp(obj.bayesType, 'B') || strcmp(obj.bayesType, 'b')
@@ -391,6 +392,7 @@ classdef MLB_SM < SeqMem
 %                     obj.post{perm} = obj.CalcIterativeBayesPost_Gaussian(mean(obj.likeTrlSpikes{perm},3, 'omitnan'), std(obj.likeTrlSpikes{perm},0,3), obj.obsvTrlSpikes{perm});
                 end
                 obj.postTrlIDs{perm} = obj.obsvTrlIDs{perm};
+                fprintf(' complete\n');
             end
         end
     end
