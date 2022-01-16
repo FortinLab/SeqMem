@@ -670,7 +670,7 @@ classdef MLB_SM < SeqMem
         %% Visualize PCA
         function PFC_PCA(obj)
             curData = obj.obsvTrlSpikes{1};
-            curTrlInfo = obj.trialInfo;
+            curTrlInfo = obj.trialInfo(obj.obsvTrlIDs{1});
             
 %             curData = curData(:,:,obj.fiscTrials(:));
 %             curTrlInfo = curTrlInfo(obj.fiscTrials(:));            
@@ -681,8 +681,8 @@ classdef MLB_SM < SeqMem
             dims = [1 2 3];
             
             trlPV = cell(size(curData,3),1);
-            for t = 1:size(obj.obsvTrlSpikes{1},3)
-                trlPV{t} = reshape(obj.obsvTrlSpikes{1}(:,:,t), [1,numel(obj.obsvTrlSpikes{1}(:,:,t))]);
+            for t = 1:size(curData,3)
+                trlPV{t} = reshape(curData(:,:,t), [1,numel(curData(:,:,t))]);
                 %     trlPV{t} = (mean(mlb.obsvTrlSpikes{1}(:,:,t),2))';
             end
             
@@ -708,6 +708,78 @@ classdef MLB_SM < SeqMem
             h.ZRuler.FirstCrossoverValue = 0;
             h.ZRuler.SecondCrossoverValue = 0;
             drawnow;
+        end
+        %% Validate PCA
+        function distMtx = PFC_validPCA(obj)
+            distMtx = nan(obj.seqLength, obj.seqLength, obj.numPerms);
+            for perm = 1:obj.numPerms
+                trainData = obj.likeTrlSpikes{perm};
+                %             trainPV = nan(size(trainData,3), size(trainData,1)*size(trainData,2));
+                trainPV = cell(size(trainData,3), 1);
+                posNdx = [find(obj.likeTimeVect==min(obj.likeTimeVect)); length(obj.likeTimeVect)+1];
+                for t = 1:size(trainData,3)
+                    %                 trainPV(t,:) = reshape(trainData(:,:,t), [1,numel(trainData(:,:,t))]);
+                    tempSeqPV = trainData(:,:,t);
+                    tempPV = nan(obj.seqLength, length(obj.obsvTimeVect)*size(tempSeqPV,2));
+                    for p = 1:obj.seqLength
+                        tempPV(p,:) = reshape(tempSeqPV(posNdx(p):posNdx(p+1)-1,:), [1,length(obj.obsvTimeVect)*size(tempSeqPV,2)]);
+                    end
+                    trainPV{t} = tempPV;
+                end
+                
+                testData = obj.obsvTrlSpikes{perm};
+                testPV = nan(size(testData,3), size(testData,1)*size(testData,2));
+                for t = 1:size(testData,3)
+                    testPV(t,:) = reshape(testData(:,:,t), [1,numel(testData(:,:,t))]);
+                end
+                
+                % Train Likelihoods - Test Observations
+                [coeff,~,~,~,explained,mu] = pca(cell2mat(trainPV));
+                dim = find(cumsum(explained)>95,1, 'first');                
+                testScores = (testPV-mu)*coeff;
+                curTrlInfo = obj.trialInfo(obj.obsvTrlIDs{perm});
+                % Train Observations - Test Likelihoods
+%                 [coeff,~,~,~,explained,mu] = pca(testPV);
+%                 dim = find(cumsum(explained)>95,1, 'first');                
+%                 testScores = (cell2mat(trainPV)-mu)*coeff;
+%                 curTrlInfo = obj.trialInfo(obj.likeTrlIDs{perm});
+                                
+                perfLog = [curTrlInfo.Performance]==1;
+                isLog = [curTrlInfo.TranspositionDistance]==0;
+                posVect = [curTrlInfo.Position];
+                dims = [1 2 3];
+                figure;
+                h = gca;
+                hold on;
+                %             scatter3(score(~perfLog & isLog,dims(1)), score(~perfLog & isLog,dims(2)), score(~perfLog & isLog,dims(3)), 'marker', 'x', 'markeredgecolor', 'k');
+                %             scatter3(score(~perfLog & ~isLog,dims(1)), score(~perfLog & ~isLog,dims(2)), score(~perfLog & ~isLog,dims(3)),'marker', 'x', 'markeredgecolor', 'r');
+                isLog = isLog(perfLog);
+                posVect = posVect(perfLog);
+                perfLog = perfLog(perfLog);
+                simMtx = squareform(pdist(testScores(:,1:dim), 'cosine'));
+                for pos = 1:obj.seqLength
+                    curPosLog = perfLog & isLog & posVect==pos;
+                    scatter3(testScores(curPosLog,dims(1)), testScores(curPosLog,dims(2)), testScores(curPosLog,dims(3)), 20, 'filled', 'marker', 'o', 'markerfacecolor', obj.PositionColors(pos,:));
+                    scatter3(mean(testScores(curPosLog,dims(1))), mean(testScores(curPosLog,dims(2))), mean(testScores(curPosLog,dims(3))), 100, 'filled', 'marker', 'o', 'markerfacecolor', obj.PositionColors(pos,:));
+                    for odr = 1:obj.seqLength
+                        tempDist = simMtx(curPosLog,(perfLog & isLog & posVect==odr));
+                        if pos==odr
+                            tempDist = tempDist(logical(triu(ones(size(tempDist)),1)));
+                        end
+                        distMtx(pos,odr,perm) = mean(tempDist(:));
+                    end
+                end
+                h.XRuler.FirstCrossoverValue = 0;
+                h.XRuler.SecondCrossoverValue = 0;
+                h.YRuler.FirstCrossoverValue = 0;
+                h.YRuler.SecondCrossoverValue = 0;
+                h.ZRuler.FirstCrossoverValue = 0;
+                h.ZRuler.SecondCrossoverValue = 0;
+                title(dim);
+                drawnow;
+            end
+            figure; 
+            imagesc(1:obj.seqLength, 1:obj.seqLength, mean(distMtx,3));
         end
     end
 end
