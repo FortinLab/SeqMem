@@ -553,7 +553,7 @@ classdef MLB_SM < SeqMem
     methods % Decoding Methods
         %% Decode MLB
         function [decode, maxPost] = DecodeBayesPost(~, post, id)
-            if ndims(post) == 3 % Output from StaticBayes versions are 3d
+            if ndims(post) < 4 % Output from StaticBayes versions are 3d
                 % Assumes post is in the structure of ObservTime X LikelyTime X Trial
                 decode = nan(size(post,1),size(post,3));
                 maxPost = nan(size(post,1),size(post,3));
@@ -668,6 +668,7 @@ classdef MLB_SM < SeqMem
             end
         end
         %% Visualize PCA
+        % NOTE: This will move to it's own class eventually
         function PFC_PCA(obj)
             curData = obj.obsvTrlSpikes{1};
             curTrlInfo = obj.trialInfo(obj.obsvTrlIDs{1});
@@ -710,6 +711,7 @@ classdef MLB_SM < SeqMem
             drawnow;
         end
         %% Validate PCA
+        % NOTE: This will move to it's own class eventually
         function distMtx = PFC_validPCA(obj)
             distMtx = nan(obj.seqLength, obj.seqLength, obj.numPerms);
             for perm = 1:obj.numPerms
