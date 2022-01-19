@@ -165,7 +165,11 @@ classdef MLB_SM < SeqMem
                     [trlDta{win}, trlTimeVects{win}] = obj.PP_TrialMatrix_SpikeTimeZ(obj.windows{win}, obj.alignments{win});
                 end                
             end
-            ssnSpikes = nan(size(cell2mat(trlTimeVects),1), size(obj.ensembleMatrix,2), length(obj.trialInfo));
+            if ~isempty(obj.popVectIncludeLog)
+                ssnSpikes = nan(size(cell2mat(trlTimeVects),1), sum(obj.popVectIncludeLog), length(obj.trialInfo));
+            else
+                ssnSpikes = nan(size(cell2mat(trlTimeVects),1), size(obj.ensembleMatrix,2), length(obj.trialInfo));
+            end
             ssnID = nan(size(cell2mat(trlTimeVects),1), 5, length(obj.trialInfo));
             for trl = 1:size(trlDta{win},3)
                 tempTrialData = cell(size(obj.windows,1),1);

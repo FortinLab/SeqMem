@@ -16,8 +16,8 @@ fileDirs = [{'D:\WorkBigDataFiles\PFC\GE11_Session132'},...
 %     {'D:\WorkBigDataFiles\PFC\GE17_Session095'},...
 %     {'D:\WorkBigDataFiles\PFC\GE24_Session096'}];
 
-binSize = 20;
-dsRate = 1;
+binSize = 200;
+dsRate = 50;
 trlWindow = {[-1000 2000]};
 alignment = {'PokeIn'};
 % trlWindow = {[-2000 800]};
@@ -59,10 +59,18 @@ rocOPpos = nan(length(fileDirs),4,2);
 rocOPodr = nan(length(fileDirs),4,2);
 taoAcc = nan(length(fileDirs),1);
 taoLat = cell(length(fileDirs),2);
+betaModCells = nan(length(fileDirs),1);
 %%
 for ani = 1:length(fileDirs)
     %% Create initial object & set object parameters
     mlb = MLB_SM(fileDirs{ani});
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % COMMENT IN TO ONLY RUN ON BETA MODULATED CELLS & COMMENT OUT TO RUN ON ALL CELLS
+    uniInfo = mlb.unitInfo;
+    betaModCells(ani) = mean(cell2mat(cellfun(@(a){a.Beta.R_Test(1)}, arrayfun(@(a){a.Spike_Phase_Relations}, mlb.unitInfo)))<0.05);
+%     mlb.popVectIncludeLog = cell2mat(cellfun(@(a){a.Beta.R_Test(1)}, arrayfun(@(a){a.Spike_Phase_Relations}, mlb.unitInfo)))<0.05; % only MODULATED cells
+    mlb.popVectIncludeLog = cell2mat(cellfun(@(a){a.Beta.R_Test(1)}, arrayfun(@(a){a.Spike_Phase_Relations}, mlb.unitInfo)))>0.05; % only NON-MODULATED cells
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     mlb.binSize = binSize;
     mlb.dsRate = dsRate;
     mlb.binType = binType;
