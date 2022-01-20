@@ -217,7 +217,7 @@ classdef MLB_SM < SeqMem
                 obj.likeTrlIDs{1}(:,:,seq) = cell2mat(tempSeqIDlog);
             end
             tempDecodeIDvect = cell2mat(tempDecodeIDvect);
-            obj.decodeIDvects{1} = tempDecodeIDvect(:,1:end-1);
+            obj.decodeIDvects{1} = [tempDecodeIDvect(:,1:end-1), ones(size(tempDecodeIDvect,1), 1)];
             obj.likeTimeVect = tempDecodeIDvect(:,1);
             iscLog = ([obj.trialInfo.TranspositionDistance]==0 & [obj.trialInfo.Performance]==1);
             iscLog(obj.fiscTrials) = false;
@@ -291,7 +291,7 @@ classdef MLB_SM < SeqMem
                     obj.likeTrlIDs{perm}(:,:,seq) = cell2mat(tempLikeIDs);
                 end
                 tempDecodeIDvect = cell2mat(tempDecodeIDvect);
-                obj.decodeIDvects{perm} = tempDecodeIDvect(:,1:end-1);
+                obj.decodeIDvects{perm} = [tempDecodeIDvect(:,1:end-1), ones(size(tempDecodeIDvect,1), 1)*perm];
                 if obj.ssType == 1
                     for odr = 1:size(tempOdrTrlSpikes,1)
                         tempPool = randi(size(tempOdrTrlSpikes{odr},3), [1,likeliSize]);
@@ -370,6 +370,7 @@ classdef MLB_SM < SeqMem
             obj.post = cell(size(obj.obsvTrlSpikes));
             obj.postTrlIDs = cell(size(obj.obsvTrlSpikes));
             for perm = 1:length(obj.likeTrlSpikes)
+                fprintf('Iteration #%i...', perm);
                 if obj.bayesType == 1 || strcmp(obj.bayesType, 'Poisson') || strcmp(obj.bayesType, 'poisson') || strcmp(obj.bayesType, 'P') || strcmp(obj.bayesType, 'p')
                     obj.post{perm} = obj.CalcStaticBayesPost_Poisson(mean(obj.likeTrlSpikes{perm},3, 'omitnan'), obj.obsvTrlSpikes{perm});
                 elseif obj.bayesType == 2 || strcmp(obj.bayesType, 'Bernoulli') || strcmp(obj.bayesType, 'bernoulli') || strcmp(obj.bayesType, 'B') || strcmp(obj.bayesType, 'b')
@@ -377,11 +378,14 @@ classdef MLB_SM < SeqMem
                 elseif obj.bayesType == 3 || strcmp(obj.bayesType, 'Gaussian') || strcmp(obj.bayesType, 'gaussian') || strcmp(obj.bayesType, 'G') || strcmp(obj.bayesType, 'g')
                     obj.post{perm} = obj.CalcStaticBayesPost_Gaussian(mean(obj.likeTrlSpikes{perm},3, 'omitnan'), std(obj.likeTrlSpikes{perm},0,3), obj.obsvTrlSpikes{perm});
                 end
+                obj.likeTrlSpikes{perm} = [];
+                obj.obsvTrlSpikes{perm} = [];
                 obj.postTrlIDs{perm} = obj.obsvTrlIDs{perm};
+                fprintf(' complete\n');
             end
         end
         %% Process all Observations Iteratively (cross-temporal decoding)
-        function Process_IterativeObserves(obj)
+        function Process_IterativeObserves(obj)    
             obj.post = cell(size(obj.obsvTrlSpikes));
             obj.postTrlIDs = cell(size(obj.obsvTrlSpikes));
             for perm = 1:length(obj.likeTrlSpikes)
@@ -395,6 +399,8 @@ classdef MLB_SM < SeqMem
                     error('Not implemented yet');
 %                     obj.post{perm} = obj.CalcIterativeBayesPost_Gaussian(mean(obj.likeTrlSpikes{perm},3, 'omitnan'), std(obj.likeTrlSpikes{perm},0,3), obj.obsvTrlSpikes{perm});
                 end
+                obj.likeTrlSpikes{perm} = [];
+                obj.obsvTrlSpikes{perm} = [];
                 obj.postTrlIDs{perm} = obj.obsvTrlIDs{perm};
                 fprintf(' complete\n');
             end

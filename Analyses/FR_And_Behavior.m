@@ -3,18 +3,28 @@
 %     {'D:\WorkBigDataFiles\PFC\Files To Process\GE14\GE14_Session123'},...
 %     {'D:\WorkBigDataFiles\PFC\Files To Process\GE17\GE17_Session095'},...
 %     {'D:\WorkBigDataFiles\PFC\Files To Process\GE24\Session096'}];
+% setupSeqLength = 4; 
+
+% fileDirs = [{'D:\WorkBigDataFiles\HC\1. Well-Trained session\SuperChris'},...
+%     {'D:\WorkBigDataFiles\HC\1. Well-Trained session\Stella'},...
+%     {'D:\WorkBigDataFiles\HC\1. Well-Trained session\Mitt'},...
+%     {'D:\WorkBigDataFiles\HC\1. Well-Trained session\Buchanan'},...
+%     {'D:\WorkBigDataFiles\HC\1. Well-Trained session\Barat'}];
+% setupSeqLength = 5;
 
 fileDirs = [{'D:\WorkBigDataFiles\PFC\GE11_Session132'},...
     {'D:\WorkBigDataFiles\PFC\GE13_Session083'},...
     {'D:\WorkBigDataFiles\PFC\GE14_Session123'},...
     {'D:\WorkBigDataFiles\PFC\GE17_Session095'},...
     {'D:\WorkBigDataFiles\PFC\GE24_Session096'}];
+setupSeqLength = 4; 
 
 % fileDirs = [
 %     {'D:\WorkBigDataFiles\PFC\GE13_Session083'},...
 %     {'D:\WorkBigDataFiles\PFC\GE14_Session123'},...
 %     {'D:\WorkBigDataFiles\PFC\GE17_Session095'},...
 %     {'D:\WorkBigDataFiles\PFC\GE24_Session096'}];
+% setupSeqLength = 4; 
 
 binSize = 200;
 dsRate = 50;
@@ -25,8 +35,8 @@ alignment = {'PokeIn'};
 % binType = 'gauss';
 binType = 'box';
 sfpYN = 0;
-behavLatType = 'rel';
-% behavLatType = 'abs';
+% behavLatType = 'rel';
+behavLatType = 'abs';
 
 frThresh = 0.2/(binSize/1000);
 % frThresh = 0.001;
@@ -36,27 +46,27 @@ popVects = cell(length(fileDirs),1);
 popVectsSortVect = cell(length(fileDirs),1);
 popVectsThreshVect = cell(length(fileDirs),1);
 % Behavior
-fiscPokeOutLat = cell(length(fileDirs),4);
-fiscRwdSigLat = cell(length(fileDirs),4);
-fiscRwdDelivLat = cell(length(fileDirs),4);
-itiDur = cell(length(fileDirs),4);
+fiscPokeOutLat = cell(length(fileDirs),setupSeqLength);
+fiscRwdSigLat = cell(length(fileDirs),setupSeqLength);
+fiscRwdDelivLat = cell(length(fileDirs),setupSeqLength);
+itiDur = cell(length(fileDirs),setupSeqLength);
 pokeLatRaw = cell(length(fileDirs),2,2);
-pokeLatOPrawC = cell(length(fileDirs),4,2);
-pokeLatOPrawI = cell(length(fileDirs),4,2);
+pokeLatOPrawC = cell(length(fileDirs),setupSeqLength,2);
+pokeLatOPrawI = cell(length(fileDirs),setupSeqLength,2);
 smi = nan(length(fileDirs),1);
 dPrm = nan(length(fileDirs),1);
 ri = nan(length(fileDirs),1);
-smiByOP = nan(length(fileDirs),4,2);
-dPrmByOP = nan(length(fileDirs),4,2);
-riByOP = nan(length(fileDirs),4,2);
-tMatAcc = nan(4,4,length(fileDirs));
-lagAcc = nan(length(fileDirs),7);
-tMatLatC = cell(4,4,length(fileDirs));
-tMatLatI = cell(4,4,length(fileDirs));
-lagLat = cell(length(fileDirs),7,2);
+smiByOP = nan(length(fileDirs),setupSeqLength,2);
+dPrmByOP = nan(length(fileDirs),setupSeqLength,2);
+riByOP = nan(length(fileDirs),setupSeqLength,2);
+tMatAcc = nan(setupSeqLength,setupSeqLength,length(fileDirs));
+lagAcc = nan(length(fileDirs),setupSeqLength*2-1);
+tMatLatC = cell(setupSeqLength,setupSeqLength,length(fileDirs));
+tMatLatI = cell(setupSeqLength,setupSeqLength,length(fileDirs));
+lagLat = cell(length(fileDirs),setupSeqLength*2-1,2);
 roc = nan(length(fileDirs),2);
-rocOPpos = nan(length(fileDirs),4,2);
-rocOPodr = nan(length(fileDirs),4,2);
+rocOPpos = nan(length(fileDirs),setupSeqLength,2);
+rocOPodr = nan(length(fileDirs),setupSeqLength,2);
 taoAcc = nan(length(fileDirs),1);
 taoLat = cell(length(fileDirs),2);
 betaModCells = nan(length(fileDirs),1);
