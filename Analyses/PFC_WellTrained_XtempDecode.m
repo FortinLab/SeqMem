@@ -3,13 +3,23 @@
 %     {'D:\WorkBigDataFiles\PFC\Files To Process\GE14\GE14_Session123'},...
 %     {'D:\WorkBigDataFiles\PFC\Files To Process\GE17\GE17_Session095'},...
 %     {'D:\WorkBigDataFiles\PFC\Files To Process\GE24\Session096'}];
+% setupSeqLength = 4; 
+
+% CA1 Data
+fileDirs = [{'D:\WorkBigDataFiles\CA1 Data\1. WellTrained session\SuperChris'},...
+    {'D:\WorkBigDataFiles\CA1 Data\1. WellTrained session\Stella'},...
+    {'D:\WorkBigDataFiles\CA1 Data\1. WellTrained session\Mitt'},...
+    {'D:\WorkBigDataFiles\CA1 Data\1. WellTrained session\Buchanan'},...
+    {'D:\WorkBigDataFiles\CA1 Data\1. WellTrained session\Barat'}];
+setupSeqLength = 5;
 % 
-fileDirs = [{'D:\WorkBigDataFiles\PFC\GE11_Session132'},...
-    {'D:\WorkBigDataFiles\PFC\GE13_Session083'},...
-    {'D:\WorkBigDataFiles\PFC\GE14_Session123'},...
-    {'D:\WorkBigDataFiles\PFC\GE17_Session095'},...
-    {'D:\WorkBigDataFiles\PFC\GE24_Session096'}];
-% 
+% fileDirs = [{'D:\WorkBigDataFiles\PFC\GE11_Session132'},...
+%     {'D:\WorkBigDataFiles\PFC\GE13_Session083'},...
+%     {'D:\WorkBigDataFiles\PFC\GE14_Session123'},...
+%     {'D:\WorkBigDataFiles\PFC\GE17_Session095'},...
+%     {'D:\WorkBigDataFiles\PFC\GE24_Session096'}];
+% setupSeqLength = 4; 
+%
 % fileDirs = [
 %     {'D:\WorkBigDataFiles\PFC\GE13_Session083'},...
 %     {'D:\WorkBigDataFiles\PFC\GE14_Session123'},...
@@ -17,7 +27,7 @@ fileDirs = [{'D:\WorkBigDataFiles\PFC\GE11_Session132'},...
 %     {'D:\WorkBigDataFiles\PFC\GE24_Session096'}];
 binSize = 200;
 dsRate = 50;
-trlWindow = {[-1000 2000]};
+trlWindow = {[0 1200]};
 alignment = {'PokeIn'};
 % trlWindow = {[-2000 800]};
 % alignment = {'PokeOut'};
@@ -36,27 +46,27 @@ fiscRwdDelivLat = cell(length(fileDirs),1);
 smi = nan(length(fileDirs),1);
 dPrm = nan(length(fileDirs),1);
 ri = nan(length(fileDirs),1);
-smiByOP = nan(length(fileDirs),4,2);
-dPrmByOP = nan(length(fileDirs),4,2);
-riByOP = nan(length(fileDirs),4,2);
+smiByOP = nan(length(fileDirs),setupSeqLength,2);
+dPrmByOP = nan(length(fileDirs),setupSeqLength,2);
+riByOP = nan(length(fileDirs),setupSeqLength,2);
 % Neural Variables
 grpPost = cell(size(fileDirs));
 grpDecode = cell(size(fileDirs));
 grpAccLog = cell(size(fileDirs));
 grpLFP = cell(size(fileDirs));
 grpTrlPos = cell(size(fileDirs));
-grpDecodeMean = cell(4,4,length(fileDirs));
-grpTPdecode = cell(1,4,length(fileDirs));
+grpDecodeMean = cell(setupSeqLength,setupSeqLength,length(fileDirs));
+grpTPdecode = cell(1,setupSeqLength,length(fileDirs));
 %%
 for ani = 1:length(fileDirs)
     %% Create initial object & set object parameters
     mlb = MLB_SM(fileDirs{ani});
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % COMMENT IN TO ONLY RUN ON BETA MODULATED CELLS & COMMENT OUT TO RUN ON ALL CELLS
-    uniInfo = mlb.unitInfo;
-    betaModCells(ani) = mean(cell2mat(cellfun(@(a){a.Beta.R_Test(1)}, arrayfun(@(a){a.Spike_Phase_Relations}, mlb.unitInfo)))<0.05);
+%     uniInfo = mlb.unitInfo;
+%     betaModCells(ani) = mean(cell2mat(cellfun(@(a){a.Beta.R_Test(1)}, arrayfun(@(a){a.Spike_Phase_Relations}, mlb.unitInfo)))<0.05);
 %     mlb.popVectIncludeLog = cell2mat(cellfun(@(a){a.Beta.R_Test(1)}, arrayfun(@(a){a.Spike_Phase_Relations}, mlb.unitInfo)))<0.05; % only MODULATED cells
-    mlb.popVectIncludeLog = cell2mat(cellfun(@(a){a.Beta.R_Test(1)}, arrayfun(@(a){a.Spike_Phase_Relations}, mlb.unitInfo)))>0.05; % only NON-MODULATED cells
+% %     mlb.popVectIncludeLog = cell2mat(cellfun(@(a){a.Beta.R_Test(1)}, arrayfun(@(a){a.Spike_Phase_Relations}, mlb.unitInfo)))>0.05; % only NON-MODULATED cells
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     mlb.binSize = binSize;
     mlb.dsRate = dsRate;
@@ -87,25 +97,26 @@ for ani = 1:length(fileDirs)
         riByOP(ani,:,2) = mlb.riByOdr;
     end
     %% Process Neural Data
-    [betaPhase, betaPower] = mlb.PP_TrialMatrix_LFP([16 32], trlWindow{1}, alignment{1});
+    [betaPhase, betaPower] = mlb.PP_TrialMatrix_LFP([20 40], trlWindow{1}, alignment{1});
     [thetaPhase, thetaPower] = mlb.PP_TrialMatrix_LFP([4 12], trlWindow{1}, alignment{1});
 %     mlb.SetLikes_FISC;
     mlb.SetLikes_SubSample;
     mlb.Process_IterativeObserves;
-    grpPost{ani} = mlb.post{1};
-    [decodes, maxDecode] = mlb.DecodeBayesPost(mlb.post{1});   
+    grpPost{ani} = cell2mat(reshape(mlb.post, [1,1,1,mlb.numPerms]));
+    [decodes, maxDecode] = mlb.DecodeBayesPost(grpPost{ani});   
     grpDecode{ani} = decodes;
+    tempTrlIDs = permute(cell2mat(reshape(mlb.postTrlIDs, [1,1,mlb.numPerms])), [1,3,2]);
     trlLFP = nan(size(decodes,1),4,size(decodes,3));
     tempAccLog = nan(size(decodes,1),size(decodes,2), size(decodes,3), mlb.seqLength);
     for trl = 1:size(decodes,3)
-        trlLFP(:,1,trl) = betaPower(:,:,mlb.obsvTrlIDs{1}(trl));
-        trlLFP(:,2,trl) = thetaPower(:,:,mlb.obsvTrlIDs{1}(trl));
+        trlLFP(:,1,trl) = betaPower(:,:,tempTrlIDs(trl));
+        trlLFP(:,2,trl) = thetaPower(:,:,tempTrlIDs(trl));
         for op = 1:mlb.seqLength
             tempAccLog(:,:,trl,op) = decodes(:,:,trl)==op;
         end
     end
     grpLFP{ani} = trlLFP;
-    grpTrlPos{ani} = [mlb.trialInfo(mlb.obsvTrlIDs{1}).Position];
+    grpTrlPos{ani} = [mlb.trialInfo(tempTrlIDs).Position];
     grpAccLog{ani} = tempAccLog;
     figure;
     for tPos = 1:mlb.seqLength
@@ -172,7 +183,7 @@ nearestRWDtime = mlb.obsvTimeVect(find(mlb.obsvTimeVect<median(rwdDelivLat),1,'l
 %%
 figure;
 for p = 1:mlb.seqLength
-    subplot(1,4,p);
+    subplot(1,mlb.seqLength,p);
     imagesc(mlb.obsvTimeVect, mlb.obsvTimeVect, mean(cell2mat(grpTPdecode(1,p,:)), 3, 'omitnan'), [0 0.5]);
     set(gca, 'ydir', 'normal');
     hold on;
@@ -203,7 +214,10 @@ annotation(gcf,'textbox', [0.1 0.95 0.9 0.05],...
 %%
 grpBetaPwrSplit = cell(mlb.seqLength, mlb.seqLength, length(fileDirs));
 grpThetaPwrSplit = cell(mlb.seqLength,mlb.seqLength, length(fileDirs));
-for ani = 1:length(fileDirs)
+% lfpGrp = cell2mat(reshape(grpLFP, [1,1,length(fileDirs)]));
+% sortedBeta = sort(permute(lfpGrp(1,1,:), [3,1,2]));
+% sortedTheta = sort(permute(trlLFP(1,2,:), [3,1,2]));
+for ani = 1:length(fileDirs)        
     curAniPost = grpPost{ani};
     curAniDecode = grpDecode{ani};
     curAniLFP = grpLFP{ani};
@@ -212,6 +226,8 @@ for ani = 1:length(fileDirs)
     %% Evaluate animal trial-wise LFP power distributions
     trlPrdLog = mlb.obsvTimeVect>=0;
     trlLFP = mean(curAniLFP(trlPrdLog,:,:),1);
+    sortedBeta = sort(permute(trlLFP(1,1,:), [3,1,2]));
+    sortedTheta = sort(permute(trlLFP(1,2,:), [3,1,2]));
     figure; 
     subplot(1,2,1);
     histogram(trlLFP(1,1,:), -1:0.1:3);
@@ -230,12 +246,10 @@ for ani = 1:length(fileDirs)
         'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left', 'interpreter', 'none');
     
     %%
-%     highBetaTrlLog = reshape(trlLFP(1,1,:)>median(trlLFP(1,1,:)), [1, size(trlLFP,3)]); lowBetaTrlLog = reshape(trlLFP(1,1,:)<median(trlLFP(1,1,:)), [1, size(trlLFP,3)]);
-%     highBetaTrlLog = reshape(trlLFP(1,1,:)>(mean(trlLFP(1,1,:))+std(trlLFP(1,1,:))), [1, size(trlLFP,3)]);    lowBetaTrlLog = reshape(trlLFP(1,1,:)<(mean(trlLFP(1,1,:))-std(trlLFP(1,1,:))), [1, size(trlLFP,3)]);
-    highBetaTrlLog = reshape(trlLFP(1,1,:)>median(trlLFP(1,1,trlLFP(1,1,:)>median(trlLFP(1,1,:)))), [1, size(trlLFP,3)]);    lowBetaTrlLog = reshape(trlLFP(1,1,:)<median(trlLFP(1,1,:)), [1, size(trlLFP,3)]);
-%     highThetaTrlLog = reshape(trlLFP(1,2,:)>median(trlLFP(1,2,:)), [1,size(trlLFP,3)]); lowThetaTrlLog = reshape(trlLFP(1,2,:)<median(trlLFP(1,2,:)), [1,size(trlLFP,3)]);
-%     highThetaTrlLog = reshape(trlLFP(1,2,:)>(mean(trlLFP(1,2,:))), [1,size(trlLFP,3)]);    lowThetaTrlLog = reshape(trlLFP(1,2,:)<(mean(trlLFP(1,2,:))-std(trlLFP(1,2,:))), [1,size(trlLFP,3)]);
-    highThetaTrlLog = reshape(trlLFP(1,2,:)>median(trlLFP(1,2,trlLFP(1,2,:)>median(trlLFP(1,2,:)))), [1,size(trlLFP,3)]);    lowThetaTrlLog = reshape(trlLFP(1,2,:)<median(trlLFP(1,2,:)), [1,size(trlLFP,3)]);
+    highBetaTrlLog = trlLFP(1,1,:)>sortedBeta(floor(length(sortedBeta)*0.75));
+    lowBetaTrlLog = trlLFP(1,1,:)<sortedBeta(floor(length(sortedBeta)*0.25));
+    highThetaTrlLog = trlLFP(1,2,:)>sortedTheta(floor(length(sortedTheta)*0.75));
+    lowThetaTrlLog = trlLFP(1,2,:)<sortedTheta(floor(length(sortedTheta)*0.25));
     betaPwrSplitDecode = cell(mlb.seqLength,mlb.seqLength,2);
     betaDiff = cell(mlb.seqLength);
     thetaPwrSplitDecode = cell(mlb.seqLength,mlb.seqLength,2);
@@ -246,10 +260,10 @@ for ani = 1:length(fileDirs)
     thetaD = figure; 
     thetaH = figure; 
     thetaL = figure; 
-    for pos = 1:4            
-        for odr = 1:4
-            betaPwrSplitDecode{odr,pos,1} = mean(curAniPost(:,:,odr, curTrlPos==pos & highBetaTrlLog),4);
-            betaPwrSplitDecode{odr,pos,2} = mean(curAniPost(:,:,odr, curTrlPos==pos & lowBetaTrlLog),4);
+    for pos = 1:mlb.seqLength            
+        for odr = 1:mlb.seqLength
+            betaPwrSplitDecode{odr,pos,1} = mean(curAniPost(:,:,odr, curTrlPos==pos & highBetaTrlLog(:)'),4, 'omitnan');
+            betaPwrSplitDecode{odr,pos,2} = mean(curAniPost(:,:,odr, curTrlPos==pos & lowBetaTrlLog(:)'),4, 'omitnan');
             betaDiff{odr,pos} =  betaPwrSplitDecode{odr,pos,1}-betaPwrSplitDecode{odr,pos,2};
             figure(betaD);
             subplot(mlb.seqLength, mlb.seqLength, sub2ind([mlb.seqLength,mlb.seqLength], odr, pos));
@@ -267,8 +281,8 @@ for ani = 1:length(fileDirs)
             title(sprintf('%i Decode %i', pos, odr));
             set(gca, 'ydir', 'normal');
             
-            thetaPwrSplitDecode{odr,pos,1} = mean(curAniPost(:,:,odr, curTrlPos==pos & highThetaTrlLog),4);
-            thetaPwrSplitDecode{odr,pos,2} = mean(curAniPost(:,:,odr, curTrlPos==pos & lowThetaTrlLog),4);
+            thetaPwrSplitDecode{odr,pos,1} = mean(curAniPost(:,:,odr, curTrlPos==pos & highThetaTrlLog(:)'),4, 'omitnan');
+            thetaPwrSplitDecode{odr,pos,2} = mean(curAniPost(:,:,odr, curTrlPos==pos & lowThetaTrlLog(:)'),4, 'omitnan');
             thetaDiff{odr,pos} =  thetaPwrSplitDecode{odr,pos,1}-thetaPwrSplitDecode{odr,pos,2};
             figure(thetaD);
             subplot(mlb.seqLength, mlb.seqLength, sub2ind([mlb.seqLength,mlb.seqLength], odr, pos));
@@ -313,8 +327,8 @@ end
 % close all;
 betaD = figure;
 thetaD = figure;
-for pos = 1:4
-    for odr = 1:4
+for pos = 1:mlb.seqLength
+    for odr = 1:mlb.seqLength
         figure(betaD);
         subplot(mlb.seqLength, mlb.seqLength, sub2ind([mlb.seqLength,mlb.seqLength], odr, pos));
         imagesc(mlb.obsvTimeVect, mlb.obsvTimeVect, mean(cell2mat(grpBetaPwrSplit(odr,pos,:)),3, 'omitnan'), [-0.2 0.2]);

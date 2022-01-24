@@ -5,19 +5,19 @@
 %     {'D:\WorkBigDataFiles\PFC\Files To Process\GE24\Session096'}];
 % setupSeqLength = 4; 
 
-% fileDirs = [{'D:\WorkBigDataFiles\HC\1. Well-Trained session\SuperChris'},...
-%     {'D:\WorkBigDataFiles\HC\1. Well-Trained session\Stella'},...
-%     {'D:\WorkBigDataFiles\HC\1. Well-Trained session\Mitt'},...
-%     {'D:\WorkBigDataFiles\HC\1. Well-Trained session\Buchanan'},...
-%     {'D:\WorkBigDataFiles\HC\1. Well-Trained session\Barat'}];
-% setupSeqLength = 5;
+fileDirs = [{'D:\WorkBigDataFiles\CA1 Data\1. WellTrained session\SuperChris'},...
+    {'D:\WorkBigDataFiles\CA1 Data\1. WellTrained session\Stella'},...
+    {'D:\WorkBigDataFiles\CA1 Data\1. WellTrained session\Mitt'},...
+    {'D:\WorkBigDataFiles\CA1 Data\1. WellTrained session\Buchanan'},...
+    {'D:\WorkBigDataFiles\CA1 Data\1. WellTrained session\Barat'}];
+setupSeqLength = 5;
 
-fileDirs = [{'D:\WorkBigDataFiles\PFC\GE11_Session132'},...
-    {'D:\WorkBigDataFiles\PFC\GE13_Session083'},...
-    {'D:\WorkBigDataFiles\PFC\GE14_Session123'},...
-    {'D:\WorkBigDataFiles\PFC\GE17_Session095'},...
-    {'D:\WorkBigDataFiles\PFC\GE24_Session096'}];
-setupSeqLength = 4; 
+% fileDirs = [{'D:\WorkBigDataFiles\PFC\GE11_Session132'},...
+%     {'D:\WorkBigDataFiles\PFC\GE13_Session083'},...
+%     {'D:\WorkBigDataFiles\PFC\GE14_Session123'},...
+%     {'D:\WorkBigDataFiles\PFC\GE17_Session095'},...
+%     {'D:\WorkBigDataFiles\PFC\GE24_Session096'}];
+% setupSeqLength = 4; 
 
 % fileDirs = [
 %     {'D:\WorkBigDataFiles\PFC\GE13_Session083'},...
@@ -27,19 +27,19 @@ setupSeqLength = 4;
 % setupSeqLength = 4; 
 
 binSize = 200;
-dsRate = 50;
+dsRate = 1;
 trlWindow = {[-1000 2000]};
 alignment = {'PokeIn'};
 % trlWindow = {[-2000 800]};
 % alignment = {'PokeOut'};
-% binType = 'gauss';
-binType = 'box';
+binType = 'gauss';
+% binType = 'box';
 sfpYN = 0;
 % behavLatType = 'rel';
 behavLatType = 'abs';
 
-frThresh = 0.2/(binSize/1000);
-% frThresh = 0.001;
+% frThresh = 0.2/(binSize/1000);
+frThresh = 0.00001;
 %% Data Vectors
 % Neural
 popVects = cell(length(fileDirs),1);
@@ -76,10 +76,10 @@ for ani = 1:length(fileDirs)
     mlb = MLB_SM(fileDirs{ani});
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % COMMENT IN TO ONLY RUN ON BETA MODULATED CELLS & COMMENT OUT TO RUN ON ALL CELLS
-    uniInfo = mlb.unitInfo;
-    betaModCells(ani) = mean(cell2mat(cellfun(@(a){a.Beta.R_Test(1)}, arrayfun(@(a){a.Spike_Phase_Relations}, mlb.unitInfo)))<0.05);
-%     mlb.popVectIncludeLog = cell2mat(cellfun(@(a){a.Beta.R_Test(1)}, arrayfun(@(a){a.Spike_Phase_Relations}, mlb.unitInfo)))<0.05; % only MODULATED cells
-    mlb.popVectIncludeLog = cell2mat(cellfun(@(a){a.Beta.R_Test(1)}, arrayfun(@(a){a.Spike_Phase_Relations}, mlb.unitInfo)))>0.05; % only NON-MODULATED cells
+%     uniInfo = mlb.unitInfo;
+%     betaModCells(ani) = mean(cell2mat(cellfun(@(a){a.Beta.R_Test(1)}, arrayfun(@(a){a.Spike_Phase_Relations}, mlb.unitInfo)))<0.05);
+% %     mlb.popVectIncludeLog = cell2mat(cellfun(@(a){a.Beta.R_Test(1)}, arrayfun(@(a){a.Spike_Phase_Relations}, mlb.unitInfo)))<0.05; % only MODULATED cells
+%     mlb.popVectIncludeLog = cell2mat(cellfun(@(a){a.Beta.R_Test(1)}, arrayfun(@(a){a.Spike_Phase_Relations}, mlb.unitInfo)))>0.05; % only NON-MODULATED cells
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     mlb.binSize = binSize;
     mlb.dsRate = dsRate;

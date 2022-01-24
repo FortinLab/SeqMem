@@ -1,38 +1,20 @@
-% fileDirs = [{'D:\WorkBigDataFiles\PFC\Files To Process\GE11\GE11_Session132'},...
-%     {'D:\WorkBigDataFiles\PFC\Files To Process\GE13\GE13_Session083'},...
-%     {'D:\WorkBigDataFiles\PFC\Files To Process\GE14\GE14_Session123'},...
-%     {'D:\WorkBigDataFiles\PFC\Files To Process\GE17\GE17_Session095'},...
-%     {'D:\WorkBigDataFiles\PFC\Files To Process\GE24\Session096'}];
-% setupSeqLength = 4; 
+clear all; %#ok<CLALL>
+%%
+% fileDirs = [{'D:\WorkBigDataFiles\PFC\Dual_List\GE11_Session146'},...
+%     {'D:\WorkBigDataFiles\PFC\Dual_List\GE13_Session103'},...
+%     {'D:\WorkBigDataFiles\PFC\Dual_List\GE17_Session110'}];
 
-% CA1 Data
-fileDirs = [{'D:\WorkBigDataFiles\CA1 Data\1. WellTrained session\SuperChris'},...
-    {'D:\WorkBigDataFiles\CA1 Data\1. WellTrained session\Stella'},...
-    {'D:\WorkBigDataFiles\CA1 Data\1. WellTrained session\Mitt'},...
-    {'D:\WorkBigDataFiles\CA1 Data\1. WellTrained session\Buchanan'},...
-    {'D:\WorkBigDataFiles\CA1 Data\1. WellTrained session\Barat'}];
-setupSeqLength = 5;
+fileDirs = [{'D:\WorkBigDataFiles\PFC\Dual List Sessions\GE11_Session146'},...
+    {'D:\WorkBigDataFiles\PFC\Dual List Sessions\GE13_Session103'},...
+    {'D:\WorkBigDataFiles\PFC\Dual List Sessions\GE17_Session110'}];
 
-% % All well-trained files
-% fileDirs = [{'D:\WorkBigDataFiles\PFC\GE11_Session132'},...
-%     {'D:\WorkBigDataFiles\PFC\GE13_Session083'},...
-%     {'D:\WorkBigDataFiles\PFC\GE14_Session123'},...
-%     {'D:\WorkBigDataFiles\PFC\GE17_Session095'},...
-%     {'D:\WorkBigDataFiles\PFC\GE24_Session096'}];
-% setupSeqLength = 4; 
-
-% 
-% % Only animals that show "normal" beta
-% fileDirs = [{'D:\WorkBigDataFiles\PFC\GE11_Session132'},...
-%     {'D:\WorkBigDataFiles\PFC\GE14_Session123'},...
-%     {'D:\WorkBigDataFiles\PFC\GE17_Session095'}];
-% setupSeqLength = 4; 
 binSize = 200;
 dsRate = 50;
 trlWindow = {[-1000 2000]};
 alignment = {'PokeIn'};
 % trlWindow = {[-2000 800]};
 % alignment = {'PokeOut'};
+lfpWindow = [16 32];
 numPerms = 100;
 ssProportion = 0.4;
 ssType = 1; % 0 = use all ISC for decoding; 1 = use subsampled ISC types
@@ -41,16 +23,16 @@ bayesType = 1; %1 = Poisson: use with raw spike counts; 2 = Bernoulli: use with 
 postCLim = [0 0.05];
 decodeCLim = [0 0.2];
 
-%% Create Output Variables
+%% Data Outputs
 % Behavior Variables
 fiscPokeOutLat = cell(length(fileDirs),1);
 fiscRwdDelivLat = cell(length(fileDirs),1);
-smi = nan(length(fileDirs),1);
-dPrm = nan(length(fileDirs),1);
-ri = nan(length(fileDirs),1);
-smiByOP = nan(length(fileDirs),setupSeqLength,2);
-dPrmByOP = nan(length(fileDirs),setupSeqLength,2);
-riByOP = nan(length(fileDirs),setupSeqLength,2);
+% smi = nan(length(fileDirs),2);
+% dPrm = nan(length(fileDirs),2);
+% ri = nan(length(fileDirs),2);
+% smiByOP = nan(length(fileDirs),8,2);
+% dPrmByOP = nan(length(fileDirs),8,2);
+% riByOP = nan(length(fileDirs),8,2);
 % Neural Variables
 aniPosts = cell(size(fileDirs));
 aniOdorDecodes = cell(size(fileDirs));
@@ -58,6 +40,7 @@ aniTimeDecodes = cell(size(fileDirs));
 aniPosAccLog = cell(size(fileDirs));
 aniTimeAccLog = cell(size(fileDirs));
 aniTrlPosIDs = cell(size(fileDirs));
+aniTrlOdrIDs = cell(size(fileDirs));
 aniLFP = cell(size(fileDirs));
 %%
 for ani = 1:length(fileDirs)
@@ -67,7 +50,7 @@ for ani = 1:length(fileDirs)
     % COMMENT IN TO ONLY RUN ON BETA MODULATED CELLS & COMMENT OUT TO RUN ON ALL CELLS
 %     uniInfo = mlb.unitInfo;
 %     mlb.popVectIncludeLog = cell2mat(cellfun(@(a){a.Beta.R_Test(1)}, arrayfun(@(a){a.Spike_Phase_Relations}, mlb.unitInfo)))<0.05; % only MODULATED cells
-% %     mlb.popVectIncludeLog = cell2mat(cellfun(@(a){a.Beta.R_Test(1)}, arrayfun(@(a){a.Spike_Phase_Relations}, mlb.unitInfo)))>0.05; % only NON-MODULATED cells
+%     mlb.popVectIncludeLog = cell2mat(cellfun(@(a){a.Beta.R_Test(1)}, arrayfun(@(a){a.Spike_Phase_Relations}, mlb.unitInfo)))>0.05; % only NON-MODULATED cells
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     mlb.binSize = binSize;
     mlb.dsRate = dsRate;
@@ -85,29 +68,30 @@ for ani = 1:length(fileDirs)
         fiscPokeOutLat{ani} = ([mlb.trialInfo(mlb.fiscTrials).PokeInIndex] - [mlb.trialInfo(mlb.fiscTrials).PokeOutIndex])'/1000;
         fiscRwdDelivLat{ani} = ([mlb.trialInfo(mlb.fiscTrials).RewardIndex] - [mlb.trialInfo(mlb.fiscTrials).PokeOutIndex])'/1000;
     end
-    smi(ani) = mlb.smi;
-    dPrm(ani) = mlb.dPrime;
-    ri(ani) = mlb.ri;
-    for op = 1:mlb.seqLength
-        smiByOP(ani,:,1) = mlb.smiByPos;
-        smiByOP(ani,:,2) = mlb.smiByOdr;
-        dPrmByOP(ani,:,1) = mlb.dPrimeByPos;
-        dPrmByOP(ani,:,2) = mlb.dPrimeByOdr;
-        riByOP(ani,:,1) = mlb.riByPos;
-        riByOP(ani,:,2) = mlb.riByOdr;
-    end
+%     smi(ani,:) = mlb.smi;
+%     dPrm(ani,:) = mlb.dPrime;
+%     ri(ani,:) = mlb.ri;
+%     for op = 1:mlb.seqLength
+%         smiByOP(ani,:,1) = mlb.smiByPos;
+%         smiByOP(ani,:,2) = mlb.smiByOdr;
+%         dPrmByOP(ani,:,1) = mlb.dPrimeByPos;
+%         dPrmByOP(ani,:,2) = mlb.dPrimeByOdr;
+%         riByOP(ani,:,1) = mlb.riByPos;
+%         riByOP(ani,:,2) = mlb.riByOdr;
+%     end
     %% Extract LFP
-    [betaPhase, betaPower] = mlb.PP_TrialMatrix_LFP([20 40], trlWindow{1}, alignment{1});
-    [thetaPhase, thetaPower] = mlb.PP_TrialMatrix_LFP([4 12], trlWindow{1}, alignment{1});
-    %% Decode ISC via Sub-Sampling
+    [~, betaPower] = mlb.PP_TrialMatrix_LFP([16 32], trlWindow{1}, alignment{1});
+    [~, thetaPower] = mlb.PP_TrialMatrix_LFP([4 12], trlWindow{1}, alignment{1});
+        %% Decode ISC via Sub-Sampling
 %     mlb.bayesType = 1;  % Comment In to decode using Gaussian rather than Poisson
     mlb.SetLikes_SubSample;
 %     mlb.bayesType = 3;  % Comment In to decode using Gaussian rather than Poisson
     mlb.Process_Observes;
     tempPosts = cell2mat(reshape(mlb.post, [1,1,numel(mlb.post)]));
     postTrlIDs = cell2mat(reshape(mlb.postTrlIDs, [1,1,numel(mlb.postTrlIDs)]));
-    tempOdorDecode = mlb.DecodeBayesPost(tempPosts, mlb.decodeIDvects{1}(:,3));
-    tempPosAccuracy = arrayfun(@(a,b)a==b,repmat(tempOdorDecode,[1,1,mlb.seqLength]), repmat(permute(1:mlb.seqLength,[3,1,2]), size(tempOdorDecode,1),size(tempOdorDecode,2),1));
+    tempOdorDecode = mlb.DecodeBayesPost(tempPosts, mlb.decodeIDvects{1}(:,4));
+    odrVect = unique(mlb.decodeIDvects{1}(:,4));
+    tempPosAccuracy = arrayfun(@(a,b)a==b,repmat(tempOdorDecode,[1,1,length(odrVect)]), repmat(permute(odrVect,[3,2,1]), size(tempOdorDecode,1),size(tempOdorDecode,2),1));
     tempTimeDecode = mlb.DecodeBayesPost(tempPosts, mlb.decodeIDvects{1}(:,1));
     timePoints = unique(mlb.decodeIDvects{1}(:,1));
     tempTimeAccuracy = arrayfun(@(a,b)a==b,repmat(tempTimeDecode,[1,1,length(timePoints)]), repmat(permute(timePoints,[3,2,1]), size(tempTimeDecode,1),size(tempTimeDecode,2),1));
@@ -119,7 +103,10 @@ for ani = 1:length(fileDirs)
     aniPosAccLog{ani} = tempPosAccuracy;
     aniTimeAccLog{ani} = tempTimeAccuracy;
     aniTrlPosIDs{ani} = [mlb.trialInfo(postTrlIDs).Position];
+    aniTrlOdrIDs{ani} = [mlb.trialInfo(postTrlIDs).Odor];
     aniLFP{ani} = tempLFP;
+    %% Free up memory
+    clear tempPosts tempOdorDecode tempTimeDecode tempPosAccuracy tempTimeAccuracy tempLFP
 end
 pokeOutLats = cell2mat(fiscPokeOutLat(:));
 nearestPOtime = mlb.obsvTimeVect(find(mlb.obsvTimeVect<median(pokeOutLats),1,'last'));
@@ -134,6 +121,7 @@ else
 end
 grpTrlPosts = cell2mat(reshape(aniPosts, [1,1,length(fileDirs)]));
 grpTrlLFP = cell2mat(aniLFP);
+grpTrlOdr = cell2mat(aniTrlOdrIDs);
 grpTrlPos = cell2mat(aniTrlPosIDs);
 grpTrlPosAccLog = cell2mat(aniPosAccLog);
 grpTrlTimeAccLog = cell2mat(aniTimeAccLog);
@@ -146,44 +134,54 @@ threshAccPos = cell(mlb.seqLength,2,2);
 threshAccTime = cell(mlb.seqLength,2,2);
 
 figure;
-for p = 1:mlb.seqLength
-    subplot(mlb.seqLength,2, sub2ind([2,mlb.seqLength], 1,p));
-%     betaThresh = [mean(betaTrlMean(grpTrlPos==p))-(std(betaTrlMean(grpTrlPos==p))*1), mean(betaTrlMean(grpTrlPos==p))+(std(betaTrlMean(grpTrlPos==p))*1)]; % INDIVIDUAL threshold (Mean+/-STD)
-%     betaThresh = [mean(betaTrlMean(grpTrlPos))-(std(betaTrlMean(grpTrlPos))*1), mean(betaTrlMean(grpTrlPos))+(std(betaTrlMean(grpTrlPos))*1)]; % SESSION threshold (Mean +/-STD)
-    sortedBeta = sort(betaTrlMean(grpTrlPos==p)); betaThresh = [sortedBeta(ceil(length(sortedBeta)*0.25)); sortedBeta(floor(length(sortedBeta)*0.75))]; % INDIVIDUAL threshold (<25/>75)
-%     sortedBeta = sort(betaTrlMean(grpTrlPos)); betaThresh = [sortedBeta(ceil(length(sortedBeta)*0.25)); sortedBeta(floor(length(sortedBeta)*0.75))]; % SESSION threshold (<25/>75)
-    lfpThresh(p,:,1) = betaThresh;
-    histogram(betaTrlMean(grpTrlPos==p));    
-    title(sprintf('Beta %i', p));
-    threshPosts{p,1,1} = grpTrlPosts(:,:,grpTrlPos==p & betaTrlMean>betaThresh(2));
-    threshPosts{p,2,1} = grpTrlPosts(:,:,grpTrlPos==p & betaTrlMean<betaThresh(1));
+for o = 1:length(odrVect)
+    curOdr = odrVect(o);
+    [~,curPos] = find(curOdr==mlb.odrSeqs);
+    curOdrLog = grpTrlOdr==curOdr;
+    curPosLog = grpTrlPos==curPos;
+    subplot(length(odrVect),2, sub2ind([2,length(odrVect)], 1,o));
+%     betaThresh = [mean(betaTrlMean(curPosLog))-(std(betaTrlMean(curPosLog))*1), mean(betaTrlMean(curPosLog))+(std(betaTrlMean(curPosLog))*1)];              % POSITION threshold (Mean+/-STD)
+%     betaThresh = [mean(betaTrlMean(curOdrLog))-(std(betaTrlMean(curOdrLog))*1), mean(betaTrlMean(curOdrLog))+(std(betaTrlMean(curOdrLog))*1)];              % ODOR threshold (Mean+/-STD)
+%     betaThresh = [mean(betaTrlMean)-(std(betaTrlMean(grpTrlOdr))*1), mean(betaTrlMean)+(std(betaTrlMean)*1)];                                               % SESSION threshold (Mean +/-STD)
+%     sortedBeta = sort(betaTrlMean(curPosLog)); betaThresh = [sortedBeta(ceil(length(sortedBeta)*0.25)); sortedBeta(floor(length(sortedBeta)*0.75))];        % POSITION threshold (<25/>75)
+    sortedBeta = sort(betaTrlMean(curOdrLog)); betaThresh = [sortedBeta(ceil(length(sortedBeta)*0.25)); sortedBeta(floor(length(sortedBeta)*0.75))];        % ODOR threshold (<25/>75)
+%     sortedBeta = sort(betaTrlMean); betaThresh = [sortedBeta(ceil(length(sortedBeta)*0.25)); sortedBeta(floor(length(sortedBeta)*0.75))];                   % SESSION threshold (<25/>75)
+    lfpThresh(o,:,1) = betaThresh;
+    histogram(betaTrlMean(curOdrLog), 'Normalization', 'cdf'); 
+    hold on;
+    title(sprintf('Beta %i', curOdr));
+    threshPosts{o,1,1} = grpTrlPosts(:,:,curOdrLog & betaTrlMean>betaThresh(2));
+    threshPosts{o,2,1} = grpTrlPosts(:,:,curOdrLog & betaTrlMean<betaThresh(1));
         
-    subplot(mlb.seqLength,2, sub2ind([2,mlb.seqLength], 2,p));
-%     thetaThresh = [mean(thetaTrlMean(grpTrlPos==p))-(std(thetaTrlMean(grpTrlPos==p))*1), mean(thetaTrlMean(grpTrlPos==p))+(std(thetaTrlMean(grpTrlPos==p))*1)]; % INDIVIDUAL threshold (Mean+/-STD)
-%     thetaThresh = [mean(thetaTrlMean(grpTrlPos))-(std(thetaTrlMean(grpTrlPos))*1), mean(thetaTrlMean(grpTrlPos))+(std(thetaTrlMean(grpTrlPos))*1)]; % SESSION threshold (Mean +/-STD)
-    sortedTheta = sort(thetaTrlMean(grpTrlPos==p)); thetaThresh = [sortedTheta(ceil(length(sortedTheta)*0.25)); sortedTheta(floor(length(sortedTheta)*0.75))]; % INDIVIDUAL threshold (<25/>75)
-%     sortedTheta = sort(thetaTrlMean(grpTrlPos)); thetaThresh = [sortedTheta(ceil(length(sortedTheta)*0.25)); sortedTheta(floor(length(sortedTheta)*0.75))]; % SESSION threshold (<25/>75)
-    lfpThresh(p,:,2) = thetaThresh;
-    histogram(thetaTrlMean(grpTrlPos==p));
-    title(sprintf('Theta %i', p));
-    threshPosts{p,1,2} = grpTrlPosts(:,:,grpTrlPos==p & thetaTrlMean>thetaThresh(2));    
-    threshPosts{p,2,2} = grpTrlPosts(:,:,grpTrlPos==p & thetaTrlMean<thetaThresh(1));
+    subplot(length(odrVect),2, sub2ind([2,length(odrVect)], 2,o));
+%     thetaThresh = [mean(thetaTrlMean(curPosLog))-(std(thetaTrlMean(curPosLog))*1), mean(thetaTrlMean(curPosLog))+(std(thetaTrlMean(curPosLog))*1)];         % POSITION threshold (Mean+/-STD)
+%     thetaThresh = [mean(thetaTrlMean(curOdrLog))-(std(thetaTrlMean(curOdrLog))*1), mean(thetaTrlMean(curOdrLog))+(std(thetaTrlMean(curOdrLog))*1)];         % ODOR threshold (Mean+/-STD)
+%     thetaThresh = [mean(thetaTrlMean)-(std(thetaTrlMean)*1), mean(thetaTrlMean)+(std(thetaTrlMean)*1)];                                                     % SESSION threshold (Mean +/-STD)
+%     sortedTheta = sort(thetaTrlMean(curPosLog)); thetaThresh = [sortedTheta(ceil(length(sortedTheta)*0.25)); sortedTheta(floor(length(sortedTheta)*0.75))]; % POSITION threshold (<25/>75)
+    sortedTheta = sort(thetaTrlMean(curOdrLog)); thetaThresh = [sortedTheta(ceil(length(sortedTheta)*0.25)); sortedTheta(floor(length(sortedTheta)*0.75))]; % ODOR threshold (<25/>75)
+%     sortedTheta = sort(thetaTrlMean); thetaThresh = [sortedTheta(ceil(length(sortedTheta)*0.25)); sortedTheta(floor(length(sortedTheta)*0.75))];            % SESSION threshold (<25/>75)
+    lfpThresh(o,:,2) = thetaThresh;
+    histogram(thetaTrlMean(curOdrLog), 'Normalization', 'cdf');
+    hold on;
+    title(sprintf('Theta %i', curOdr));
+    threshPosts{o,1,2} = grpTrlPosts(:,:,curOdrLog & thetaTrlMean>thetaThresh(2));    
+    threshPosts{o,2,2} = grpTrlPosts(:,:,curOdrLog & thetaTrlMean<thetaThresh(1));
     
     
-    tempLowBetaAccPos = nan(length(mlb.obsvTimeVect),mlb.seqLength);
-    tempHighBetaAccPos = nan(length(mlb.obsvTimeVect),mlb.seqLength);
-    tempLowThetaAccPos = nan(length(mlb.obsvTimeVect),mlb.seqLength);
-    tempHighThetaAccPos = nan(length(mlb.obsvTimeVect),mlb.seqLength);
-    for o = 1:mlb.seqLength
-        tempLowBetaAccPos(:,o) = mean(grpTrlPosAccLog(:,grpTrlPos==p & betaTrlMean<betaThresh(1),o),2);
-        tempHighBetaAccPos(:,o) = mean(grpTrlPosAccLog(:,grpTrlPos==p & betaTrlMean>betaThresh(2),o),2);
-        tempLowThetaAccPos(:,o) = mean(grpTrlPosAccLog(:,grpTrlPos==p & thetaTrlMean<thetaThresh(1),o),2);
-        tempHighThetaAccPos(:,o) = mean(grpTrlPosAccLog(:,grpTrlPos==p & thetaTrlMean>thetaThresh(2),o),2);
+    tempLowBetaAccPos = nan(length(mlb.obsvTimeVect),length(odrVect));
+    tempHighBetaAccPos = nan(length(mlb.obsvTimeVect),length(odrVect));
+    tempLowThetaAccPos = nan(length(mlb.obsvTimeVect),length(odrVect));
+    tempHighThetaAccPos = nan(length(mlb.obsvTimeVect),length(odrVect));
+    for odr = 1:length(odrVect)
+        tempLowBetaAccPos(:,odr) = mean(grpTrlPosAccLog(:,curOdrLog & betaTrlMean<betaThresh(1),odr),2);
+        tempHighBetaAccPos(:,odr) = mean(grpTrlPosAccLog(:,curOdrLog & betaTrlMean>betaThresh(2),odr),2);
+        tempLowThetaAccPos(:,odr) = mean(grpTrlPosAccLog(:,curOdrLog & thetaTrlMean<thetaThresh(1),odr),2);
+        tempHighThetaAccPos(:,odr) = mean(grpTrlPosAccLog(:,curOdrLog & thetaTrlMean>thetaThresh(2),odr),2);
     end
-    threshAccPos{p,1,1} = tempHighBetaAccPos;
-    threshAccPos{p,2,1} = tempLowBetaAccPos;
-    threshAccPos{p,1,2} = tempHighThetaAccPos;
-    threshAccPos{p,2,2} = tempLowThetaAccPos;
+    threshAccPos{o,1,1} = tempHighBetaAccPos;
+    threshAccPos{o,2,1} = tempLowBetaAccPos;
+    threshAccPos{o,1,2} = tempHighThetaAccPos;
+    threshAccPos{o,2,2} = tempLowThetaAccPos;
         
     
     tempLowBetaAccTime = nan(length(mlb.obsvTimeVect), length(mlb.obsvTimeVect));
@@ -191,17 +189,26 @@ for p = 1:mlb.seqLength
     tempLowThetaAccTime = nan(length(mlb.obsvTimeVect), length(mlb.obsvTimeVect));
     tempHighThetaAccTime = nan(length(mlb.obsvTimeVect), length(mlb.obsvTimeVect));
     for t = 1:length(timePoints)
-        tempLowBetaAccTime(:,t) = mean(grpTrlTimeAccLog(:,grpTrlPos==p & betaTrlMean<betaThresh(1),t),2, 'omitnan');
-        tempHighBetaAccTime(:,t) = mean(grpTrlTimeAccLog(:,grpTrlPos==p & betaTrlMean>betaThresh(2),t),2);
-        tempLowThetaAccTime(:,t) = mean(grpTrlTimeAccLog(:,grpTrlPos==p & thetaTrlMean<thetaThresh(1),t),2);
-        tempHighThetaAccTime(:,t) = mean(grpTrlTimeAccLog(:,grpTrlPos==p & thetaTrlMean>thetaThresh(2),t),2);
+        tempLowBetaAccTime(:,t) = mean(grpTrlTimeAccLog(:,curOdrLog & betaTrlMean<betaThresh(1),t),2, 'omitnan');
+        tempHighBetaAccTime(:,t) = mean(grpTrlTimeAccLog(:,curOdrLog & betaTrlMean>betaThresh(2),t),2);
+        tempLowThetaAccTime(:,t) = mean(grpTrlTimeAccLog(:,curOdrLog & thetaTrlMean<thetaThresh(1),t),2);
+        tempHighThetaAccTime(:,t) = mean(grpTrlTimeAccLog(:,curOdrLog & thetaTrlMean>thetaThresh(2),t),2);
     end
-    threshAccTime{p,1,1} = tempHighBetaAccTime;
-    threshAccTime{p,2,1} = tempLowBetaAccTime;
-    threshAccTime{p,1,2} = tempHighThetaAccTime;
-    threshAccTime{p,2,2} = tempLowThetaAccTime;
+    threshAccTime{o,1,1} = tempHighBetaAccTime;
+    threshAccTime{o,2,1} = tempLowBetaAccTime;
+    threshAccTime{o,1,2} = tempHighThetaAccTime;
+    threshAccTime{o,2,2} = tempLowThetaAccTime;
 end
 linkaxes;
+
+for o = 1:length(odrVect)
+    subplot(length(odrVect),2, sub2ind([2,length(odrVect)], 1,o));
+    plot(repmat(lfpThresh(o,1,1),[1,2]), get(gca, 'ylim'), '-k', 'linewidth', 2);
+    plot(repmat(lfpThresh(o,2,1),[1,2]), get(gca, 'ylim'), '-k', 'linewidth', 2);
+    subplot(length(odrVect),2, sub2ind([2,length(odrVect)], 2,o));
+    plot(repmat(lfpThresh(o,1,2),[1,2]), get(gca, 'ylim'), '-k', 'linewidth', 2);
+    plot(repmat(lfpThresh(o,2,2),[1,2]), get(gca, 'ylim'), '-k', 'linewidth', 2);    
+end
 
 %%
 piNdx = find(abs(mlb.likeTimeVect)==min(abs(mlb.likeTimeVect)))+0.5;
@@ -277,8 +284,13 @@ for band = 1:size(threshPosts,3)
     pasp(1) = subplot(3,9,20:21);
     tempHighThresh = cell2mat(threshAccPos(:,1,band));
     hold on;
-    for op = 1:mlb.seqLength
-        plot(tempHighThresh(:,op), 'color', mlb.PositionColors(op,:));
+    for op = 1:length(odrVect)
+        [curSeq,curPos] = find(odrVect(op)==mlb.odrSeqs);
+        if curSeq==1
+            plot(tempHighThresh(:,op), 'color', mlb.PositionColors(curPos,:));
+        else
+            plot(tempHighThresh(:,op), 'color', mlb.PositionColors(curPos,:), 'linestyle', '--');
+        end
     end
     axis tight;
     set(gca, 'ylim', [0 1], 'xticklabel', []);
@@ -343,8 +355,13 @@ for band = 1:size(threshPosts,3)
     pasp(2) = subplot(3,9,23:24);
     tempLowThresh = cell2mat(threshAccPos(:,2,band));
     hold on;
-    for op = 1:mlb.seqLength
-        plot(tempLowThresh(:,op), 'color', mlb.PositionColors(op,:));
+    for op = 1:length(odrVect)
+        [curSeq,curPos] = find(odrVect(op)==mlb.odrSeqs);
+        if curSeq==1
+            plot(tempLowThresh(:,op), 'color', mlb.PositionColors(curPos,:));
+        else
+            plot(tempLowThresh(:,op), 'color', mlb.PositionColors(curPos,:), 'linestyle', '--');
+        end
     end
     axis tight;
     set(gca, 'ylim', [0 1], 'xticklabel', []);
@@ -409,16 +426,24 @@ for band = 1:size(threshPosts,3)
     tempHighMatch = nan(size(tempHighThresh));
     tempLowMatch = nan(size(tempLowThresh));
     boundNdx = [find(mlb.likeTimeVect==min(mlb.likeTimeVect)); length(mlb.likeTimeVect)+1];
-    for p = 1:mlb.seqLength
+    for p = 1:length(odrVect)
         tempHighMatch(boundNdx(p):boundNdx(p+1)-1,p) = tempHighThresh(boundNdx(p):boundNdx(p+1)-1,p);
         tempLowMatch(boundNdx(p):boundNdx(p+1)-1,p) = tempLowThresh(boundNdx(p):boundNdx(p+1)-1,p);
     end
     tempDiff = tempHighMatch-tempLowMatch;
     hold on;
-    for op = 1:mlb.seqLength
-        plot(tempDiff(:,op), 'color', mlb.PositionColors(op,:), 'linewidth', 2);
-        tmpLn = plot(tempHighThresh(:,op)-tempLowThresh(:,op), 'linewidth', 1);
-        tmpLn.Color = [mlb.PositionColors(op,:), 0.5];
+    for op = 1:length(odrVect)
+        [curSeq,curPos] = find(odrVect(op)==mlb.odrSeqs);
+        if curSeq==1
+            plot(tempDiff(:,op), 'color', mlb.PositionColors(curPos,:), 'linewidth', 2);
+            tmpLn = plot(tempHighThresh(:,op)-tempLowThresh(:,op), 'linewidth', 1);
+            tmpLn.Color = [mlb.PositionColors(curPos,:), 0.5];
+        else            
+            plot(tempDiff(:,op), 'color', mlb.PositionColors(curPos,:), 'linestyle', '--', 'linewidth', 2);
+            tmpLn = plot(tempHighThresh(:,op)-tempLowThresh(:,op), 'linewidth', 1);
+            tmpLn.Color = [mlb.PositionColors(curPos,:), 0.5];
+        end
+        
     end
     axis tight;
     set(gca, 'ylim', [-0.5 0.5], 'xticklabel', []);
@@ -443,6 +468,38 @@ for band = 1:size(threshPosts,3)
     linkaxes(imsp, 'xy');
 
     
+    annotation(gcf,'textbox', [0.1 0.95 0.9 0.05],...
+        'String', sprintf('%s Split; %s aligned; Trial Window = (%.0fms:%.0fms); %i Perms', bnm, alignment{1}, trlWindow{1}(1), trlWindow{1}(2),numPerms),...
+        'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left', 'interpreter', 'none');
+    
+    figure;    
+    sps = nan(mlb.seqLength,2);
+    for pos = 1:mlb.seqLength
+        seq1OdrLog = odrVect==mlb.odrSeqs(1,pos);
+        seq2OdrLog = odrVect==mlb.odrSeqs(2,pos);
+        
+        seq1 = cell2mat(cellfun(@(a)a(:,seq1OdrLog), threshAccPos(seq1OdrLog,:,band), 'uniformoutput', 0)) - cell2mat(cellfun(@(a)a(:,seq2OdrLog), threshAccPos(seq1OdrLog,:,band), 'uniformoutput', 0));
+        seq2 = cell2mat(cellfun(@(a)a(:,seq1OdrLog), threshAccPos(seq2OdrLog,:,band), 'uniformoutput', 0)) - cell2mat(cellfun(@(a)a(:,seq2OdrLog), threshAccPos(seq2OdrLog,:,band), 'uniformoutput', 0));
+        
+        sps(pos,1) = subplot(2,mlb.seqLength, sub2ind([mlb.seqLength, 2], pos,1));
+        h = gca;
+        h.XRuler.FirstCrossoverValue = 0;
+        h.XRuler.SecondCrossoverValue = 0;
+        hold(h, 'on');
+        plot(mlb.obsvTimeVect, seq1(:,1), 'color', mlb.PositionColors(pos,:), 'linestyle', '-');        
+        plot(mlb.obsvTimeVect, seq1(:,2), 'color', [mlb.PositionColors(pos,:), 0.5], 'linestyle', '-');       
+        plot(mlb.obsvTimeVect, seq2(:,1), 'color', mlb.PositionColors(pos,:), 'linestyle', '--');        
+        plot(mlb.obsvTimeVect, seq2(:,2), 'color', [mlb.PositionColors(pos,:), 0.5], 'linestyle', '--');      
+        
+        sps(pos,2) = subplot(2,mlb.seqLength, sub2ind([mlb.seqLength, 2], pos,2));
+        h = gca;
+        h.XRuler.FirstCrossoverValue = 0;
+        h.XRuler.SecondCrossoverValue = 0;
+        hold(h, 'on');
+        plot(mlb.obsvTimeVect, diff(fliplr(seq1),1,2), 'color', 'k', 'linestyle', '-');        
+        plot(mlb.obsvTimeVect, diff(fliplr(seq2),1,2), 'color', 'k', 'linestyle', '--');             
+    end
+    linkaxes(sps);
     annotation(gcf,'textbox', [0.1 0.95 0.9 0.05],...
         'String', sprintf('%s Split; %s aligned; Trial Window = (%.0fms:%.0fms); %i Perms', bnm, alignment{1}, trlWindow{1}(1), trlWindow{1}(2),numPerms),...
         'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left', 'interpreter', 'none');

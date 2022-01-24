@@ -367,6 +367,14 @@ classdef MLB_SM < SeqMem
         end
         %% Process all Observations
         function Process_Observes(obj)
+            % Comment in if you need to save memory
+            obj.behavMatrix = [];
+            obj.behavMatrixColIDs = [];
+            obj.ensembleMatrix = [];
+            obj.ensembleMatrixColIDs = [];
+            obj.lfpMatrix = [];
+            obj.lfpMatrixColIDs = [];
+            %
             obj.post = cell(size(obj.obsvTrlSpikes));
             obj.postTrlIDs = cell(size(obj.obsvTrlSpikes));
             for perm = 1:length(obj.likeTrlSpikes)
@@ -586,9 +594,11 @@ classdef MLB_SM < SeqMem
                     for obsvTime = 1:size(curTrl,1)
                         for likeTime = 1:size(curTrl,2)
                             maxPost(obsvTime,likeTime,trl) = max(curTrl(obsvTime,likeTime,:));
-                            tempDecode = find(curTrl(obsvTime,likeTime,:)==maxPost(obsvTime,likeTime,trl));
-                            select = rand(1,length(tempDecode));
-                            decode(obsvTime,likeTime,trl) = tempDecode(select==max(select));
+                            if ~isnan(maxPost(obsvTime,likeTime,trl))
+                                tempDecode = find(curTrl(obsvTime,likeTime,:)==maxPost(obsvTime,likeTime,trl));
+                                select = rand(1,length(tempDecode));
+                                decode(obsvTime,likeTime,trl) = tempDecode(select==max(select));
+                            end
                         end
                     end
                 end                            

@@ -5,18 +5,29 @@ clear all;
 %     {'D:\WorkBigDataFiles\PFC\Files To Process\GE14\GE14_Session123'},...
 %     {'D:\WorkBigDataFiles\PFC\Files To Process\GE17\GE17_Session095'},...
 %     {'D:\WorkBigDataFiles\PFC\Files To Process\GE24\Session096'}];
-% 
+% setupSeqLength = 4; 
+
+% fileDirs = [{'D:\WorkBigDataFiles\HC\1. Well-Trained session\SuperChris'},...
+%     {'D:\WorkBigDataFiles\HC\1. Well-Trained session\Stella'},...
+%     {'D:\WorkBigDataFiles\HC\1. Well-Trained session\Mitt'},...
+%     {'D:\WorkBigDataFiles\HC\1. Well-Trained session\Buchanan'},...
+%     {'D:\WorkBigDataFiles\HC\1. Well-Trained session\Barat'}];
+% setupSeqLength = 5;
+
 fileDirs = [{'D:\WorkBigDataFiles\PFC\GE11_Session132'},...
     {'D:\WorkBigDataFiles\PFC\GE13_Session083'},...
     {'D:\WorkBigDataFiles\PFC\GE14_Session123'},...
     {'D:\WorkBigDataFiles\PFC\GE17_Session095'},...
     {'D:\WorkBigDataFiles\PFC\GE24_Session096'}];
+setupSeqLength = 4; 
 % 
 % fileDirs = [
 %     {'D:\WorkBigDataFiles\PFC\GE13_Session083'},...
 %     {'D:\WorkBigDataFiles\PFC\GE14_Session123'},...
 %     {'D:\WorkBigDataFiles\PFC\GE17_Session095'},...
 %     {'D:\WorkBigDataFiles\PFC\GE24_Session096'}];
+% setupSeqLength = 4;  
+
 binSize = 200;
 dsRate = 50;
 trlWindow = {[-1000 2000]};
@@ -39,9 +50,9 @@ fiscRwdDelivLat = cell(length(fileDirs),1);
 smi = nan(length(fileDirs),1);
 dPrm = nan(length(fileDirs),1);
 ri = nan(length(fileDirs),1);
-smiByOP = nan(length(fileDirs),4,2);
-dPrmByOP = nan(length(fileDirs),4,2);
-riByOP = nan(length(fileDirs),4,2);
+smiByOP = nan(length(fileDirs),setupSeqLength,2);
+dPrmByOP = nan(length(fileDirs),setupSeqLength,2);
+riByOP = nan(length(fileDirs),setupSeqLength,2);
 % fiscLOO analysis
 fiscLOO_Posts = cell(size(fileDirs));
 fiscLOO_Decodes = cell(3,1,length(fileDirs));
