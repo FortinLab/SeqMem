@@ -6,23 +6,23 @@ tets = [];
 %     {'D:\WorkBigDataFiles\PFC\Files To Process\GE24\Session096'}];
 % setupSeqLength = 4; 
 
-% % CA1 Data
-% fileDirs = [{'D:\WorkBigDataFiles\CA1 Data\1. WellTrained session\SuperChris'},...
-%     {'D:\WorkBigDataFiles\CA1 Data\1. WellTrained session\Stella'},...
-%     {'D:\WorkBigDataFiles\CA1 Data\1. WellTrained session\Mitt'},...
-%     {'D:\WorkBigDataFiles\CA1 Data\1. WellTrained session\Buchanan'},...
-%     {'D:\WorkBigDataFiles\CA1 Data\1. WellTrained session\Barat'}];
-% % tets = [1,22,17,18,17]; % Lateral/Proximal
+% CA1 Data
+fileDirs = [{'D:\WorkBigDataFiles\CA1 Data\1. WellTrained session\SuperChris'},...
+    {'D:\WorkBigDataFiles\CA1 Data\1. WellTrained session\Stella'},...
+    {'D:\WorkBigDataFiles\CA1 Data\1. WellTrained session\Mitt'},...
+    {'D:\WorkBigDataFiles\CA1 Data\1. WellTrained session\Buchanan'},...
+    {'D:\WorkBigDataFiles\CA1 Data\1. WellTrained session\Barat'}];
+tets = [1,22,17,18,17]; % Lateral/Proximal
 % tets = [7,3,1,5,5]; % Medial/Distal
-% setupSeqLength = 5;
+setupSeqLength = 5;
 
-% All well-trained files PFC
-fileDirs = [{'D:\WorkBigDataFiles\PFC\GE11_Session132'},...
-    {'D:\WorkBigDataFiles\PFC\GE13_Session083'},...
-    {'D:\WorkBigDataFiles\PFC\GE14_Session123'},...
-    {'D:\WorkBigDataFiles\PFC\GE17_Session095'},...
-    {'D:\WorkBigDataFiles\PFC\GE24_Session096'}];
-setupSeqLength = 4; 
+% % All well-trained files PFC
+% fileDirs = [{'D:\WorkBigDataFiles\PFC\GE11_Session132'},...
+%     {'D:\WorkBigDataFiles\PFC\GE13_Session083'},...
+%     {'D:\WorkBigDataFiles\PFC\GE14_Session123'},...
+%     {'D:\WorkBigDataFiles\PFC\GE17_Session095'},...
+%     {'D:\WorkBigDataFiles\PFC\GE24_Session096'}];
+% setupSeqLength = 4; 
 
 % 
 % % Only animals that show "normal" beta PFC
@@ -36,7 +36,7 @@ trlWindow = {[-1000 2000]};
 alignment = {'PokeIn'};
 % trlWindow = {[-2000 800]};
 % alignment = {'PokeOut'};
-numPerms = 10;
+numPerms = 100;
 ssProportion = 0.4;
 ssType = 1; % 0 = use all ISC for decoding; 1 = use subsampled ISC types
 bayesType = 1; %1 = Poisson: use with raw spike counts; 2 = Bernoulli: use with binarized spike counts; 3 = Gaussian: Use with z-scored spike counts
@@ -58,9 +58,10 @@ riByOP = nan(length(fileDirs),setupSeqLength,2);
 aniPosts = cell(size(fileDirs));
 aniOdorDecodes = cell(size(fileDirs));
 aniTimeDecodes = cell(size(fileDirs));
-aniPosAccLog = cell(size(fileDirs));
-aniTimeAccLog = cell(size(fileDirs));
+% aniPosAccLog = cell(size(fileDirs));
+% aniTimeAccLog = cell(size(fileDirs));
 aniTrlPosIDs = cell(size(fileDirs));
+aniPermIDs = cell(size(fileDirs));
 aniLFP = cell(size(fileDirs));
 %%
 for ani = 1:length(fileDirs)
@@ -103,7 +104,7 @@ for ani = 1:length(fileDirs)
         riByOP(ani,:,2) = mlb.riByOdr;
     end
     %% Extract LFP
-    [betaPhase, betaPower] = mlb.PP_TrialMatrix_LFP([16 32], trlWindow{1}, alignment{1});
+    [betaPhase, betaPower] = mlb.PP_TrialMatrix_LFP([20 40], trlWindow{1}, alignment{1});
     [thetaPhase, thetaPower] = mlb.PP_TrialMatrix_LFP([4 12], trlWindow{1}, alignment{1});
     %% Decode ISC via Sub-Sampling
 %     mlb.bayesType = 1;  % Comment In to decode using Gaussian rather than Poisson
@@ -113,18 +114,21 @@ for ani = 1:length(fileDirs)
     tempPosts = cell2mat(reshape(mlb.post, [1,1,numel(mlb.post)]));
     postTrlIDs = cell2mat(reshape(mlb.postTrlIDs, [1,1,numel(mlb.postTrlIDs)]));
     tempOdorDecode = mlb.DecodeBayesPost(tempPosts, mlb.decodeIDvects{1}(:,3));
-    tempPosAccuracy = arrayfun(@(a,b)a==b,repmat(tempOdorDecode,[1,1,mlb.seqLength]), repmat(permute(1:mlb.seqLength,[3,1,2]), size(tempOdorDecode,1),size(tempOdorDecode,2),1));
-    tempTimeDecode = mlb.DecodeBayesPost(tempPosts, mlb.decodeIDvects{1}(:,1));
-    timePoints = unique(mlb.decodeIDvects{1}(:,1));
-    tempTimeAccuracy = arrayfun(@(a,b)a==b,repmat(tempTimeDecode,[1,1,length(timePoints)]), repmat(permute(timePoints,[3,2,1]), size(tempTimeDecode,1),size(tempTimeDecode,2),1));
+%     tempPosAccuracy = arrayfun(@(a,b)a==b,repmat(tempOdorDecode,[1,1,mlb.seqLength]), repmat(permute(1:mlb.seqLength,[3,1,2]), size(tempOdorDecode,1),size(tempOdorDecode,2),1));
+    decodeTimeVect = round(mlb.decodeIDvects{1}(:,1)*1000)/1000;
+    tempTimeDecode = mlb.DecodeBayesPost(tempPosts, decodeTimeVect);
+    timePoints = unique(decodeTimeVect);
+%     tempTimeAccuracy = arrayfun(@(a,b)a==b,repmat(tempTimeDecode,[1,1,length(timePoints)]), repmat(permute(timePoints,[3,2,1]), size(tempTimeDecode,1),size(tempTimeDecode,2),1));
     tempLFP = permute([betaPower(:,:,postTrlIDs), thetaPower(:,:,postTrlIDs)], [1,3,2]);
+    permIDvect = cellfun(@(a,b){repmat(a(1,5), [1,size(b,3)])}, mlb.decodeIDvects, mlb.post);
     %% Outputs
     aniPosts{ani} = cell2mat(reshape(mlb.post, [1,1,mlb.numPerms]));
     aniOdorDecodes{ani} = tempOdorDecode;
     aniTimeDecodes{ani} = tempTimeDecode;
-    aniPosAccLog{ani} = tempPosAccuracy;
-    aniTimeAccLog{ani} = tempTimeAccuracy;
+%     aniPosAccLog{ani} = tempPosAccuracy;
+%     aniTimeAccLog{ani} = tempTimeAccuracy;
     aniTrlPosIDs{ani} = [mlb.trialInfo(postTrlIDs).Position];
+    aniPermIDs{ani} = cell2mat(permIDvect);
     aniLFP{ani} = tempLFP;
 end
 pokeOutLats = cell2mat(fiscPokeOutLat(:));
@@ -132,7 +136,11 @@ nearestPOtime = mlb.obsvTimeVect(find(mlb.obsvTimeVect<median(pokeOutLats),1,'la
 rwdDelivLat = cell2mat(fiscRwdDelivLat(:));
 nearestRWDtime = mlb.obsvTimeVect(find(mlb.obsvTimeVect<median(rwdDelivLat),1,'last'));
 
-%%
+piNdx = find(abs(mlb.likeTimeVect)==min(abs(mlb.likeTimeVect)))+0.5;
+poNdx = find(mlb.likeTimeVect==nearestPOtime)+0.5;
+rwdNdx = find(mlb.likeTimeVect==nearestRWDtime)+0.5;
+posNdx = find(diff(mlb.likeTimeVect)<0)+0.5;
+%% Create group trial data & ID vectors
 if strcmp(alignment{1}, 'PokeIn')
     trlTimeLog = mlb.obsvTimeVect>0;
 else
@@ -140,126 +148,73 @@ else
 end
 grpTrlPosts = cell2mat(reshape(aniPosts, [1,1,length(fileDirs)]));
 grpTrlLFP = cell2mat(aniLFP);
+grpTrlTimeDecodes = cell2mat(aniTimeDecodes);
+grpTrlPosDecodes = cell2mat(aniOdorDecodes);
+
 grpTrlPos = cell2mat(aniTrlPosIDs);
-grpTrlPosAccLog = cell2mat(aniPosAccLog);
-grpTrlTimeAccLog = cell2mat(aniTimeAccLog);
-grpTrlDecodes = cell2mat(aniOdorDecodes);
-betaTrlMean = mean(grpTrlLFP(trlTimeLog,:,1));
-thetaTrlMean = mean(grpTrlLFP(trlTimeLog ,:,2));
-
-lfpThresh = nan(mlb.seqLength,2,2);
-threshPosts = cell(mlb.seqLength,2,2);
-threshAccPos = cell(mlb.seqLength,2,2);
-threshAccTime = cell(mlb.seqLength,2,2);
-
-figure;
-for p = 1:mlb.seqLength
-    subplot(mlb.seqLength,2, sub2ind([2,mlb.seqLength], 1,p));
-%     betaThresh = [mean(betaTrlMean(grpTrlPos==p))-(std(betaTrlMean(grpTrlPos==p))*1), mean(betaTrlMean(grpTrlPos==p))+(std(betaTrlMean(grpTrlPos==p))*1)]; % INDIVIDUAL threshold (Mean+/-STD)
-%     betaThresh = [mean(betaTrlMean(grpTrlPos))-(std(betaTrlMean(grpTrlPos))*1), mean(betaTrlMean(grpTrlPos))+(std(betaTrlMean(grpTrlPos))*1)]; % SESSION threshold (Mean +/-STD)
-    sortedBeta = sort(betaTrlMean(grpTrlPos==p)); betaThresh = [sortedBeta(ceil(length(sortedBeta)*0.25)); sortedBeta(floor(length(sortedBeta)*0.75))]; % INDIVIDUAL threshold (<25/>75)
-%     sortedBeta = sort(betaTrlMean(grpTrlPos)); betaThresh = [sortedBeta(ceil(length(sortedBeta)*0.25)); sortedBeta(floor(length(sortedBeta)*0.75))]; % SESSION threshold (<25/>75)
-    lfpThresh(p,:,1) = betaThresh;
-    histogram(betaTrlMean(grpTrlPos==p));    
-    title(sprintf('Beta %i', p));
-    threshPosts{p,1,1} = grpTrlPosts(:,:,grpTrlPos==p & betaTrlMean>betaThresh(2));
-    threshPosts{p,2,1} = grpTrlPosts(:,:,grpTrlPos==p & betaTrlMean<betaThresh(1));
-        
-    subplot(mlb.seqLength,2, sub2ind([2,mlb.seqLength], 2,p));
-%     thetaThresh = [mean(thetaTrlMean(grpTrlPos==p))-(std(thetaTrlMean(grpTrlPos==p))*1), mean(thetaTrlMean(grpTrlPos==p))+(std(thetaTrlMean(grpTrlPos==p))*1)]; % INDIVIDUAL threshold (Mean+/-STD)
-%     thetaThresh = [mean(thetaTrlMean(grpTrlPos))-(std(thetaTrlMean(grpTrlPos))*1), mean(thetaTrlMean(grpTrlPos))+(std(thetaTrlMean(grpTrlPos))*1)]; % SESSION threshold (Mean +/-STD)
-    sortedTheta = sort(thetaTrlMean(grpTrlPos==p)); thetaThresh = [sortedTheta(ceil(length(sortedTheta)*0.25)); sortedTheta(floor(length(sortedTheta)*0.75))]; % INDIVIDUAL threshold (<25/>75)
-%     sortedTheta = sort(thetaTrlMean(grpTrlPos)); thetaThresh = [sortedTheta(ceil(length(sortedTheta)*0.25)); sortedTheta(floor(length(sortedTheta)*0.75))]; % SESSION threshold (<25/>75)
-    lfpThresh(p,:,2) = thetaThresh;
-    histogram(thetaTrlMean(grpTrlPos==p));
-    title(sprintf('Theta %i', p));
-    threshPosts{p,1,2} = grpTrlPosts(:,:,grpTrlPos==p & thetaTrlMean>thetaThresh(2));    
-    threshPosts{p,2,2} = grpTrlPosts(:,:,grpTrlPos==p & thetaTrlMean<thetaThresh(1));
-    
-    
-    tempLowBetaAccPos = nan(length(mlb.obsvTimeVect),mlb.seqLength);
-    tempHighBetaAccPos = nan(length(mlb.obsvTimeVect),mlb.seqLength);
-    tempLowThetaAccPos = nan(length(mlb.obsvTimeVect),mlb.seqLength);
-    tempHighThetaAccPos = nan(length(mlb.obsvTimeVect),mlb.seqLength);
-    for o = 1:mlb.seqLength
-        tempLowBetaAccPos(:,o) = mean(grpTrlPosAccLog(:,grpTrlPos==p & betaTrlMean<betaThresh(1),o),2);
-        tempHighBetaAccPos(:,o) = mean(grpTrlPosAccLog(:,grpTrlPos==p & betaTrlMean>betaThresh(2),o),2);
-        tempLowThetaAccPos(:,o) = mean(grpTrlPosAccLog(:,grpTrlPos==p & thetaTrlMean<thetaThresh(1),o),2);
-        tempHighThetaAccPos(:,o) = mean(grpTrlPosAccLog(:,grpTrlPos==p & thetaTrlMean>thetaThresh(2),o),2);
-    end
-    threshAccPos{p,1,1} = tempHighBetaAccPos;
-    threshAccPos{p,2,1} = tempLowBetaAccPos;
-    threshAccPos{p,1,2} = tempHighThetaAccPos;
-    threshAccPos{p,2,2} = tempLowThetaAccPos;
-        
-    
-    tempLowBetaAccTime = nan(length(mlb.obsvTimeVect), length(mlb.obsvTimeVect));
-    tempHighBetaAccTime = nan(length(mlb.obsvTimeVect), length(mlb.obsvTimeVect));
-    tempLowThetaAccTime = nan(length(mlb.obsvTimeVect), length(mlb.obsvTimeVect));
-    tempHighThetaAccTime = nan(length(mlb.obsvTimeVect), length(mlb.obsvTimeVect));
-    for t = 1:length(timePoints)
-        tempLowBetaAccTime(:,t) = mean(grpTrlTimeAccLog(:,grpTrlPos==p & betaTrlMean<betaThresh(1),t),2, 'omitnan');
-        tempHighBetaAccTime(:,t) = mean(grpTrlTimeAccLog(:,grpTrlPos==p & betaTrlMean>betaThresh(2),t),2);
-        tempLowThetaAccTime(:,t) = mean(grpTrlTimeAccLog(:,grpTrlPos==p & thetaTrlMean<thetaThresh(1),t),2);
-        tempHighThetaAccTime(:,t) = mean(grpTrlTimeAccLog(:,grpTrlPos==p & thetaTrlMean>thetaThresh(2),t),2);
-    end
-    threshAccTime{p,1,1} = tempHighBetaAccTime;
-    threshAccTime{p,2,1} = tempLowBetaAccTime;
-    threshAccTime{p,1,2} = tempHighThetaAccTime;
-    threshAccTime{p,2,2} = tempLowThetaAccTime;
-end
-linkaxes;
-
-%%
-for band = 1:size(threshPosts,3)
-    tempThresh = lfpThresh(:,:,band);
-    if band==1
-        tempLFPtrl = betaTrlMean;
-    else
-        tempLFPtrl = thetaTrlMean;
-    end
-    tempBandDecodes = cell(2,mlb.seqLength);
-    tempTrlIDs = cell(2,mlb.seqLength);
+grpTrlPermIDs = cell2mat(aniPermIDs);
+%% Determine LFP Power thresholds
+for band = 1:size(grpTrlLFP,3)    
+    tempTrlMeanPower = mean(grpTrlLFP(trlTimeLog,:,band));
+    lfpThresh = nan(mlb.seqLength,2);
     for pos = 1:mlb.seqLength
-        tempBandDecodes{1,pos} = grpTrlDecodes(:,grpTrlPos==pos & tempLFPtrl<tempThresh(pos,1));
-        tempTrlIDs{1,pos} = grpTrlPos(grpTrlPos==pos & tempLFPtrl<tempThresh(pos,1));
-        tempBandDecodes{2,pos} = grpTrlDecodes(:,grpTrlPos==pos & tempLFPtrl>tempThresh(pos,2));
-        tempTrlIDs{2,pos} = grpTrlPos(grpTrlPos==pos & tempLFPtrl>tempThresh(pos,2));
+        sortedPower = sort(tempTrlMeanPower(grpTrlPos==pos));
+%         sortedPower = sort(tempTrlMeanPower);
+%         betaThresh = [mean(betaTrlMean(grpTrlPos==p))-(std(betaTrlMean(grpTrlPos==p))*1), mean(betaTrlMean(grpTrlPos==p))+(std(betaTrlMean(grpTrlPos==p))*1)]; % INDIVIDUAL threshold (Mean+/-STD)
+%         betaThresh = [mean(betaTrlMean(grpTrlPos))-(std(betaTrlMean(grpTrlPos))*1), mean(betaTrlMean(grpTrlPos))+(std(betaTrlMean(grpTrlPos))*1)]; % SESSION threshold (Mean +/-STD)
+        lfpThresh(pos,:) = [sortedPower(ceil(length(sortedPower)*0.25)), sortedPower(floor(length(sortedPower)*0.75))];
     end
-    lowBandD= mlb.CalcDprmFromDecode(cell2mat(tempBandDecodes(1,:)), cell2mat(tempTrlIDs(1,:)));
-    highBandD = mlb.CalcDprmFromDecode(cell2mat(tempBandDecodes(2,:)), cell2mat(tempTrlIDs(2,:)));
-    dDiff = highBandD-lowBandD;
-    figure; 
-    h = gca;
-    hold(h, 'on');
-    for pos = 1:mlb.seqLength
-        plot(mlb.obsvTimeVect,dDiff(:,pos), 'color', mlb.PositionColors(pos,:));
+    % Split data based on LFP power
+    splitPosts = cell(mlb.seqLength, 2, numPerms);
+    splitTimeDecode = cell(mlb.seqLength, 2, numPerms);
+    splitPosDecode = cell(mlb.seqLength, 2, numPerms);
+    splitOPdPrmDecode = cell(1,2,numPerms);
+    for perm = 1:numPerms
+        curPermLog = grpTrlPermIDs==perm;
+        for pos = 1:mlb.seqLength
+            curPosLog = grpTrlPos==pos;
+            curLowPwrTrlLog = tempTrlMeanPower<lfpThresh(pos,1);
+            curHighPwrTrlLog = tempTrlMeanPower>lfpThresh(pos,2);
+            
+            splitPosts{pos,1,perm} = mean(grpTrlPosts(:,:,curPosLog & curPermLog & curLowPwrTrlLog),3,'omitnan');
+            splitPosts{pos,2,perm} = mean(grpTrlPosts(:,:,curPosLog & curPermLog & curHighPwrTrlLog),3,'omitnan');
+            
+            tempLPTtimeDecode = nan(length(timePoints));
+            tempHPTtimeDecode = nan(length(timePoints));
+            for t1 = 1:length(timePoints)
+                for t2 = 1:length(timePoints)
+                    tempLPTtimeDecode(t1,t2) = mean(grpTrlTimeDecodes(t1,curPosLog & curPermLog & curLowPwrTrlLog)==timePoints(t2), 'omitnan');
+                    tempHPTtimeDecode(t1,t2) = mean(grpTrlTimeDecodes(t1,curPosLog & curPermLog & curHighPwrTrlLog)==timePoints(t2), 'omitnan');
+                end
+            end                
+            splitTimeDecode{pos,1,perm} = tempLPTtimeDecode;
+            splitTimeDecode{pos,2,perm} = tempHPTtimeDecode;
+            
+            tempLPTodrDecode = nan(length(timePoints), mlb.seqLength);
+            tempHPTodrDecode = nan(length(timePoints), mlb.seqLength);
+            for odr = 1:mlb.seqLength
+                tempLPTodrDecode(:,odr) = mean(grpTrlPosDecodes(:,curPosLog & curPermLog & curLowPwrTrlLog)==odr,2,'omitnan');
+                tempHPTodrDecode(:,odr) = mean(grpTrlPosDecodes(:,curPosLog & curPermLog & curHighPwrTrlLog)==odr,2,'omitnan');
+            end
+            splitPosDecode{pos,1,perm} = tempLPTodrDecode;
+            splitPosDecode{pos,2,perm} = tempHPTodrDecode;
+        end
+        splitOPdPrmDecode{1,1,perm} = mlb.CalcDprmVectFromDecode(grpTrlPosDecodes(:,curPermLog & curLowPwrTrlLog), grpTrlPos(curPermLog & curLowPwrTrlLog));
+        splitOPdPrmDecode{1,2,perm} = mlb.CalcDprmVectFromDecode(grpTrlPosDecodes(:,curPermLog & curHighPwrTrlLog), grpTrlPos(curPermLog & curHighPwrTrlLog));
     end
-    h.XRuler.FirstCrossoverValue = 0;
-    h.XRuler.SecondCrossoverValue = 0;
-    if band==1
-        title('Beta');
-    else
-        title('Theta');
-    end
-end
-        
-%%
-piNdx = find(abs(mlb.likeTimeVect)==min(abs(mlb.likeTimeVect)))+0.5;
-poNdx = find(mlb.likeTimeVect==nearestPOtime)+0.5;
-rwdNdx = find(mlb.likeTimeVect==nearestRWDtime)+0.5;
-posNdx = find(diff(mlb.likeTimeVect)<0)+0.5;
-for band = 1:size(threshPosts,3)
+    
+    %% Now Plot things
+%     h.XRuler.FirstCrossoverValue = 0;
+%     h.XRuler.SecondCrossoverValue = 0;
     if band ==1
         bnm = 'Beta';
     elseif band == 2
         bnm = 'Theta';
     end
-    tempPosts = threshPosts(:,:,band);
-    curHighPowTrlPost = cell2mat(cellfun(@(a)mean(a,3),tempPosts(:,1),'uniformoutput',0)); cLim = [0 0.05];
+    curHighPowTrlPost = mean(cell2mat(splitPosts(:,2,:)), 3, 'omitnan'); cLim = [0 0.05];
 %     curHighPowTrlPost = curHighPowTrlPost./max(curHighPowTrlPost(:));  cLim = [0 0.25];
 %     curHighPowTrlPost = (curHighPowTrlPost-(mean(curHighPowTrlPost(:))))./std(curHighPowTrlPost(:));  cLim = [-6 6];    
-    curLowPowTrlPost = cell2mat(cellfun(@(a)mean(a,3),tempPosts(:,2),'uniformoutput',0));
+    curLowPowTrlPost = mean(cell2mat(splitPosts(:,1,:)), 3, 'omitnan');
 %     curLowPowTrlPost = curLowPowTrlPost./max(curLowPowTrlPost(:));
 %     curLowPowTrlPost = (curLowPowTrlPost-(mean(curLowPowTrlPost(:))))./std(curLowPowTrlPost(:));
     imsp = nan(1,3);
@@ -270,8 +225,10 @@ for band = 1:size(threshPosts,3)
     taClim = [0 0.15];
     
     figure;
+    % High Power Trials
+    % Time Accuracy HPT
     tasp(1) = subplot(3,9, [1,10]);
-    highPowTimeAcc = cell2mat(threshAccTime(:,1,band));
+    highPowTimeAcc = mean(cell2mat(splitTimeDecode(:,2,:)), 3, 'omitnan');
     imagesc(highPowTimeAcc, taClim);
     set(gca, 'yticklabel', [], 'xticklabel', []);
     title('Time Decode');
@@ -288,15 +245,23 @@ for band = 1:size(threshPosts,3)
             plot(get(gca, 'xlim'),repmat(posNdx(ndx), [1,2]), '-k','linewidth', 2);
         end
     end    
+    % Time Decoding HPT
+    hptTimeAccDiag = mean(cell2mat(cellfun(@(a){diag(a)'}, splitTimeDecode(:,2,:))), 'omitnan');
+    meanHPTtimeDiag = mean(hptTimeAccDiag,3);
+%     varHPTtimeDiag = mlb.SEMcalc(hptTimeAccDiag,0,3);
+    varHPTtimeDiag = std(hptTimeAccDiag,0,3);
     tdsp(1) = subplot(3,9,19);
-    highPowTimeAccDiag = mean(cell2mat(cellfun(@(a){diag(a)}, permute(threshAccTime(:,1,band), [2,3,1]))),3);
-    plot(highPowTimeAccDiag, 'k');
+    plot(meanHPTtimeDiag, 'k');
     hold on;    
+    patch('XData', [1:length(timePoints), length(timePoints):-1:1],...
+        'YData', [(meanHPTtimeDiag+varHPTtimeDiag), fliplr(meanHPTtimeDiag-varHPTtimeDiag)], 'edgecolor', 'k',...
+        'facecolor', 'k', 'facealpha', 0.5, 'linestyle', '-');
     set(gca, 'ylim', [0 0.25], 'xticklabel', []);
     plot(repmat(piNdx(1), [1,2]), get(gca, 'ylim'), '--k','linewidth', 1);
     plot(repmat(poNdx(1), [1,2]), get(gca, 'ylim'), '--k','linewidth', 1);
     plot(repmat(rwdNdx(1), [1,2]), get(gca, 'ylim'), '--k','linewidth', 1);    
     title('Mean Diag');
+    % HPT Posteriors
     imsp(1) = subplot(3,9,[2:3,11:12]);
     imagesc(curHighPowTrlPost, cLim);
     hold on;
@@ -315,11 +280,18 @@ for band = 1:size(threshPosts,3)
     end
     title(sprintf('High Power %s', bnm));
     set(gca, 'yticklabel', [], 'xticklabel', []);
+    % Position Accuracy HPT
+    hptPosAcc = cell2mat(splitPosDecode(:,2,:));
+    meanHPTposAcc = mean(hptPosAcc,3);
+%     varHPTposAcc = mlb.SEMcalc(hptPosAcc,0,3);
+    varHPTposAcc = std(hptPosAcc,0,3);
     pasp(1) = subplot(3,9,20:21);
-    tempHighThresh = cell2mat(threshAccPos(:,1,band));
     hold on;
     for op = 1:mlb.seqLength
-        plot(tempHighThresh(:,op), 'color', mlb.PositionColors(op,:));
+        plot(meanHPTposAcc(:,op), 'color', mlb.PositionColors(op,:));
+        patch('XData', [1:size(meanHPTposAcc,1), size(meanHPTposAcc,1):-1:1],...
+            'YData', [(meanHPTposAcc(:,op)+varHPTposAcc(:,op)); flipud(meanHPTposAcc(:,op)-varHPTposAcc(:,op))], 'edgecolor', mlb.PositionColors(op,:),...
+            'facecolor', mlb.PositionColors(op,:), 'facealpha', 0.5, 'linestyle', '-');
     end
     axis tight;
     set(gca, 'ylim', [0 1], 'xticklabel', []);
@@ -336,8 +308,10 @@ for band = 1:size(threshPosts,3)
     
         
     
+    % Low Power Trials
+    % Time Accuracy LPT
     tasp(2) = subplot(3,9, [4,13]);
-    lowPowTimeAcc = cell2mat(threshAccTime(:,2,band));
+    lowPowTimeAcc = mean(cell2mat(splitTimeDecode(:,1,:)), 3, 'omitnan');
     imagesc(lowPowTimeAcc, taClim);
     title('Time Decode');
     set(gca, 'yticklabel', [], 'xticklabel', []);
@@ -354,15 +328,23 @@ for band = 1:size(threshPosts,3)
             plot(get(gca, 'xlim'),repmat(posNdx(ndx), [1,2]), '-k','linewidth', 2);
         end
     end
+    % Time Decoding HPT
+    lptTimeAccDiag = mean(cell2mat(cellfun(@(a){diag(a)'}, splitTimeDecode(:,1,:))), 'omitnan');
+    meanLPTtimeDiag = mean(lptTimeAccDiag,3);
+%     varLPTtimeDiag = mlb.SEMcalc(lptTimeAccDiag,0,3);
+    varLPTtimeDiag = std(lptTimeAccDiag,0,3);
     tdsp(2) = subplot(3,9,22);
-    lowPowTimeAccDiag = mean(cell2mat(cellfun(@(a){diag(a)}, permute(threshAccTime(:,2,band), [2,3,1]))),3);
-    plot(lowPowTimeAccDiag, 'k');
+    plot(meanLPTtimeDiag, 'k');
     hold on;    
+    patch('XData', [1:length(timePoints), length(timePoints):-1:1],...
+        'YData', [(meanLPTtimeDiag+varLPTtimeDiag), fliplr(meanLPTtimeDiag-varLPTtimeDiag)], 'edgecolor', 'k',...
+        'facecolor', 'k', 'facealpha', 0.5, 'linestyle', '-');
     set(gca, 'ylim', [0 0.25], 'xticklabel', []);
     plot(repmat(piNdx(1), [1,2]), get(gca, 'ylim'), '--k','linewidth', 1);
     plot(repmat(poNdx(1), [1,2]), get(gca, 'ylim'), '--k','linewidth', 1);
     plot(repmat(rwdNdx(1), [1,2]), get(gca, 'ylim'), '--k','linewidth', 1);
     title('Mean Diag');
+    % LPT Posteriors
     imsp(2) = subplot(3,9,[5:6,14:15]);
     imagesc(curLowPowTrlPost, cLim);
     hold on;
@@ -381,11 +363,18 @@ for band = 1:size(threshPosts,3)
     end
     title(sprintf('Low Power %s', bnm));
     set(gca, 'yticklabel', [], 'xticklabel', []);
+    % Position Accuracy LPT
+    lptPosAcc = cell2mat(splitPosDecode(:,1,:));
+    meanLPTposAcc = mean(lptPosAcc,3);
+%     varLPTposAcc = mlb.SEMcalc(lptPosAcc,0,3);
+    varLPTposAcc = std(lptPosAcc,0,3);
     pasp(2) = subplot(3,9,23:24);
-    tempLowThresh = cell2mat(threshAccPos(:,2,band));
     hold on;
     for op = 1:mlb.seqLength
-        plot(tempLowThresh(:,op), 'color', mlb.PositionColors(op,:));
+        plot(meanLPTposAcc(:,op), 'color', mlb.PositionColors(op,:));
+        patch('XData', [1:size(meanLPTposAcc,1), size(meanLPTposAcc,1):-1:1],...
+            'YData', [(meanLPTposAcc(:,op)+varLPTposAcc(:,op)); flipud(meanLPTposAcc(:,op)-varLPTposAcc(:,op))], 'edgecolor', mlb.PositionColors(op,:),...
+            'facecolor', mlb.PositionColors(op,:), 'facealpha', 0.5, 'linestyle', '-');
     end
     axis tight;
     set(gca, 'ylim', [0 1], 'xticklabel', []);
@@ -401,6 +390,8 @@ for band = 1:size(threshPosts,3)
     title(sprintf('Low %s Accuracy', bnm));
     
     
+    % Power Difference
+    % Time Accuracy HPT - LPT
     tasp(3) = subplot(3,9, [7,16]);
     timeAccDiff = highPowTimeAcc - lowPowTimeAcc;
     imagesc(timeAccDiff, [-0.05 0.05]);
@@ -419,15 +410,24 @@ for band = 1:size(threshPosts,3)
             plot(get(gca, 'xlim'),repmat(posNdx(ndx), [1,2]), '-k','linewidth', 2);
         end
     end
+    % Time Decoding HPT-LPT
+    diffTimeAccDiag = hptTimeAccDiag-lptTimeAccDiag;
+    meanDIFFtimeDiag = mean(diffTimeAccDiag,3);
+%     varDIFFtimeDiag = mlb.SEMcalc(diffTimeAccDiag,0,3);
+    varDIFFtimeDiag = std(diffTimeAccDiag,0,3);
     tdsp(3) = subplot(3,9,25);
-    plot(highPowTimeAccDiag-lowPowTimeAccDiag, 'k');
+    plot(meanDIFFtimeDiag, 'k');
     hold on;    
+    patch('XData', [1:length(timePoints), length(timePoints):-1:1],...
+        'YData', [(meanDIFFtimeDiag+varDIFFtimeDiag), fliplr(meanDIFFtimeDiag-varDIFFtimeDiag)], 'edgecolor', 'k',...
+        'facecolor', 'k', 'facealpha', 0.5, 'linestyle', '-');
     plot(repmat(piNdx(1), [1,2]), get(gca, 'ylim'), '--k','linewidth', 1);
     plot(repmat(poNdx(1), [1,2]), get(gca, 'ylim'), '--k','linewidth', 1);
     plot(repmat(rwdNdx(1), [1,2]), get(gca, 'ylim'), '--k','linewidth', 1);
     plot(get(gca, 'xlim'), [0 0], '-k', 'linewidth', 1);
     set(gca, 'xticklabel', []);
     title('TimeDiag Diff');
+    % HPT-LPT Posteriors
     imsp(3) = subplot(3,9,[8:9,17:18]);
     imagesc(curHighPowTrlPost-curLowPowTrlPost, [max(cLim)*-1 max(cLim)]);
     hold on;
@@ -446,20 +446,18 @@ for band = 1:size(threshPosts,3)
     end
     title(sprintf('%s Difference', bnm));
     set(gca, 'yticklabel', [], 'xticklabel', []);
+    % Position Accuracy HPT-LPT
+    diffPosAcc = hptPosAcc-lptPosAcc;
+    meanDIFFposAcc = mean(diffPosAcc,3);
+%     varDIFFposAcc = mlb.SEMcalc(diffPosAcc,0,3);
+    varDIFFposAcc = std(diffPosAcc,0,3);
     pasp(3) = subplot(3,9,26:27);
-    tempHighMatch = nan(size(tempHighThresh));
-    tempLowMatch = nan(size(tempLowThresh));
-    boundNdx = [find(mlb.likeTimeVect==min(mlb.likeTimeVect)); length(mlb.likeTimeVect)+1];
-    for p = 1:mlb.seqLength
-        tempHighMatch(boundNdx(p):boundNdx(p+1)-1,p) = tempHighThresh(boundNdx(p):boundNdx(p+1)-1,p);
-        tempLowMatch(boundNdx(p):boundNdx(p+1)-1,p) = tempLowThresh(boundNdx(p):boundNdx(p+1)-1,p);
-    end
-    tempDiff = tempHighMatch-tempLowMatch;
     hold on;
     for op = 1:mlb.seqLength
-        plot(tempDiff(:,op), 'color', mlb.PositionColors(op,:), 'linewidth', 2);
-        tmpLn = plot(tempHighThresh(:,op)-tempLowThresh(:,op), 'linewidth', 1);
-        tmpLn.Color = [mlb.PositionColors(op,:), 0.5];
+        plot(meanDIFFposAcc(:,op), 'color', mlb.PositionColors(op,:));
+        patch('XData', [1:size(meanDIFFposAcc,1), size(meanDIFFposAcc,1):-1:1],...
+            'YData', [(meanDIFFposAcc(:,op)+varDIFFposAcc(:,op)); flipud(meanDIFFposAcc(:,op)-varDIFFposAcc(:,op))], 'edgecolor', mlb.PositionColors(op,:),...
+            'facecolor', mlb.PositionColors(op,:), 'facealpha', 0.25, 'linestyle', '-');
     end
     axis tight;
     set(gca, 'ylim', [-0.5 0.5], 'xticklabel', []);
@@ -484,6 +482,58 @@ for band = 1:size(threshPosts,3)
     linkaxes(imsp, 'xy');
 
     
+    annotation(gcf,'textbox', [0.1 0.95 0.9 0.05],...
+        'String', sprintf('%s Split; %s aligned; Trial Window = (%.0fms:%.0fms); %i Perms', bnm, alignment{1}, trlWindow{1}(1), trlWindow{1}(2),numPerms),...
+        'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left', 'interpreter', 'none');
+    
+    %% Plot Summaries of Decoding Difference
+    boundNdx = [find(mlb.likeTimeVect==min(mlb.likeTimeVect)); length(mlb.likeTimeVect)+1];
+    avgAccDiffPerPerm = nan(length(timePoints),numPerms);
+    avgDprmDiffPerPerm = nan(length(timePoints),numPerms);
+    for perm = 1:numPerms
+        tempMatch = nan(length(timePoints), mlb.seqLength);
+        for p = 1:mlb.seqLength
+            tempMatch(:,p) = diffPosAcc(boundNdx(p):boundNdx(p+1)-1,p,perm);
+        end
+        avgAccDiffPerPerm(:,perm) = mean(tempMatch, 2, 'omitnan');
+        avgDprmDiffPerPerm(:,perm) = mean(splitOPdPrmDecode{1,2,perm}-splitOPdPrmDecode{1,1,perm}, 2, 'omitnan');
+    end
+    
+    figure; 
+    subplot(2,1,1);
+    meanAccDiffPerPerm = mean(avgAccDiffPerPerm,2);
+%     varAccDiffPerPerm = mlb.SEMcalc(avgAccDiffPerPerm,0,2);
+    varAccDiffPerPerm = std(avgAccDiffPerPerm,0,2);
+    plot(meanAccDiffPerPerm, 'k');
+    hold on;    
+    patch('XData', [1:length(timePoints), length(timePoints):-1:1],...
+        'YData', [(meanAccDiffPerPerm+varAccDiffPerPerm); flipud(meanAccDiffPerPerm-varAccDiffPerPerm)], 'edgecolor', 'k',...
+        'facecolor', 'k', 'facealpha', 0.5, 'linestyle', '-');
+    plot(repmat(piNdx(1), [1,2]), get(gca, 'ylim'), '--k','linewidth', 1);
+    plot(repmat(poNdx(1), [1,2]), get(gca, 'ylim'), '--k','linewidth', 1);
+    plot(repmat(rwdNdx(1), [1,2]), get(gca, 'ylim'), '--k','linewidth', 1);
+    plot(get(gca, 'xlim'), [0 0], '-k', 'linewidth', 1);
+    set(gca, 'xticklabel', []);
+    ylabel('Accuracy Diff');
+    title('Average HPT-LPT Difference');
+    
+    subplot(2,1,2);
+    meanDprmDiffPerPerm = mean(avgDprmDiffPerPerm,2);
+%     varDprmDiffPerPerm = mlb.SEMcalc(avgDprmDiffPerPerm,0,2);
+    varDprmDiffPerPerm = std(avgDprmDiffPerPerm,0,2);
+    plot(meanDprmDiffPerPerm, 'k');
+    hold on;    
+    patch('XData', [1:length(timePoints), length(timePoints):-1:1],...
+        'YData', [(meanDprmDiffPerPerm+varDprmDiffPerPerm); flipud(meanDprmDiffPerPerm-varDprmDiffPerPerm)], 'edgecolor', 'k',...
+        'facecolor', 'k', 'facealpha', 0.5, 'linestyle', '-');
+    plot(repmat(piNdx(1), [1,2]), get(gca, 'ylim'), '--k','linewidth', 1);
+    plot(repmat(poNdx(1), [1,2]), get(gca, 'ylim'), '--k','linewidth', 1);
+    plot(repmat(rwdNdx(1), [1,2]), get(gca, 'ylim'), '--k','linewidth', 1);
+    plot(get(gca, 'xlim'), [0 0], '-k', 'linewidth', 1);
+    set(gca, 'xticklabel', []);
+    ylabel('d'' Diff');
+    title('Average HPT-LPT Difference');
+        
     annotation(gcf,'textbox', [0.1 0.95 0.9 0.05],...
         'String', sprintf('%s Split; %s aligned; Trial Window = (%.0fms:%.0fms); %i Perms', bnm, alignment{1}, trlWindow{1}(1), trlWindow{1}(2),numPerms),...
         'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left', 'interpreter', 'none');

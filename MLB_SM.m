@@ -368,12 +368,12 @@ classdef MLB_SM < SeqMem
         %% Process all Observations
         function Process_Observes(obj)
             % Comment in if you need to save memory
-            obj.behavMatrix = [];
-            obj.behavMatrixColIDs = [];
-            obj.ensembleMatrix = [];
-            obj.ensembleMatrixColIDs = [];
-            obj.lfpMatrix = [];
-            obj.lfpMatrixColIDs = [];
+%             obj.behavMatrix = [];
+%             obj.behavMatrixColIDs = [];
+%             obj.ensembleMatrix = [];
+%             obj.ensembleMatrixColIDs = [];
+%             obj.lfpMatrix = [];
+%             obj.lfpMatrixColIDs = [];
             %
             obj.post = cell(size(obj.obsvTrlSpikes));
             obj.postTrlIDs = cell(size(obj.obsvTrlSpikes));
@@ -397,7 +397,7 @@ classdef MLB_SM < SeqMem
             obj.post = cell(size(obj.obsvTrlSpikes));
             obj.postTrlIDs = cell(size(obj.obsvTrlSpikes));
             for perm = 1:length(obj.likeTrlSpikes)
-                fprintf('Iteration #%i', perm);
+%                 fprintf('Iteration #%i', perm);
                 if obj.bayesType == 1 || strcmp(obj.bayesType, 'Poisson') || strcmp(obj.bayesType, 'poisson') || strcmp(obj.bayesType, 'P') || strcmp(obj.bayesType, 'p')
                     obj.post{perm} = obj.CalcIterativeBayesPost_Poisson(mean(obj.likeTrlSpikes{perm},3, 'omitnan'), obj.obsvTrlSpikes{perm}, obj.decodeIDvects{perm}(:,1), obj.decodeIDvects{perm}(:,3));
                 elseif obj.bayesType == 2 || strcmp(obj.bayesType, 'Bernoulli') || strcmp(obj.bayesType, 'bernoulli') || strcmp(obj.bayesType, 'B') || strcmp(obj.bayesType, 'b')
@@ -410,7 +410,7 @@ classdef MLB_SM < SeqMem
                 obj.likeTrlSpikes{perm} = [];
                 obj.obsvTrlSpikes{perm} = [];
                 obj.postTrlIDs{perm} = obj.obsvTrlIDs{perm};
-                fprintf(' complete\n');
+%                 fprintf(' complete\n');
             end
         end
     end
@@ -619,6 +619,44 @@ classdef MLB_SM < SeqMem
         end
     end
     methods % "Analyses"
+        %%
+        function dOvrT = CalcDprmVectFromDecode(obj, decodeMtx, trlIDvect)
+            % decodeMtx here is a matrix NxM where N=time and M=trials
+            % trlIDvect here is a vector 1xM containing the trial IDs
+%             trlIDs = sort(obj.odrSeqs(:));
+            trlIDs = 1:obj.seqLength;
+            dOvrT = nan(size(decodeMtx,1),length(trlIDs));
+            for trl = 1:length(trlIDs)
+                tempTrlLogVect = trlIDvect==trlIDs(trl);
+                for t = 1:size(decodeMtx,1)
+                    decodeCounts(1,1) = sum(decodeMtx(t,tempTrlLogVect)==trlIDs(trl));
+                    decodeCounts(1,2) = sum(decodeMtx(t,tempTrlLogVect)~=trlIDs(trl));
+                    decodeCounts(2,1) = sum(decodeMtx(t,~tempTrlLogVect)==trlIDs(trl));
+                    decodeCounts(2,2) = sum(decodeMtx(t,~tempTrlLogVect)~=trlIDs(trl));
+                    dOvrT(t,trl) = obj.CalculateDprime(decodeCounts);
+                end
+            end
+        end
+        %%
+        function dOvrT = CalcDprmMtxFromDecode(obj, decodeMtx, trlIDvect)
+            % decodeMtx here is a NxMxP matrix (tensor?) where N = observation time, M = likelihood time and P = trials
+            % trlIDvect here is a 1xP matrix containing the trial IDs
+%             trlIDs = sort(obj.odrSeqs(:));
+            trlIDs = 1:obj.seqLength;
+            dOvrT = nan(size(decodeMtx,1),size(decodeMtx,2), length(trlIDs));
+            for trl = 1:length(trlIDs)
+                tempTrlLogVect = trlIDvect==trlIDs(trl);
+                for to = 1:size(decodeMtx,1)
+                    for tl = 1:size(decodeMtx,2)
+                        decodeCounts(1,1) = sum(decodeMtx(to,tl,tempTrlLogVect)==trlIDs(trl));
+                        decodeCounts(1,2) = sum(decodeMtx(to,tl,tempTrlLogVect)~=trlIDs(trl));
+                        decodeCounts(2,1) = sum(decodeMtx(to,tl,~tempTrlLogVect)==trlIDs(trl));
+                        decodeCounts(2,2) = sum(decodeMtx(to,tl,~tempTrlLogVect)~=trlIDs(trl));
+                        dOvrT(to,tl,trl) = obj.CalculateDprime(decodeCounts);
+                    end
+                end
+            end
+        end
         %% Integrate Anti-diagonal
         function int = IntegrateAntiDiagonal(~, mtx)
             int = nan(1,size(mtx,1)*2);
