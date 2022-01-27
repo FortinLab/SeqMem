@@ -638,12 +638,19 @@ classdef MLB_SM < SeqMem
             end
         end
         %%
-        function dOvrT = CalcDprmMtxFromDecode(obj, decodeMtx, trlIDvect)
+        function [dOvrTraw, dOvrTchance] = CalcDprmMtxFromDecode(obj, decodeMtx, trlIDvect)
             % decodeMtx here is a NxMxP matrix (tensor?) where N = observation time, M = likelihood time and P = trials
             % trlIDvect here is a 1xP matrix containing the trial IDs
 %             trlIDs = sort(obj.odrSeqs(:));
             trlIDs = 1:obj.seqLength;
-            dOvrT = nan(size(decodeMtx,1),size(decodeMtx,2), length(trlIDs));
+            rndDecodeMtx = nan(size(decodeMtx));
+            for trl = 1:size(decodeMtx,3)
+                tempDecode = decodeMtx(:,:,trl);
+                shuffDecode = sortrows([randperm(numel(tempDecode))',tempDecode(:)]);
+                rndDecodeMtx(:,:,trl) = reshape(shuffDecode(:,2), [size(decodeMtx,1),size(decodeMtx,2)]);
+            end
+            dOvrTraw = nan(size(decodeMtx,1),size(decodeMtx,2), length(trlIDs));
+            dOvrTchance = nan(size(decodeMtx,1),size(decodeMtx,2), length(trlIDs));
             for trl = 1:length(trlIDs)
                 tempTrlLogVect = trlIDvect==trlIDs(trl);
                 for to = 1:size(decodeMtx,1)
@@ -652,7 +659,12 @@ classdef MLB_SM < SeqMem
                         decodeCounts(1,2) = sum(decodeMtx(to,tl,tempTrlLogVect)~=trlIDs(trl));
                         decodeCounts(2,1) = sum(decodeMtx(to,tl,~tempTrlLogVect)==trlIDs(trl));
                         decodeCounts(2,2) = sum(decodeMtx(to,tl,~tempTrlLogVect)~=trlIDs(trl));
-                        dOvrT(to,tl,trl) = obj.CalculateDprime(decodeCounts);
+                        dOvrTraw(to,tl,trl) = obj.CalculateDprime(decodeCounts);
+                        randCounts(1,1) = sum(rndDecodeMtx(to,tl,tempTrlLogVect)==trlIDs(trl));
+                        randCounts(1,2) = sum(rndDecodeMtx(to,tl,tempTrlLogVect)~=trlIDs(trl));
+                        randCounts(2,1) = sum(rndDecodeMtx(to,tl,~tempTrlLogVect)==trlIDs(trl));
+                        randCounts(2,2) = sum(rndDecodeMtx(to,tl,~tempTrlLogVect)~=trlIDs(trl));
+                        dOvrTchance(to,tl,trl) = obj.CalculateDprime(randCounts);
                     end
                 end
             end

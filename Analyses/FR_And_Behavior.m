@@ -33,14 +33,14 @@ trlWindow = {[-1000 2000]};
 alignment = {'PokeIn'};
 % trlWindow = {[-2000 800]};
 % alignment = {'PokeOut'};
-% binType = 'gauss';
-binType = 'box';
+binType = 'gauss';
+% binType = 'box';
 sfpYN = 0;
 % behavLatType = 'rel';
 behavLatType = 'abs';
 
-frThresh = 0.2/(binSize/1000);
-% frThresh = 0.00001;
+% frThresh = 0.2/(binSize/1000);
+frThresh = 0.00001;
 %% Data Vectors
 % Neural
 popVects = cell(length(fileDirs),1);
@@ -95,8 +95,8 @@ for ani = 1:length(fileDirs)
         for uni = 1:size(tempNsmbl,2)
             peakNdx(uni,op) = find(tempNsmbl(:,uni)==max(tempNsmbl(:,uni)),1,'first');
             peakRt(uni,op) = max(tempNsmbl(:,uni));
-%             tempNsmbl(:,uni) = tempNsmbl(:,uni)./max(tempNsmbl(:,uni));
-            tempNsmbl(:,uni) = tempNsmbl(:,uni);
+            tempNsmbl(:,uni) = tempNsmbl(:,uni)./max(tempNsmbl(:,uni));
+%             tempNsmbl(:,uni) = tempNsmbl(:,uni);
         end
         nsmblSpks(:,:,op) = tempNsmbl';
     end
@@ -548,8 +548,8 @@ for op1 = 1:mlb.seqLength
     for op2 = 1:mlb.seqLength
         sortedPV = sortrows([grpPVsort(:,op1), grpPVmaxFR(:,op2), grpPV(:,:,op2)]);
         subplot(mlb.seqLength,mlb.seqLength, sub2ind([mlb.seqLength, mlb.seqLength], op2, op1));
-%         imagesc(timeVect, 1:sum(sortedPV(:,2)>=frThresh), sortedPV(sortedPV(:,2)>=frThresh,3:end), [0 1]);
-        imagesc(timeVect, 1:sum(sortedPV(:,2)>=frThresh), sortedPV(sortedPV(:,2)>=frThresh,3:end), [0 20]);
+        imagesc(timeVect, 1:sum(sortedPV(:,2)>=frThresh), sortedPV(sortedPV(:,2)>=frThresh,3:end), [0 1]);
+%         imagesc(timeVect, 1:sum(sortedPV(:,2)>=frThresh), sortedPV(sortedPV(:,2)>=frThresh,3:end), [0 20]);
         hold on;
         plot([0 0], get(gca, 'ylim'), '-k');
         plot(repmat(mean(pokeOutLats), [1 2]), get(gca, 'ylim'), '-k')
