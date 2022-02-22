@@ -58,7 +58,7 @@ grpDecodeTrlNums = cell(1,length(fileDirs));
 grpDecodeTrlPosIDs = cell(1,length(fileDirs));
 grpDecodePermIDs = cell(1,length(fileDirs));
 grpLFP = cell(1,length(fileDirs));
-%%
+%% MAIN ANALYSIS LOOP
 for ani = 1:length(fileDirs)
     %% Create initial object & set object parameters
     mlb = MLB_SM(fileDirs{ani});
@@ -131,12 +131,14 @@ for ani = 1:length(fileDirs)
     grpDecodeTrlPosIDs{ani} = cell2mat(tempTrlIDs);
     grpDecodePermIDs{ani} = cell2mat(tempPermIDs);
     
-end    
-
+end
+%%
 pokeOutLats = cell2mat(fiscPokeOutLat(:));
-nearestPOtime = mlb.obsvTimeVect(find(mlb.obsvTimeVect<median(pokeOutLats),1,'last'));
+nearestPOndx = find(mlb.obsvTimeVect<median(pokeOutLats),1,'last');
+nearestPOtime = mlb.obsvTimeVect(nearestPOndx);
 rwdDelivLat = cell2mat(fiscRwdDelivLat(:));
-nearestRWDtime = mlb.obsvTimeVect(find(mlb.obsvTimeVect<median(rwdDelivLat),1,'last'));
+nearesdRWDndx = find(mlb.obsvTimeVect<median(rwdDelivLat),1,'last');
+nearestRWDtime = mlb.obsvTimeVect(nearesdRWDndx);
 
 %% Plot individual animal dPrime Decodings
 for ani = 1:length(fileDirs)
@@ -164,7 +166,7 @@ for ani = 1:length(fileDirs)
         'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left', 'interpreter', 'none');
 end
 
-%% Model analysis
+%% Individual Animal Model Analysis
 persModSims = cell(3,length(fileDirs));
 dynModSims = cell(3,length(fileDirs));
 mixModSims = cell(3,length(fileDirs));
@@ -180,7 +182,7 @@ for ani = 1:length(fileDirs)
     pstTrlPrd = mlb.obsvTimeVect>=aniRWDtime;
     
     %% Next find the best fit dynamic model for the animal's data
-    % Create potential fully dynamic models based on 1/2 the width of the pre-trial or trial periods (whichever's shorter)
+    % Create potential fully dynamic models
     dynCap = floor(length(mlb.obsvTimeVect)/2-1);
     fullDynMod = nan(length(mlb.obsvTimeVect), length(mlb.obsvTimeVect), dynCap+1);
     fullDynMod(:,:,1) = eye(length(mlb.obsvTimeVect));
@@ -223,7 +225,6 @@ for ani = 1:length(fileDirs)
     odrGrow = false(length(mlb.obsvTimeVect));
     odrGrow(preTrlLog,preTrlLog) = true;
     frstNdx = find(odrSampLog,1,'first');
-    startNdx = frstNdx;
     for ndx = frstNdx:length(mlb.obsvTimeVect)
         tempLog = false(size(mlb.obsvTimeVect));
         maxNdx = ndx+(ndx-frstNdx);
@@ -321,3 +322,297 @@ for ani = 1:length(fileDirs)
     drawnow;
     
 end
+
+%% Group (trials collapsed across animals) Model Analysis
+% First aggregate all data per permutation across animals
+permTrialDecodes = cell(1,numPerms,length(fileDirs));
+permTrialIDs = cell(numPerms,length(fileDirs));
+for ani = 1:length(fileDirs)
+    tempTrlDecodes = grpDecodes{ani};
+    tempTrlIDs = grpDecodeTrlPosIDs{ani};
+    tempPermIDs = grpDecodePermIDs{ani};
+    for perm = 1:numPerms
+        permTrialDecodes{1,perm,ani} = tempTrlDecodes(:,:,tempPermIDs==perm);
+        permTrialIDs{perm,ani} = tempTrlIDs(tempPermIDs==perm);
+    end
+end
+
+grpDobsv = cell(1,numPerms);
+grpDchnc = cell(1,numPerms);
+for perm = 1:numPerms
+    [grpDobsv{perm},grpDchnc{perm}] = mlb.CalcDprmMtxFromDecode(cell2mat(permTrialDecodes(:,perm,:)), cell2mat(permTrialIDs(perm,:)));
+end
+
+%% Create models for group (trial collapsed) analysis
+% Create trial epoch vectors
+preTrlLog = mlb.obsvTimeVect<0;
+odrSampLog = mlb.obsvTimeVect>=0 & mlb.obsvTimeVect<nearestPOtime;
+preRwdPrd = mlb.obsvTimeVect>=nearestPOtime & mlb.obsvTimeVect<nearestRWDtime;
+pstTrlPrd = mlb.obsvTimeVect>=nearestRWDtime;
+
+% Create potential fully dynamic models
+dynCap = floor(length(mlb.obsvTimeVect)/2-1);
+fullDynMod = nan(length(mlb.obsvTimeVect), length(mlb.obsvTimeVect), dynCap+1);
+fullDynMod(:,:,1) = eye(length(mlb.obsvTimeVect));
+for d = 1:dynCap
+    fullDynMod(:,:,d+1) = triu(true(length(mlb.obsvTimeVect)), d*-1) & tril(true(length(mlb.obsvTimeVect)), d);
+end
+
+% Create potential persistent models
+nullModel = true(length(mlb.obsvTimeVect));
+pObound = false(length(mlb.obsvTimeVect));
+    pObound(preTrlLog|odrSampLog,preTrlLog|odrSampLog)=true;
+    pObound(preRwdPrd|pstTrlPrd,preRwdPrd|pstTrlPrd)=true;
+pIbound = false(length(mlb.obsvTimeVect));
+    pIbound(preTrlLog,preTrlLog)=true;
+    pIbound(odrSampLog|preRwdPrd|pstTrlPrd,odrSampLog|preRwdPrd|pstTrlPrd) = true;
+pIpObound = false(length(mlb.obsvTimeVect));
+    pIpObound(preTrlLog,preTrlLog)=true;
+    pIpObound(odrSampLog,odrSampLog)=true;
+    pIpObound(preRwdPrd|pstTrlPrd,preRwdPrd|pstTrlPrd)=true;
+pIpOrwDbound = false(length(mlb.obsvTimeVect));
+    pIpOrwDbound(preTrlLog,preTrlLog)=true;
+    pIpOrwDbound(odrSampLog,odrSampLog)=true;
+    pIpOrwDbound(preRwdPrd,preRwdPrd)=true;
+    pIpOrwDbound(pstTrlPrd,pstTrlPrd)=true;
+%     persistMod = cell2mat(permute([{nullModel}, {pObound}, {pIbound}, {pIpObound}, {pIpOrwDbound}], [1,3,2])); persXtickLabels = [{'Null'}, {'PO'}, {'PI'}, {'PIPO'}, {'PIPORWD'}];
+persistMod = cell2mat(permute([{pObound}, {pIbound}, {pIpObound}, {pIpOrwDbound}], [1,3,2])); persXtickLabels = [{'PO'}, {'PI'}, {'PIPO'}, {'PIPORWD'}];
+
+% Now create models with mixed dynamic & persistent epochs
+prePrst = false(length(mlb.obsvTimeVect));
+    prePrst(preTrlLog,preTrlLog) = true;
+odrPrst = false(length(mlb.obsvTimeVect));
+    odrPrst(odrSampLog,odrSampLog) = true;
+pstPrst = false(length(mlb.obsvTimeVect));
+    pstPrst(preRwdPrd|pstTrlPrd,preRwdPrd|pstTrlPrd) = true;
+preOdrPrst = false(length(mlb.obsvTimeVect));
+    preOdrPrst(preTrlLog|odrSampLog, preTrlLog|odrSampLog) = true;
+prePstPrst = prePrst | pstPrst;
+
+% Now create a fully mixed model hinging at port entry where persistence grows after poke in
+odrGrow = false(length(mlb.obsvTimeVect));
+odrGrow(preTrlLog,preTrlLog) = true;
+odrGrowPostPrst = odrGrow;
+odrGrowPostPrst(pstPrst) = true;
+frstNdx = find(odrSampLog,1,'first');
+for ndx = frstNdx:length(mlb.obsvTimeVect)
+    tempLog = false(size(mlb.obsvTimeVect));
+    maxNdx = ndx+(ndx-frstNdx);
+%     if maxNdx > length(mlb.obsvTimeVect)
+%         maxNdx = length(mlb.obsvTimeVect);
+%     end
+    if maxNdx > nearestPOndx
+        maxNdx = nearestPOndx;
+    end
+    tempLog(ndx:maxNdx) = true;
+    odrGrow(ndx,tempLog) = true;
+    odrGrow(tempLog,ndx) = true;
+    odrGrowPostPrst(ndx,tempLog) = true;
+    odrGrowPostPrst(tempLog,ndx) = true;
+end
+
+mixModFrame = cell2mat(permute([{prePrst}, {odrPrst}, {pstPrst}, {prePstPrst}, {preOdrPrst}, {odrGrow}, {odrGrowPostPrst}], [1,3,2])); mixXtickLabels = [{'Pre'}, {'Odr'}, {'Pst'}, {'PrePst'}, {'PreOdr'}, {'OdrGrow'}, {'OdrGrowPstPrst'}];
+
+%% Compare models for group (trial collapsed) analysis
+grpDynSimKL = nan(numPerms,4,size(fullDynMod,3));
+grpDynSimEUC = nan(numPerms,4,size(fullDynMod,3));
+grpDynSimCOS = nan(numPerms,4,size(fullDynMod,3));
+grpPersSimKL = nan(numPerms,4,size(fullDynMod,3));
+grpPersSimEUC = nan(numPerms,4,size(fullDynMod,3));
+grpPersSimCOS = nan(numPerms,4,size(fullDynMod,3));
+grpMixSimKL = nan(numPerms,4,size(fullDynMod,3),size(mixModFrame,3));
+grpMixSimEUC = nan(numPerms,4,size(fullDynMod,3),size(mixModFrame,3));
+grpMixSimCOS = nan(numPerms,4,size(fullDynMod,3),size(mixModFrame,3));
+chanceDynSimKL = nan(numPerms,4,size(fullDynMod,3));
+chanceDynSimEUC = nan(numPerms,4,size(fullDynMod,3));
+chanceDynSimCOS = nan(numPerms,4,size(fullDynMod,3));
+chancePersSimKL = nan(numPerms,4,size(fullDynMod,3));
+chancePersSimEUC = nan(numPerms,4,size(fullDynMod,3));
+chancePersSimCOS = nan(numPerms,4,size(fullDynMod,3));
+chanceMixSimKL = nan(numPerms,4,size(fullDynMod,3),size(mixModFrame,3));
+chanceMixSimEUC = nan(numPerms,4,size(fullDynMod,3),size(mixModFrame,3));
+chanceMixSimCOS = nan(numPerms,4,size(fullDynMod,3),size(mixModFrame,3));
+for o = 1:mlb.seqLength
+    % Extract trial data 
+    curObsvDecode = cell2mat(permute(cellfun(@(a){a(:,:,o)}, grpDobsv),[1,3,2]));    
+    curChanceDecode = cell2mat(permute(cellfun(@(a){a(:,:,o)}, grpDchnc),[1,3,2]));    
+    % Compare it to the different models
+    for perm = 1:numPerms
+        tempPermZ = zscore(curObsvDecode(:,:,perm),0,'all')+100;
+        tempChancePermZ = zscore(curChanceDecode(:,:,perm),0,'all')+100;
+        for d = 1:size(fullDynMod,3)
+            tempDynModelZ = zscore(fullDynMod(:,:,d),0,'all')+100;
+            tempKLmtx = tempPermZ.*log(tempPermZ./tempDynModelZ);
+            tempChanceKLmtx = tempChancePermZ.*log(tempChancePermZ./tempDynModelZ);
+            grpDynSimKL(perm,o,d) = sum(tempKLmtx(:));                                              chanceDynSimKL(perm,o,d) = sum(tempChanceKLmtx(:));
+            grpDynSimEUC(perm,o,d) = pdist([tempPermZ(:)'; tempDynModelZ(:)']);                     chanceDynSimEUC(perm,o,d) = pdist([tempChancePermZ(:)'; tempDynModelZ(:)']);                 
+            grpDynSimCOS(perm,o,d) = pdist([tempPermZ(:)'; tempDynModelZ(:)']-100, 'cosine');       chanceDynSimCOS(perm,o,d) = pdist([tempChancePermZ(:)'; tempDynModelZ(:)']-100, 'cosine');
+            for m = 1:size(mixModFrame,3)
+                tempMixModelZ = zscore(fullDynMod(:,:,d)|mixModFrame(:,:,m),0,'all')+100;
+                tempKLmtx = tempPermZ.*log(tempPermZ./tempMixModelZ);                               tempChanceKLmtx = tempChancePermZ.*log(tempChancePermZ./tempMixModelZ);
+                grpMixSimKL(perm,o,d,m) = sum(tempKLmtx(:));                                        chanceMixSimKL(perm,o,d,m) = sum(tempChanceKLmtx(:));
+                grpMixSimEUC(perm,o,d,m) = pdist([tempPermZ(:)'; tempMixModelZ(:)']);               chanceMixSimEUC(perm,o,d,m) = pdist([tempChancePermZ(:)'; tempMixModelZ(:)']);
+                grpMixSimCOS(perm,o,d,m) = pdist([tempPermZ(:)'; tempMixModelZ(:)']-100, 'cosine'); chanceMixSimCOS(perm,o,d,m) = pdist([tempChancePermZ(:)'; tempMixModelZ(:)']-100, 'cosine');
+            end
+        end
+        for p = 1:size(persistMod,3)
+            tempPersModelZ = zscore(persistMod(:,:,p),0,'all')+100;
+            tempKLmtx = tempPermZ.*log(tempPermZ./tempPersModelZ);                                  tempChanceKLmtx = tempChancePermZ.*log(tempChancePermZ./tempPersModelZ);
+            grpPersSimKL(perm,o,p) = sum(tempKLmtx(:));                                             chancePersSimKL(perm,o,p) = sum(tempChanceKLmtx(:));
+            grpPersSimEUC(perm,o,p) = pdist([tempPermZ(:)'; tempPersModelZ(:)']);                   chancePersSimEUC(perm,o,p) = pdist([tempChancePermZ(:)'; tempPersModelZ(:)']);
+            grpPersSimCOS(perm,o,p) = pdist([tempPermZ(:)'; tempPersModelZ(:)']-100, 'cosine');     chancePersSimCOS(perm,o,p) = pdist([tempChancePermZ(:)'; tempPersModelZ(:)']-100, 'cosine');
+        end
+    end
+end
+
+%% Plot it all! 
+% distStr = 'KL';
+% tempDyn = permute(mean(grpDynSimKL),[3,2,1]);
+% tempPers = permute(mean(grpPersSimKL),[3,2,1]);
+% tempMix = permute(mean(grpMixSimKL),[3,4,2,1]);
+% distStr = 'EUC';
+% tempDyn = permute(mean(grpDynSimEUC),[3,2,1]);
+% tempPers = permute(mean(grpPersSimEUC),[3,2,1]);
+% tempMix = permute(mean(grpMixSimEUC),[3,4,2,1]);
+distStr = 'COS';
+tempDyn = permute(mean(grpDynSimCOS),[3,2,1]);
+tempPers = permute(mean(grpPersSimCOS),[3,2,1]);
+tempMix = permute(mean(grpMixSimCOS),[3,4,2,1]);
+dPlots = grpDobsv;
+% 
+% distStr = 'COSchance';
+% tempDyn = permute(mean(chanceDynSimCOS),[3,2,1]);
+% tempPers = permute(mean(chancePersSimCOS),[3,2,1]);
+% tempMix = permute(mean(chanceMixSimCOS),[3,4,2,1]);
+% dPlots = grpDchnc;
+
+figure;
+subplot(4,1,1)
+hold(gca, 'on');
+for o = 1:mlb.seqLength
+    plot(tempDyn(:,o), 'color', mlb.PositionColors(o,:));
+    ndx = find(min(tempDyn(:,o))==tempDyn(:,o),1,'first');
+    scatter(ndx,min(tempDyn(:,o)),'x', 'markeredgecolor', mlb.PositionColors(o,:));
+end
+title(min(min(tempDyn)));
+
+subplot(4,1,2)
+hold(gca,'on');
+for o = 1:mlb.seqLength
+    plot(tempPers(:,o), 'color', mlb.PositionColors(o,:));
+    ndx = find(min(tempPers(:,o))==tempPers(:,o),1,'first');
+    scatter(ndx,min(tempPers(:,o)),'x', 'markeredgecolor', mlb.PositionColors(o,:));
+end
+set(gca,'xtick', 1:size(tempPers,1), 'xticklabels', persXtickLabels)
+title(min(min(tempPers)));
+
+for o = 1:mlb.seqLength
+    subplot(4,mlb.seqLength, sub2ind([mlb.seqLength, 4],o,3));
+    imagesc(tempMix(:,:,o));
+    hold on;
+    [d,p] = find(min(tempMix(:,:,o))==tempMix(:,:,o));
+    scatter(p,d, 'wx');
+    [d,p] = find(min(min(tempMix(:,:,o)))==tempMix(:,:,o));
+    scatter(p,d, 'wo');
+    set(gca, 'ydir', 'normal', 'xtick', 1:size(tempMix,2), 'xticklabels', mixXtickLabels, 'xticklabelrotation', 90);
+    title(min(min(tempMix(:,:,o))));
+    
+    subplot(4,mlb.seqLength, sub2ind([mlb.seqLength, 4],o,4));
+%     imagesc(mlb.obsvTimeVect, mlb.obsvTimeVect, zscore(mean(cell2mat(permute(cellfun(@(a){a(:,:,o)}, dPlots),[1,3,2])),3),0,'all'), [-2 2]);
+    imagesc(mlb.obsvTimeVect, mlb.obsvTimeVect, mean(cell2mat(permute(cellfun(@(a){a(:,:,o)}, dPlots),[1,3,2])),3));
+    set(gca, 'ydir', 'normal');
+    hold on;
+    plot([0 0], get(gca, 'ylim'), '-k');
+    plot(get(gca, 'xlim'), [0 0], '-k');
+    plot(repmat(nearestPOtime, [1,2]), get(gca, 'ylim'), '-k');
+    plot(get(gca, 'xlim'), repmat(nearestPOtime, [1,2]), '-k');
+    plot(repmat(nearestRWDtime, [1,2]), get(gca, 'ylim'), ':k', 'linewidth', 2);
+    plot(get(gca, 'xlim'), repmat(nearestRWDtime, [1,2]), ':k', 'linewidth', 2);
+    colorbar;
+end
+
+annotation(gcf,'textbox', [0.1 0.95 0.9 0.05],...
+    'String', sprintf('%s Distance; %s aligned; %s Ensemble, Trial Window = (%.0fms:%.0fms); %i Perms; %ims Window', distStr, alignment{1}, nsmblType, trlWindow{1}(1), trlWindow{1}(2), numPerms, binSize),...
+    'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left', 'interpreter', 'none');
+drawnow;
+
+%% Test things
+% distStr = 'KL';
+% tempDyn = grpDynSimKL;
+% tempPers = grpPersSimKL;
+% tempMix = grpMixSimKL;
+% distStr = 'EUC';
+% tempDyn = grpDynSimEUC;
+% tempPers = grpPersSimEUC;
+% tempMix = grpMixSimEUC;
+distStr = 'COS';
+tempDyn = grpDynSimCOS;
+tempPers = grpPersSimCOS;
+tempMix = grpMixSimCOS;
+tempDynMean = permute(mean(grpDynSimCOS),[3,2,1]);
+tempPersMean = permute(mean(grpPersSimCOS),[3,2,1]);
+tempMixMean = permute(mean(grpMixSimCOS),[3,4,2,1]);
+% 
+% distStr = 'COSchance';
+% tempDyn = chanceDynSimCOS;
+% tempPers = chancePersSimCOS;
+% tempMix = chanceMixSimCOS;
+
+ciVal = floor(numPerms*.05/2);
+figure;
+dSigPlots = nan(length(mlb.obsvTimeVect), length(mlb.obsvTimeVect), mlb.seqLength);
+for pos = 1:mlb.seqLength
+    curPosDobsv = cell2mat(permute(cellfun(@(a){a(:,:,pos)}, grpDobsv),[1,3,2]));
+    curPosDchnc = cell2mat(permute(cellfun(@(a){a(:,:,pos)}, grpDchnc),[1,3,2]));
+    for r = 1:length(mlb.obsvTimeVect)
+        for c = 1:length(mlb.obsvTimeVect)
+            curObsv = sort(permute(curPosDobsv(r,c,:), [3,2,1]));
+            obsvCI = [curObsv(ciVal), curObsv(numPerms-ciVal); curObsv(numPerms-ciVal), curObsv(ciVal)];
+            curChnc = sort(permute(curPosDchnc(r,c,:), [3,2,1]));
+            chncCI = [curChnc(ciVal), curChnc(numPerms-ciVal)];
+            %   Use to check observed CIs to the chance CIs (strict)
+%             abvTst = sum(sum(obsvCI>chncCI))==4;
+%             blwTst = sum(sum(obsvCI<chncCI))==4;
+            %   Use to check observed MEAN to the chance CIs (less strict)
+            abvTst = sum(mean(curObsv)>chncCI)==2;
+            blwTst = sum(mean(curObsv)<chncCI)==2;
+            if abvTst
+                dSigPlots(r,c,pos) = 1;
+            elseif blwTst
+                dSigPlots(r,c,pos) = -1;
+            else
+                dSigPlots(r,c,pos) = 0;
+            end
+        end
+    end
+    subplot(ceil(mlb.seqLength/2),floor(mlb.seqLength/2),pos);
+    imagesc(mlb.obsvTimeVect, mlb.obsvTimeVect, zscore(mean(curPosDobsv,3),0, 'all'),[-2 2]);
+    set(gca, 'ydir', 'normal');
+    hold on;
+    plot([0 0], get(gca, 'ylim'), '-k');
+    plot(get(gca, 'xlim'), [0 0], '-k');
+    plot(repmat(nearestPOtime, [1,2]), get(gca, 'ylim'), '-k');
+    plot(get(gca, 'xlim'), repmat(nearestPOtime, [1,2]), '-k');
+    plot(repmat(nearestRWDtime, [1,2]), get(gca, 'ylim'), ':k', 'linewidth', 2);
+    plot(get(gca, 'xlim'), repmat(nearestRWDtime, [1,2]), ':k', 'linewidth', 2);
+    
+    curSigInc = dSigPlots(:,:,pos);
+    curSigInc = curSigInc==1;
+    sigIncBounds = bwboundaries(curSigInc);
+    
+    for b = 1:length(sigIncBounds)
+        if numel(sigIncBounds{b})>4
+            plot(mlb.obsvTimeVect(sigIncBounds{b}(:,2)), mlb.obsvTimeVect(sigIncBounds{b}(:,1)), 'r', 'linewidth', 3);
+        end
+    end
+    curSigDec = dSigPlots(:,:,pos);
+    curSigDec = curSigDec==-1;
+    sigDecBounds = bwboundaries(curSigDec);
+    for b = 1:length(sigDecBounds)
+        if numel(sigDecBounds{b})>4
+            plot(mlb.obsvTimeVect(sigDecBounds{b}(:,2)), mlb.obsvTimeVect(sigDecBounds{b}(:,1)), 'b', 'linewidth', 3);
+        end
+    end
+end
+        
+    

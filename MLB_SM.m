@@ -438,7 +438,7 @@ classdef MLB_SM < SeqMem
             %             toc
         end
         %% Calculate Static MLB Poisson
-        function post = CalcStaticBayesPost_Poisson(obj,likely, obsv)
+        function post = CalcStaticBayesPost_Poisson(obj,likely, obsv, prob)
             %             tic;
             post = nan(size(obsv,1), size(likely,1), size(obsv,3));
             for trl = 1:size(obsv,3)
@@ -453,7 +453,7 @@ classdef MLB_SM < SeqMem
                     p(p==0) = 0.00000000000000001;
                     pp = prod(p,2, 'omitnan');
                     ee = exp(-((obj.binSize/obj.sampleRate)*sum(likely,2)));
-                    tempPost = pp.*ee;
+                    tempPost = pp.*ee.*prob;
                     post(t,:,trl) = tempPost./sum(tempPost);
                 end
             end
