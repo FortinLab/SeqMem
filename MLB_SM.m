@@ -280,27 +280,31 @@ classdef MLB_SM < SeqMem
     methods % MLB Processing Methods
         %% Process via Leave-1-Out leaving out individual trials during calculation
         function Process_LikelyL1O(obj)
-            obj.post = cell(size(obj.likeTrlSpikes));
+            tempPost = cell(size(obj.likeTrlSpikes));
             obj.postTrlIDs = permute(cellfun(@(a)a(1,end),obj.likeTrlIDs), [1,3,2]);
-            for pos = 1:size(obj.postTrlIDs,1)
+            for odr = 1:size(obj.postTrlIDs,1)
                 for seq = 1:size(obj.postTrlIDs,2)
-                    if ~isnan(obj.postTrlIDs(pos,seq))
-                        tempObsv = obj.likeTrlSpikes{pos,seq};
+                    if ~isnan(obj.postTrlIDs(odr,seq))
+                        tempObsv = obj.likeTrlSpikes{odr,seq};
                         tempLike = obj.likeTrlSpikes;
-                        tempLike{pos,:,seq} = nan(size(tempLike{1}));
+                        tempLike{odr,:,seq} = nan(size(tempLike{1}));
                         tempLike = cell2mat(tempLike);
                         tempProb = sum(~isnan(tempLike(:,1,:)),3)./sum(sum(~isnan(tempLike(:,1,:))));                        
                         if obj.bayesType == 1 || strcmp(obj.bayesType, 'Poisson') || strcmp(obj.bayesType, 'poisson') || strcmp(obj.bayesType, 'P') || strcmp(obj.bayesType, 'p')
-                            obj.post{pos,seq} = obj.CalcStaticBayesPost_Poisson(mean(tempLike,3, 'omitnan'), tempObsv, tempProb);
+                            tempPost{odr,seq} = obj.CalcStaticBayesPost_Poisson(mean(tempLike,3, 'omitnan'), tempObsv, tempProb);
                         elseif obj.bayesType == 2 || strcmp(obj.bayesType, 'Bernoulli') || strcmp(obj.bayesType, 'bernoulli') || strcmp(obj.bayesType, 'B') || strcmp(obj.bayesType, 'b')
-                            obj.post{pos,seq} = obj.CalcStaticBayesPost_Bernoulli(mean(tempLike,3, 'omitnan'), tempObsv, tempProb);
+                            tempPost{odr,seq} = obj.CalcStaticBayesPost_Bernoulli(mean(tempLike,3, 'omitnan'), tempObsv, tempProb);
                         elseif obj.bayesType == 3 || strcmp(obj.bayesType, 'Gaussian') || strcmp(obj.bayesType, 'gaussian') || strcmp(obj.bayesType, 'G') || strcmp(obj.bayesType, 'g')
-                            obj.post{pos,seq} = obj.CalcStaticBayesPost_Gaussian(mean(tempLike,3, 'omitnan'), std(tempLike,0,3), tempObsv, tempProb);
+                            tempPost{odr,seq} = obj.CalcStaticBayesPost_Gaussian(mean(tempLike,3, 'omitnan'), std(tempLike,0,3), tempObsv, tempProb);
                         end
                     else
-                        obj.post{pos,seq} = nan(size(tempObsv,1), size(tempLike,1));
+                        tempPost{odr,seq} = nan(size(tempObsv,1), size(tempLike,1));
                     end
                 end
+            end
+            obj.post = cell(size(obj.postTrlIDs,1),1);
+            for odr = 1:size(obj.postTrlIDs,1)
+                obj.post{odr} = cell2mat(tempPost(odr,:,:));
             end
         end
         %% Process via Leave-1-Out Iteratively
@@ -502,16 +506,36 @@ classdef MLB_SM < SeqMem
         function [decode, maxPost] = DecodeBayesPost(~, post, id)
             if ndims(post) < 4 % Output from StaticBayes versions are 3d
                 % Assumes post is in the structure of ObservTime X LikelyTime X Trial
-                decode = nan(size(post,1),size(post,3));
-                maxPost = nan(size(post,1),size(post,3));
-                for o = 1:size(post,3)
-                    for d = 1:size(post,1)
-                        if ~isnan(post(d,1,o))
-                            maxPost(d,o) = max(post(d,:,o));
-                            tempDecode = find(post(d,:,o)==maxPost(d,o));
-                            select = rand(1,length(tempDecode));
-                            decode(d,o) = id(tempDecode(select==max(select)));
+                if ~iscell(post)
+                    decode = nan(size(post,1),size(post,3));
+                    maxPost = nan(size(post,1),size(post,3));
+                    for o = 1:size(post,3)
+                        for d = 1:size(post,1)
+                            if ~isnan(post(d,1,o))
+                                maxPost(d,o) = max(post(d,:,o));
+                                tempDecode = find(post(d,:,o)==maxPost(d,o));
+                                select = rand(1,length(tempDecode));
+                                decode(d,o) = id(tempDecode(select==max(select)));
+                            end
                         end
+                    end
+                else
+                    decode = cell(size(post,1),1);
+                    maxPost = cell(size(post,1),1);
+                    for o = 1:size(post,1)
+                        tempPost = post{o};
+                        tempDecodes = nan(size(tempPost,1), size(tempPost,3));
+                        tempMax = nan(size(tempPost,1), size(tempPost,3));
+                        for trl = 1:size(tempPost,3)
+                            for t = 1:size(tempPost,1)
+                                tempMax(t,trl) = max(tempPost(t,:,trl));
+                                tempDecode = find(tempPost(t,:,trl)==tempMax(t,trl));
+                                select = rand(1,length(tempDecode));
+                                tempDecodes(t,trl) = id(tempDecode(select==max(select)));
+                            end
+                        end
+                        decode{o} = tempDecodes;
+                        maxPost{o} = tempMax;
                     end
                 end
             elseif ndims(post) == 4 % Output from IterativeBayes versions are 4d

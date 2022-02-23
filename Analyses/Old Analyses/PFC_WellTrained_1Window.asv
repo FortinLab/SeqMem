@@ -1,11 +1,11 @@
 clear all;
 %%
-% fileDirs = [{'D:\WorkBigDataFiles\PFC\Files To Process\GE11\GE11_Session132'},...
-%     {'D:\WorkBigDataFiles\PFC\Files To Process\GE13\GE13_Session083'},...
-%     {'D:\WorkBigDataFiles\PFC\Files To Process\GE14\GE14_Session123'},...
-%     {'D:\WorkBigDataFiles\PFC\Files To Process\GE17\GE17_Session095'},...
-%     {'D:\WorkBigDataFiles\PFC\Files To Process\GE24\Session096'}];
-% setupSeqLength = 4; 
+fileDirs = [{'D:\WorkBigDataFiles\PFC\Files To Process\GE11\GE11_Session132'},...
+    {'D:\WorkBigDataFiles\PFC\Files To Process\GE13\GE13_Session083'},...
+    {'D:\WorkBigDataFiles\PFC\Files To Process\GE14\GE14_Session123'},...
+    {'D:\WorkBigDataFiles\PFC\Files To Process\GE17\GE17_Session095'},...
+    {'D:\WorkBigDataFiles\PFC\Files To Process\GE24\Session096'}];
+setupSeqLength = 4; 
 
 % fileDirs = [{'D:\WorkBigDataFiles\HC\1. Well-Trained session\SuperChris'},...
 %     {'D:\WorkBigDataFiles\HC\1. Well-Trained session\Stella'},...
@@ -15,12 +15,12 @@ clear all;
 % tets = [1,22,17,18,17];
 % setupSeqLength = 5;
 
-fileDirs = [{'D:\WorkBigDataFiles\PFC\GE11_Session132'},...
-    {'D:\WorkBigDataFiles\PFC\GE13_Session083'},...
-    {'D:\WorkBigDataFiles\PFC\GE14_Session123'},...
-    {'D:\WorkBigDataFiles\PFC\GE17_Session095'},...
-    {'D:\WorkBigDataFiles\PFC\GE24_Session096'}];
-setupSeqLength = 4; 
+% fileDirs = [{'D:\WorkBigDataFiles\PFC\GE11_Session132'},...
+%     {'D:\WorkBigDataFiles\PFC\GE13_Session083'},...
+%     {'D:\WorkBigDataFiles\PFC\GE14_Session123'},...
+%     {'D:\WorkBigDataFiles\PFC\GE17_Session095'},...
+%     {'D:\WorkBigDataFiles\PFC\GE24_Session096'}];
+% setupSeqLength = 4; 
 % 
 % fileDirs = [
 %     {'D:\WorkBigDataFiles\PFC\GE13_Session083'},...
@@ -36,9 +36,6 @@ alignment = {'PokeIn'};
 % trlWindow = {[-2000 800]};
 % alignment = {'PokeOut'};
 lfpWindow = [16 32];
-numPerms = 100;
-ssProportion = 0.4;
-ssType = 1; % 0 = use all ISC for decoding; 1 = use subsampled ISC types
 bayesType = 1; %1 = Poisson: use with raw spike counts; 2 = Bernoulli: use with binarized spike counts; 3 = Gaussian: Use with z-scored spike counts
 
 postCLim = [0 0.05];
@@ -64,28 +61,20 @@ fiscISC_Posts = cell(size(fileDirs));
 fiscISC_Decodes = cell(3,1,length(fileDirs));
 fiscISC_DecodeTime = [];
 fiscISC_ObserveTime = [];
-% iscBS analysis
-iscBS_Posts = cell(size(fileDirs));
-iscBS_Decodes = cell(3,1,length(fileDirs));
-iscBS_DecodeTime = [];
-iscBS_ObserveTime = [];
 %%
 for ani = 1:length(fileDirs)
     %% Create initial object & set object parameters
     mlb = MLB_SM(fileDirs{ani});
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % COMMENT IN TO ONLY RUN ON BETA MODULATED CELLS & COMMENT OUT TO RUN ON ALL CELLS
-    uniInfo = mlb.unitInfo;
+%     uniInfo = mlb.unitInfo;
 %     mlb.popVectIncludeLog = cell2mat(cellfun(@(a){a.Beta.R_Test(1)}, arrayfun(@(a){a.Spike_Phase_Relations}, mlb.unitInfo)))<0.05; % only MODULATED cells
-    mlb.popVectIncludeLog = cell2mat(cellfun(@(a){a.Beta.R_Test(1)}, arrayfun(@(a){a.Spike_Phase_Relations}, mlb.unitInfo)))>0.05; % only NON-MODULATED cells
+%     mlb.popVectIncludeLog = cell2mat(cellfun(@(a){a.Beta.R_Test(1)}, arrayfun(@(a){a.Spike_Phase_Relations}, mlb.unitInfo)))>0.05; % only NON-MODULATED cells
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     mlb.binSize = binSize;
     mlb.dsRate = dsRate;
     mlb.windows = trlWindow;
     mlb.alignments = alignment;
-    mlb.numPerms = numPerms;
-    mlb.ssProportion = ssProportion;
-    mlb.ssType = ssType;
     mlb.bayesType = bayesType;
     
     %% Extract Behavioral Variables
