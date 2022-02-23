@@ -102,7 +102,7 @@ for ani = 1:length(fileDirs)
     [betaPhase, betaPower] = mlb.PP_TrialMatrix_LFP([16 32], trlWindow{1}, alignment{1});
     [thetaPhase, thetaPower] = mlb.PP_TrialMatrix_LFP([4 12], trlWindow{1}, alignment{1});
 %     mlb.SetLikes_FISC;
-    mlb.SetLikes_SubSample;
+    mlb.SetLikes_FISC;
     mlb.Process_IterativeObserves;
     grpPost{ani} = cell2mat(reshape(mlb.post, [1,1,1,mlb.numPerms]));
     [decodes, maxDecode] = mlb.DecodeBayesPost(grpPost{ani});   

@@ -53,14 +53,11 @@ for ani = 1:length(fileDirs)
     mlb.dsRate = dsRate;
     mlb.windows = trlWindow;
     mlb.alignments = alignment;
-    mlb.numPerms = numPerms;
-    mlb.ssProportion = ssProportion;
-    mlb.ssType = ssType;
     mlb.bayesType = bayesType;
 
     %% Extract Behavioral Variables
-    fiscPokeOutLat{ani} = ([mlb.trialInfo(mlb.fiscTrials).PokeOutIndex] - [mlb.trialInfo(mlb.fiscTrials).PokeInIndex])'/1000;
-    fiscRwdDelivLat{ani} = ([mlb.trialInfo(mlb.fiscTrials).RewardIndex] - [mlb.trialInfo(mlb.fiscTrials).PokeInIndex])'/1000;
+    fiscPokeOutLat{ani} = ([mlb.trialInfo(mlb.fiscTrials(~isnan(mlb.fiscTrials))).PokeOutIndex] - [mlb.trialInfo(mlb.fiscTrials(~isnan(mlb.fiscTrials))).PokeInIndex])'/1000;
+    fiscRwdDelivLat{ani} = ([mlb.trialInfo(mlb.fiscTrials(~isnan(mlb.fiscTrials))).RewardIndex] - [mlb.trialInfo(mlb.fiscTrials(~isnan(mlb.fiscTrials))).PokeInIndex])'/1000;
     smi(ani,:) = mlb.smi;
     dPrm(ani,:) = mlb.dPrime;
     ri(ani,:) = mlb.ri;
@@ -73,8 +70,8 @@ for ani = 1:length(fileDirs)
         riByOP(ani,:,2) = reshape(mlb.riByOdr', [1,numel(mlb.riByOdr)]);
     end
     %% Process Neural Data
-    mlb.SetLikes_SubSample;
-    mlb.Process_Observes;
+    mlb.SetLikes_ISC;
+    mlb.Process_LikelyL1O;
     tempPosts = cell2mat(reshape(mlb.post, [1,1,numel(mlb.post)]));
     postTrlIDs = cell2mat(reshape(mlb.postTrlIDs, [1,1,numel(mlb.postTrlIDs)]));
     

@@ -1,12 +1,9 @@
 classdef MLB_SM < SeqMem
-    % Implementation of a naive bayes classifier assuming a poisson distribution for spiking data
+    % Implementation of a naive bayes classifier for spiking data
     properties % Analysis Variables
         binSize
         dsRate
         binType = 'box'
-        numPerms
-        ssProportion = 0.5
-        ssType % 0 = use all ISC for decoding; 1 = use subsampled ISC types
         bayesType %1 = Poisson: use with raw spike counts; 2 = Bernoulli: use with binarized spike counts; 3 = Gaussian: Use with z-scored spike counts
         windows
         alignments
@@ -147,7 +144,21 @@ classdef MLB_SM < SeqMem
                     end
                 end
             end
-            obj.fiscTrials = potentialSeqs(:,fiscLog);
+            fiscSeqs = potentialSeqs(:,fiscLog);
+            if size(obj.odrSeqs,1)>=2
+                tempSeqs = cell(size(obj.odrSeqs,1),1);
+                for list = 1:size(obj.odrSeqs,1)
+                    tempSeqs{list} = fiscSeqs(:,odrVect(fiscSeqs(1,:))==obj.odrSeqs(list,1));
+                end
+                numSeqs = cellfun(@(a)size(a,2),tempSeqs);
+                padSize = max(numSeqs)-numSeqs;
+                for list = 1:length(numSeqs)
+                    tempSeqs{list} = [tempSeqs{list}, nan(obj.seqLength,padSize(list))];
+                end
+                obj.fiscTrials = cell2mat(tempSeqs);
+            else
+                obj.fiscTrials = fiscSeqs;
+            end
         end
         %% Group Trial Data
         function [ssnSpikes, ssnID] = PP_ConcatTrialData(obj)
@@ -196,250 +207,166 @@ classdef MLB_SM < SeqMem
     methods % Configuration Methods
         %% Set Likelihoods as Fully InSeq Correct
         function SetLikes_FISC(obj)
-            % Set likelihoods & observations using FISC trials where FISC are likelihoods and all other ISC are observations
-            if size(obj.odrSeqs,1)>=2
-                warning('FISC likes should only be used with single list sessions (use sub-sampling for dual list). Ignore if ONLY examining ordinal coding, or if task conditions changed and code was updated but warning statement wasn''t (check github/readme).');
-            end
+            % Set likelihoods & observations using FISC trials where FISC are likelihoods and all other trials are observations
             [ssnSpikes, ssnID] = obj.PP_ConcatTrialData;
-            obj.likeTrlSpikes = {nan(size(ssnSpikes,1)*size(obj.fiscTrials,1), size(ssnSpikes,2), size(obj.fiscTrials,2))};
-            obj.likeTrlIDs = {nan(size(obj.fiscTrials,1), 1, size(obj.fiscTrials,2))};
-            obj.decodeIDvects = [];
-            for seq = 1:size(obj.fiscTrials,2)
-                tempSeqData = cell(size(obj.fiscTrials,1),1);
-                tempSeqIDlog = cell(size(obj.fiscTrials,1),1);
-                tempDecodeIDvect = cell(size(obj.fiscTrials,1),1);
-                for pos = 1:size(obj.fiscTrials,1)
-                    tempSeqData{pos} = ssnSpikes(:,:,obj.fiscTrials(pos,seq));
-                    tempSeqIDlog{pos} = ssnID(1,end,obj.fiscTrials(pos,seq));
-                    tempDecodeIDvect{pos} = ssnID(:,:,obj.fiscTrials(pos,seq));
+            obj.likeTrlSpikes = cell(size(obj.fiscTrials,1),1,size(obj.fiscTrials,2));
+            obj.likeTrlIDs = cell(size(obj.fiscTrials,1),1,size(obj.fiscTrials,2));
+            for pos = 1:size(obj.fiscTrials,1)
+                for seq = 1:size(obj.fiscTrials,2)
+                    if ~isnan(obj.fiscTrials(pos,seq))
+                        obj.likeTrlSpikes{pos,seq} = ssnSpikes(:,:,obj.fiscTrials(pos,seq));
+                        obj.likeTrlIDs{pos,seq} = ssnID(:,:,obj.fiscTrials(pos,seq));
+                    else
+                        obj.likeTrlSpikes{pos,seq} = nan(size(ssnSpikes,1), size(ssnSpikes,2));
+                        obj.likeTrlIDs{pos,seq} = nan(size(ssnID,1), size(ssnID,2));
+                    end
                 end
-                obj.likeTrlSpikes{1}(:,:,seq) = cell2mat(tempSeqData);
-                obj.likeTrlIDs{1}(:,:,seq) = cell2mat(tempSeqIDlog);
             end
-            tempDecodeIDvect = cell2mat(tempDecodeIDvect);
-            obj.decodeIDvects{1} = [tempDecodeIDvect(:,1:end-1), ones(size(tempDecodeIDvect,1), 1)];
-            obj.likeTimeVect = tempDecodeIDvect(:,1);
-            iscLog = ([obj.trialInfo.TranspositionDistance]==0 & [obj.trialInfo.Performance]==1);
-            iscLog(obj.fiscTrials) = false;
-            obj.obsvTrlSpikes = {ssnSpikes(:,:,iscLog)};
-            obj.obsvTrlIDs = {ssnID(1,end,iscLog)};
+            obj.likeTimeVect = cell2mat(cellfun(@(a){a(:,1)}, obj.likeTrlIDs(:,:,1)));
+            obj.decodeIDvects = cell2mat(cellfun(@(a){a(:,1:end-1)}, obj.likeTrlIDs(:,:,1)));
+            
+            fiscTrls = unique(obj.fiscTrials(~isnan(obj.fiscTrials)));
+            nonFiscLog = true(1,size(ssnSpikes,3));
+            nonFiscLog(fiscTrls) = false;
+            obj.obsvTrlSpikes = ssnSpikes(:,:,nonFiscLog);
+            obj.obsvTrlIDs = ssnID(:,:,nonFiscLog);
             obj.obsvTimeVect = ssnID(:,1,1);
         end
-        %% Set Likelihoods as SubSampled ISC
-        function SetLikes_SubSample(obj)
-            if isempty(obj.ssType)
-                error('Specify sub-sampling method for selecting observations');
-            end
-            if isempty(obj.numPerms) 
-                error('Specify number of subsampling iterations');
-            end
-            % Set likelihoods & observations using sets of subsampled ISC trials
+        %% Set Likelihoods as All InSeq Correct
+        function SetLikes_ISC(obj)
+            % Set likelihoods & observations using All ISC trials where ISC are likelihoods and all other trials are Observations
             [ssnSpikes, ssnID] = obj.PP_ConcatTrialData;
-            % Determine number of trials used for subsampled likelihoods
-            likeliSize = floor(min(min(obj.isTrialNums(:,:,1)))*obj.ssProportion);
-            trlCounts = reshape(obj.isTrialNums(:,:,1)',[numel(obj.isTrialNums(:,:,1)),1]);
-            odrIDs = reshape(obj.odrSeqs',[numel(obj.odrSeqs),1]);
-            likeTrials = nan(length(trlCounts), likeliSize, obj.numPerms);
-            for oip = 1:length(trlCounts)
-                tempPool = randi(trlCounts(oip), [likeliSize,obj.numPerms]);
-                for r = 1:obj.numPerms
-                    while length(unique(tempPool(:,r)))~=size(tempPool,1)
-                        tempPool(:,r) = [unique(tempPool(:,r)); randi(trlCounts(oip), [size(tempPool,1)-length(unique(tempPool(:,r))),1])];
+            posTrlIDs = [obj.trialInfo.Position];
+            odrTrlIDs = [obj.trialInfo.Odor];
+            perfTrlIDs = [obj.trialInfo.Performance];
+            iscTrls = cell(fliplr(size(obj.odrSeqs)));
+            for s = 1:size(obj.odrSeqs,1)
+                for p = 1:size(obj.odrSeqs,2)
+                    iscTrls{p,s} = find(posTrlIDs==p & odrTrlIDs==obj.odrSeqs(s,p) & perfTrlIDs==1);
+                end
+            end
+            iscTrls = iscTrls(:);
+            trlCounts = cellfun(@(a)length(a),iscTrls);
+            trlPad = max(trlCounts)-trlCounts;
+            for o = 1:length(iscTrls)
+                iscTrls{o} = [iscTrls{o}, nan(1,trlPad(o))];
+            end
+            iscTrls = cell2mat(iscTrls);
+            
+            obj.likeTrlSpikes = cell(size(iscTrls,1),1,size(iscTrls,2));
+            obj.likeTrlIDs = cell(size(iscTrls,1),1,size(iscTrls,2));
+            for pos = 1:size(iscTrls,1)
+                for seq = 1:size(iscTrls,2)
+                    if ~isnan(iscTrls(pos,seq))
+                        obj.likeTrlSpikes{pos,seq} = ssnSpikes(:,:,iscTrls(pos,seq));
+                        obj.likeTrlIDs{pos,seq} = ssnID(:,:,iscTrls(pos,seq));
+                    else
+                        obj.likeTrlSpikes{pos,seq} = nan(size(ssnSpikes,1), size(ssnSpikes,2));
+                        obj.likeTrlIDs{pos,seq} = nan(size(ssnID,1), size(ssnID,2));
                     end
                 end
-                while size(unique(tempPool', 'rows'),1)~=obj.numPerms
-                    tempPool = [unique(tempPool', 'rows')', randi(trlCounts(oip), [likeliSize,obj.numPerms-size(unique(tempPool', 'rows'),1)])];
-                    for r = 1:obj.numPerms
-                        while length(unique(tempPool(:,r)))~=size(tempPool,1)
-                            tempPool(:,r) = [unique(tempPool(:,r)); randi(trlCounts(oip), [size(tempPool,1)-length(unique(tempPool(:,r))),1])];
-                        end
-                    end
-                end
-                if size(unique(tempPool', 'rows'),1)~=obj.numPerms
-                    error('Apparently I need to code for this eventuality too!?');
-                end
-                likeTrials(oip,:,:) = tempPool;
             end
-            odrTrlSpikes = cell(size(odrIDs));
-            odrTrlIDs = cell(size(odrIDs));
-            for odr = 1:length(odrIDs)
-                odrIDlog = [obj.trialInfo.Odor]==odrIDs(odr);
-                odrPosLog = [obj.trialInfo.Position]==find(sum(obj.odrSeqs==odrIDs(odr),1));
-                odrTrlSpikes{odr} = ssnSpikes(:,:,(odrIDlog & odrPosLog & [obj.trialInfo.Performance]==1));
-                odrTrlIDs{odr} = ssnID(:,:,(odrIDlog & odrPosLog & [obj.trialInfo.Performance]==1));
-            end
-            obj.likeTrlSpikes = repmat({nan(size(ssnSpikes,1)*size(likeTrials,1), size(ssnSpikes,2), size(likeTrials,2))}, [1,obj.numPerms]);
-            obj.obsvTrlSpikes = cell(1,obj.numPerms);
-            obj.likeTrlIDs = repmat({nan(size(likeTrials,1), 1, size(likeTrials,2))}, [1,obj.numPerms]);
-            obj.obsvTrlIDs = cell(1,obj.numPerms);
-            obj.decodeIDvects = cell(1,obj.numPerms);
-            for perm = 1:obj.numPerms
-                tempOdrTrlSpikes = odrTrlSpikes;
-                tempOdrTrlIDs = odrTrlIDs;
-                for seq = 1:size(likeTrials,2)
-                    tempLikeSpikes = cell(length(odrIDs),1);
-                    tempLikeIDs = cell(length(odrIDs),1);
-                    tempDecodeIDvect = cell(length(odrIDs),1);
-                    for odr = 1:size(likeTrials,1)
-                        tempLikeSpikes{odr} = tempOdrTrlSpikes{odr}(:,:,likeTrials(odr,seq,perm));
-                        tempOdrTrlSpikes{odr}(:,:,likeTrials(odr,seq,perm)) = nan;
-                        tempLikeIDs{odr} = tempOdrTrlIDs{odr}(1,end,likeTrials(odr,seq,perm));
-                        tempDecodeIDvect{odr} = tempOdrTrlIDs{odr}(:,:,likeTrials(odr,seq,perm));
-                        tempOdrTrlIDs{odr}(:,:,likeTrials(odr,seq,perm)) = nan;
-                    end               
-                    obj.likeTrlSpikes{perm}(:,:,seq) = cell2mat(tempLikeSpikes);
-                    obj.likeTrlIDs{perm}(:,:,seq) = cell2mat(tempLikeIDs);
-                end
-                tempDecodeIDvect = cell2mat(tempDecodeIDvect);
-                obj.decodeIDvects{perm} = [tempDecodeIDvect(:,1:end-1), ones(size(tempDecodeIDvect,1), 1)*perm];
-                if obj.ssType == 1
-                    for odr = 1:size(tempOdrTrlSpikes,1)
-                        tempPool = randi(size(tempOdrTrlSpikes{odr},3), [1,likeliSize]);
-                        tempPool = unique(tempPool);
-                        tempPool(reshape(isnan(tempOdrTrlSpikes{odr}(1,1,tempPool)), [1,length(tempPool)])) = [];
-                        while length(tempPool)~=likeliSize
-                            tempPool = [tempPool, randi(size(tempOdrTrlSpikes{odr},3), [1, likeliSize-length(tempPool)])]; %#ok<AGROW>
-                            tempPool = unique(tempPool);
-                            tempPool(reshape(isnan(tempOdrTrlSpikes{odr}(1,1,tempPool)), [1,length(tempPool)])) = [];
-                        end
-                        tempOdrTrlSpikes{odr} = tempOdrTrlSpikes{odr}(:,:,tempPool);
-                        tempOdrTrlIDs{odr} = tempOdrTrlIDs{odr}(:,:,tempPool);
-                    end
-                end                    
-                tempObsvSpikes = cell2mat(reshape(tempOdrTrlSpikes, [1,1,numel(tempOdrTrlSpikes)]));
-                tempObsvIDs = cell2mat(reshape(tempOdrTrlIDs, [1,1,numel(tempOdrTrlIDs)]));
-                obsvLog = sum(sum(isnan(tempObsvSpikes)))==0;
-                obj.obsvTrlSpikes{perm} = tempObsvSpikes(:,:,obsvLog);
-                obj.obsvTrlIDs{perm} = tempObsvIDs(1,end,obsvLog);
-            end
-            obj.likeTimeVect = tempDecodeIDvect(:,1);
-            obj.obsvTimeVect = ssnID(:,1,1);
-        end
-        %% Set Observations as all trials
-        function SetObserves_Session(obj)
-            [ssnSpikes, ssnID] = obj.PP_ConcatTrialData;
-            obj.obsvTrlSpikes = repmat({ssnSpikes}, [1,length(obj.likeTrlSpikes)]);
-            obj.obsvTrlIDs = repmat({ssnID(1,end,:)}, [1,length(obj.likeTrlSpikes)]);
+            obj.likeTimeVect = cell2mat(cellfun(@(a){a(:,1)}, obj.likeTrlIDs(:,:,1)));
+            obj.decodeIDvects = cell2mat(cellfun(@(a){a(:,1:end-1)}, obj.likeTrlIDs(:,:,1)));
+            
+            iscTrls = unique(iscTrls(~isnan(iscTrls)));
+            nonIscLog = true(1,size(ssnSpikes,3));
+            nonIscLog(iscTrls) = false;
+            obj.obsvTrlSpikes = ssnSpikes(:,:,nonIscLog);
+            obj.obsvTrlIDs = ssnID(:,:,nonIscLog);
             obj.obsvTimeVect = ssnID(:,1,1);
         end
     end
     methods % MLB Processing Methods
-                %% Process via Leave-1-Out
-        function Process_LikelyLOO(obj)
-            obj.post = repmat({nan(size(obj.likeTrlSpikes{1},1), size(obj.likeTrlSpikes{1},1), size(obj.likeTrlSpikes{1},3))}, size(obj.likeTrlSpikes));
-            obj.postTrlIDs = repmat({nan(size(obj.likeTrlIDs{1}))}, size(obj.likeTrlIDs));
-            for perm = 1:length(obj.likeTrlSpikes)
-                for seq = 1:size(obj.likeTrlSpikes{perm},3)
-                    tempObsv = obj.likeTrlSpikes{perm}(:,:,seq);
-                    tempLike = obj.likeTrlSpikes{perm};
-                    tempLike(:,:,seq) = [];
-                    if obj.bayesType == 1 || strcmp(obj.bayesType, 'Poisson') || strcmp(obj.bayesType, 'poisson') || strcmp(obj.bayesType, 'P') || strcmp(obj.bayesType, 'p')
-                        obj.post{perm}(:,:,seq) = obj.CalcStaticBayesPost_Poisson(mean(tempLike,3), tempObsv);
-                    elseif obj.bayesType == 2 || strcmp(obj.bayesType, 'Bernoulli') || strcmp(obj.bayesType, 'bernoulli') || strcmp(obj.bayesType, 'B') || strcmp(obj.bayesType, 'b')
-                        obj.post{perm}(:,:,seq) = obj.CalcStaticBayesPost_Bernoulli(mean(tempLike,3), tempObsv);
-                    elseif obj.bayesType == 3 || strcmp(obj.bayesType, 'Gaussian') || strcmp(obj.bayesType, 'gaussian') || strcmp(obj.bayesType, 'G') || strcmp(obj.bayesType, 'g')
-                        obj.post{perm}(:,:,seq) = obj.CalcStaticBayesPost_Gaussian(mean(tempLike,3), std(tempLike,0,3), tempObsv);
+        %% Process via Leave-1-Out leaving out individual trials during calculation
+        function Process_LikelyL1O(obj)
+            obj.post = cell(size(obj.likeTrlSpikes));
+            obj.postTrlIDs = permute(cellfun(@(a)a(1,end),obj.likeTrlIDs), [1,3,2]);
+            for pos = 1:size(obj.postTrlIDs,1)
+                for seq = 1:size(obj.postTrlIDs,2)
+                    if ~isnan(obj.postTrlIDs(pos,seq))
+                        tempObsv = obj.likeTrlSpikes{pos,seq};
+                        tempLike = obj.likeTrlSpikes;
+                        tempLike{pos,:,seq} = nan(size(tempLike{1}));
+                        tempLike = cell2mat(tempLike);
+                        tempProb = sum(~isnan(tempLike(:,1,:)),3)./sum(sum(~isnan(tempLike(:,1,:))));                        
+                        if obj.bayesType == 1 || strcmp(obj.bayesType, 'Poisson') || strcmp(obj.bayesType, 'poisson') || strcmp(obj.bayesType, 'P') || strcmp(obj.bayesType, 'p')
+                            obj.post{pos,seq} = obj.CalcStaticBayesPost_Poisson(mean(tempLike,3, 'omitnan'), tempObsv, tempProb);
+                        elseif obj.bayesType == 2 || strcmp(obj.bayesType, 'Bernoulli') || strcmp(obj.bayesType, 'bernoulli') || strcmp(obj.bayesType, 'B') || strcmp(obj.bayesType, 'b')
+                            obj.post{pos,seq} = obj.CalcStaticBayesPost_Bernoulli(mean(tempLike,3, 'omitnan'), tempObsv, tempProb);
+                        elseif obj.bayesType == 3 || strcmp(obj.bayesType, 'Gaussian') || strcmp(obj.bayesType, 'gaussian') || strcmp(obj.bayesType, 'G') || strcmp(obj.bayesType, 'g')
+                            obj.post{pos,seq} = obj.CalcStaticBayesPost_Gaussian(mean(tempLike,3, 'omitnan'), std(tempLike,0,3), tempObsv, tempProb);
+                        end
+                    else
+                        obj.post{pos,seq} = nan(size(tempObsv,1), size(tempLike,1));
                     end
-                    obj.postTrlIDs{perm}(:,:,seq) = obj.likeTrlIDs{perm}(:,:,seq);
                 end
             end
         end
         %% Process via Leave-1-Out Iteratively
-        function Process_IterativeLikelyLOO(obj)
-            warning('This may not work..... need to code carefully');
-            obj.post = repmat({nan(size(obj.likeTrlSpikes{1},1), size(obj.likeTrlSpikes{1},1), mlb.seqLength, size(obj.likeTrlSpikes{1},3))}, size(obj.likeTrlSpikes));
-            obj.postTrlIDs = repmat({nan(size(obj.likeTrlIDs{1}))}, size(obj.likeTrlIDs));
-            for perm = 1:length(obj.likeTrlSpikes)
-                for seq = 1:size(obj.likeTrlSpikes{perm},3)
-                    tempObsv = obj.likeTrlSpikes{perm}(:,:,seq);
-                    tempLike = obj.likeTrlSpikes{perm};
-                    tempLike(:,:,seq) = [];
-                    if obj.bayesType == 1 || strcmp(obj.bayesType, 'Poisson') || strcmp(obj.bayesType, 'poisson') || strcmp(obj.bayesType, 'P') || strcmp(obj.bayesType, 'p')
-                        obj.post{perm}(:,:,:,seq) = obj.CalcIterativeBayesPost_Poisson(mean(tempLike,3, 'omitnan'), tempObsv, obj.decodeIDvects{perm}(:,1), obj.decodeIDvects{perm}(:,3));
-                    elseif obj.bayesType == 2 || strcmp(obj.bayesType, 'Bernoulli') || strcmp(obj.bayesType, 'bernoulli') || strcmp(obj.bayesType, 'B') || strcmp(obj.bayesType, 'b')
-                        error('Not Implemented Yet');
-                    elseif obj.bayesType == 3 || strcmp(obj.bayesType, 'Gaussian') || strcmp(obj.bayesType, 'gaussian') || strcmp(obj.bayesType, 'G') || strcmp(obj.bayesType, 'g')
-                        error('Not Implemented Yet');
+        function Process_IterativeLikelyL1O(obj)
+            obj.post = cell(size(obj.likeTrlSpikes));
+            obj.postTrlIDs = permute(cellfun(@(a)a(1,end),obj.likeTrlIDs), [1,3,2]);
+            for pos = 1:size(obj.postTrlIDs,1)
+                for seq = 1:size(obj.postTrlIDs,2)
+                    if ~isnan(obj.postTrlIDs(pos,seq))
+                        tempObsv = obj.likeTrlSpikes{pos,seq};
+                        tempLike = obj.likeTrlSpikes;
+                        tempLike{pos,:,seq} = nan(size(tempLike{1}));
+                        tempLike = cell2mat(tempLike);
+                        tempProb = sum(~isnan(tempLike(:,1,:)),3)./sum(sum(~isnan(tempLike(:,1,:))));
+                        if obj.bayesType == 1 || strcmp(obj.bayesType, 'Poisson') || strcmp(obj.bayesType, 'poisson') || strcmp(obj.bayesType, 'P') || strcmp(obj.bayesType, 'p')
+                            obj.post{pos,seq} = obj.CalcIterativeBayesPost_Poisson(mean(tempLike,3, 'omitnan'), tempObsv, obj.decodeIDvects(:,1), obj.decodeIDvects(:,4), tempProb);
+                        elseif obj.bayesType == 2 || strcmp(obj.bayesType, 'Bernoulli') || strcmp(obj.bayesType, 'bernoulli') || strcmp(obj.bayesType, 'B') || strcmp(obj.bayesType, 'b')
+                            error('Not Implemented Yet');
+                        elseif obj.bayesType == 3 || strcmp(obj.bayesType, 'Gaussian') || strcmp(obj.bayesType, 'gaussian') || strcmp(obj.bayesType, 'G') || strcmp(obj.bayesType, 'g')
+                            error('Not Implemented Yet');
+                        end
                     end
-                    obj.postTrlIDs{perm}(:,:,seq) = obj.likeTrlIDs{perm}(:,:,seq);
                 end
             end
         end
         %% Process all Observations
         function Process_Observes(obj)
-            % Comment in if you need to save memory
-%             obj.behavMatrix = [];
-%             obj.behavMatrixColIDs = [];
-%             obj.ensembleMatrix = [];
-%             obj.ensembleMatrixColIDs = [];
-%             obj.lfpMatrix = [];
-%             obj.lfpMatrixColIDs = [];
-            %
-            obj.post = cell(size(obj.obsvTrlSpikes));
-            obj.postTrlIDs = cell(size(obj.obsvTrlSpikes));
-            for perm = 1:length(obj.likeTrlSpikes)
-                fprintf('Iteration #%i...', perm);
-                if obj.bayesType == 1 || strcmp(obj.bayesType, 'Poisson') || strcmp(obj.bayesType, 'poisson') || strcmp(obj.bayesType, 'P') || strcmp(obj.bayesType, 'p')
-                    obj.post{perm} = obj.CalcStaticBayesPost_Poisson(mean(obj.likeTrlSpikes{perm},3, 'omitnan'), obj.obsvTrlSpikes{perm});
-                elseif obj.bayesType == 2 || strcmp(obj.bayesType, 'Bernoulli') || strcmp(obj.bayesType, 'bernoulli') || strcmp(obj.bayesType, 'B') || strcmp(obj.bayesType, 'b')
-                    obj.post{perm} = obj.CalcStaticBayesPost_Bernoulli(mean(obj.likeTrlSpikes{perm},3, 'omitnan'), obj.obsvTrlSpikes{perm});
-                elseif obj.bayesType == 3 || strcmp(obj.bayesType, 'Gaussian') || strcmp(obj.bayesType, 'gaussian') || strcmp(obj.bayesType, 'G') || strcmp(obj.bayesType, 'g')
-                    obj.post{perm} = obj.CalcStaticBayesPost_Gaussian(mean(obj.likeTrlSpikes{perm},3, 'omitnan'), std(obj.likeTrlSpikes{perm},0,3), obj.obsvTrlSpikes{perm});
-                end
-                obj.likeTrlSpikes{perm} = [];
-                obj.obsvTrlSpikes{perm} = [];
-                obj.postTrlIDs{perm} = obj.obsvTrlIDs{perm};
-                fprintf(' complete\n');
+            if iscell(obj.likeTrlSpikes)
+                tempLike = cell2mat(obj.likeTrlSpikes);
+            else
+                tempLike = obj.likeTrlSpikes;
             end
+            tempProb = sum(~isnan(tempLike(:,1,:)),3)./sum(sum(~isnan(tempLike(:,1,:))));
+            if obj.bayesType == 1 || strcmp(obj.bayesType, 'Poisson') || strcmp(obj.bayesType, 'poisson') || strcmp(obj.bayesType, 'P') || strcmp(obj.bayesType, 'p')
+                obj.post = obj.CalcStaticBayesPost_Poisson(mean(tempLike,3, 'omitnan'), obj.obsvTrlSpikes, tempProb);
+            elseif obj.bayesType == 2 || strcmp(obj.bayesType, 'Bernoulli') || strcmp(obj.bayesType, 'bernoulli') || strcmp(obj.bayesType, 'B') || strcmp(obj.bayesType, 'b')
+                obj.post = obj.CalcStaticBayesPost_Bernoulli(mean(tempLike,3, 'omitnan'), obj.obsvTrlSpikes, tempProb);
+            elseif obj.bayesType == 3 || strcmp(obj.bayesType, 'Gaussian') || strcmp(obj.bayesType, 'gaussian') || strcmp(obj.bayesType, 'G') || strcmp(obj.bayesType, 'g')
+                obj.post = obj.CalcStaticBayesPost_Gaussian(mean(tempLike,3, 'omitnan'), std(obj.likeTrlSpikes,0,3,'omitnan'), obj.obsvTrlSpikes, tempProb);
+            end
+            obj.postTrlIDs = permute(obj.obsvTrlIDs(1,end,:), [1,3,2]);
         end
         %% Process all Observations Iteratively (cross-temporal decoding)
         function Process_IterativeObserves(obj)    
-            obj.post = cell(size(obj.obsvTrlSpikes));
-            obj.postTrlIDs = cell(size(obj.obsvTrlSpikes));
-            for perm = 1:length(obj.likeTrlSpikes)
-%                 fprintf('Iteration #%i', perm);
-                if obj.bayesType == 1 || strcmp(obj.bayesType, 'Poisson') || strcmp(obj.bayesType, 'poisson') || strcmp(obj.bayesType, 'P') || strcmp(obj.bayesType, 'p')
-                    obj.post{perm} = obj.CalcIterativeBayesPost_Poisson(mean(obj.likeTrlSpikes{perm},3, 'omitnan'), obj.obsvTrlSpikes{perm}, obj.decodeIDvects{perm}(:,1), obj.decodeIDvects{perm}(:,3));
-                elseif obj.bayesType == 2 || strcmp(obj.bayesType, 'Bernoulli') || strcmp(obj.bayesType, 'bernoulli') || strcmp(obj.bayesType, 'B') || strcmp(obj.bayesType, 'b')
-                    error('Not implemented yet');
-%                     obj.post{perm} = obj.CalcIterativeBayesPost_Bernoulli(mean(obj.likeTrlSpikes{perm},3, 'omitnan'), obj.obsvTrlSpikes{perm});
-                elseif obj.bayesType == 3 || strcmp(obj.bayesType, 'Gaussian') || strcmp(obj.bayesType, 'gaussian') || strcmp(obj.bayesType, 'G') || strcmp(obj.bayesType, 'g')
-                    error('Not implemented yet');
-%                     obj.post{perm} = obj.CalcIterativeBayesPost_Gaussian(mean(obj.likeTrlSpikes{perm},3, 'omitnan'), std(obj.likeTrlSpikes{perm},0,3), obj.obsvTrlSpikes{perm});
-                end
-                obj.likeTrlSpikes{perm} = [];
-                obj.obsvTrlSpikes{perm} = [];
-                obj.postTrlIDs{perm} = obj.obsvTrlIDs{perm};
-%                 fprintf(' complete\n');
+            if iscell(obj.likeTrlSpikes)
+                tempLike = cell2mat(obj.likeTrlSpikes);
+            else
+                tempLike = obj.likeTrlSpikes;
             end
+            tempProb = sum(~isnan(tempLike(:,1,:)),3)./sum(sum(~isnan(tempLike(:,1,:))));
+            if obj.bayesType == 1 || strcmp(obj.bayesType, 'Poisson') || strcmp(obj.bayesType, 'poisson') || strcmp(obj.bayesType, 'P') || strcmp(obj.bayesType, 'p')
+                obj.post = obj.CalcIterativeBayesPost_Poisson(mean(tempLike,3, 'omitnan'), obj.obsvTrlSpikes, obj.decodeIDvects(:,1), obj.decodeIDvects(:,4), tempProb);
+            elseif obj.bayesType == 2 || strcmp(obj.bayesType, 'Bernoulli') || strcmp(obj.bayesType, 'bernoulli') || strcmp(obj.bayesType, 'B') || strcmp(obj.bayesType, 'b')
+                error('Not implemented yet');
+%                     obj.post{perm} = obj.CalcIterativeBayesPost_Bernoulli(mean(obj.likeTrlSpikes{perm},3, 'omitnan'), obj.obsvTrlSpikes{perm});
+            elseif obj.bayesType == 3 || strcmp(obj.bayesType, 'Gaussian') || strcmp(obj.bayesType, 'gaussian') || strcmp(obj.bayesType, 'G') || strcmp(obj.bayesType, 'g')
+                error('Not implemented yet');
+%                     obj.post{perm} = obj.CalcIterativeBayesPost_Gaussian(mean(obj.likeTrlSpikes{perm},3, 'omitnan'), std(obj.likeTrlSpikes{perm},0,3), obj.obsvTrlSpikes{perm});
+            end
+            obj.postTrlIDs = permute(obj.obsvTrlIDs(1,end,:), [1,3,2]);
         end
     end
     methods % MLB Algorithms
-        %% Calculate Static MLB (Poisson... kept in here just so all previous analyses won't break... will remove eventually as the rest of the code base gets revised).
-        function post = CalcStaticBayesPost(obj,likely, obsv)
-            %             tic;
-            post = nan(size(obsv,1), size(likely,1), size(obsv,3));
-            for trl = 1:size(obsv,3)
-                for t = 1:size(obsv,1)
-                    p = nan(size(likely));
-                    curPopVect = floor(obsv(t,:,trl)*(obj.binSize/obj.sampleRate));
-                    curPopFact = factorial(curPopVect);
-                    for u = 1:size(likely,2)
-                        curAvgUniFR = likely(:,u);
-                        p(:,u) = (((obj.binSize/obj.sampleRate).*curAvgUniFR).^curPopVect(u))./curPopFact(u);
-                    end
-                    p(p==0) = 0.00000000000000001;
-                    pp = prod(p,2, 'omitnan');
-                    ee = exp(-((obj.binSize/obj.sampleRate)*sum(likely,2)));
-                    tempPost = pp.*ee;
-                    post(t,:,trl) = tempPost./sum(tempPost);
-                end
-            end
-            %             toc
-        end
         %% Calculate Static MLB Poisson
         function post = CalcStaticBayesPost_Poisson(obj,likely, obsv, prob)
-            %             tic;
+%             tic;
             post = nan(size(obsv,1), size(likely,1), size(obsv,3));
             for trl = 1:size(obsv,3)
                 for t = 1:size(obsv,1)
@@ -453,14 +380,14 @@ classdef MLB_SM < SeqMem
                     p(p==0) = 0.00000000000000001;
                     pp = prod(p,2, 'omitnan');
                     ee = exp(-((obj.binSize/obj.sampleRate)*sum(likely,2)));
-                    tempPost = pp.*ee.*prob;
+                    tempPost = prob.*pp.*ee;
                     post(t,:,trl) = tempPost./sum(tempPost);
                 end
             end
-            %             toc
+%             toc
         end
         %% Calculate Static MLB Bernoulli
-        function post = CalcStaticBayesPost_Bernoulli(~,likely, obsv)
+        function post = CalcStaticBayesPost_Bernoulli(~,likely, obsv, prob)
             % Developed by M.Saraf... 
             % MS code: (organized neuron X time)
             %   for i = 1: size(expected_prob,2)
@@ -477,13 +404,13 @@ classdef MLB_SM < SeqMem
                     for u = 1:size(likely,2)
                         indiv_neurons(:,u) = (likely(:,u).^obsv(t,u,trl)).*((1-likely(:,u)).^(1-obsv(t,u,trl)));
                     end
-                    tempPost = prod(indiv_neurons,2);
+                    tempPost = prob.*prod(indiv_neurons,2);
                     post(t,:,trl) = tempPost./sum(tempPost);
                 end
             end
         end
         %% Calculate Static MLB Gaussian
-        function post = CalcStaticBayesPost_Gaussian(~,meanLikely, varLikely, obsv)
+        function post = CalcStaticBayesPost_Gaussian(~,meanLikely, varLikely, obsv, prob)
             % Developed by M.Saraf...
             % MS Code: (organized neuron X time)
             % %get the first term:
@@ -512,14 +439,14 @@ classdef MLB_SM < SeqMem
                         second_term(:,u) = -0.5.*(((obsv(t,u,trl)-meanLikely(:,u))./varLikely(:,u)).^2);
                     end
                     second_term = exp(sum(second_term,2, 'omitnan'));
-                    tempPost = first_term.*second_term;
+                    tempPost = prob.*first_term.*second_term;
                     post(t,:,trl) = tempPost./sum(tempPost);
                 end
             end                        
         end
         %% Calculate Iterative MLB Poisson
         % **** TO CREATE ****
-        function post = CalcIterativeBayesPost_Poisson(obj, likely, obsv, depVar, grpVar)
+        function post = CalcIterativeBayesPost_Poisson(obj, likely, obsv, depVar, grpVar, prob)
             % Calculate posterior probability using a dependant variable and a grouping variable
             %   The dependant variable (mainly time) is the variable that is iterated across
             %   The grouping variable (mainly odor or position) is the variable used as the likelihoods at each level of the dependant variable
@@ -535,8 +462,10 @@ classdef MLB_SM < SeqMem
             post = nan(size(obsv,1), size(likely,1)/length(lvlsGrpVar), length(lvlsGrpVar), size(obsv,3));
             for dv = 1:length(lvlsDepVar)
                 tempLikely = nan(length(lvlsGrpVar), size(likely,2));
+                tempProb = nan(length(lvlsGrpVar),size(prob,2));
                 for gv = 1:length(lvlsGrpVar)
                     tempLikely(gv,:) = likely(depVar==lvlsDepVar(dv) & grpVar==lvlsGrpVar(gv),:);
+                    tempProb(gv,:) = prob(depVar==lvlsDepVar(dv) & grpVar==lvlsGrpVar(gv),:);
                 end
                 for trl = 1:size(obsv,3)
                     %                     tic;
@@ -551,7 +480,7 @@ classdef MLB_SM < SeqMem
                         p(p==0) = 0.00000000000000001;
                         pp = prod(p,2, 'omitnan');
                         ee = exp(-(rateScalar*sum(tempLikely,2)));
-                        tempTempPost = pp.*ee;
+                        tempTempPost = tempProb.*pp.*ee;
                         post(t,dv,:,trl) = tempTempPost ./ sum(tempTempPost);
                     end
                     %                     toc
@@ -605,7 +534,6 @@ classdef MLB_SM < SeqMem
             end
         end
         %% Tabluate MLB
-        %... don't really remember what this's doing... or why I made it...
         function decode = TabulateBayesPost(~, post, id)
             idS = unique(id);
             decode = nan(size(post,1), size(post,3), length(idS));
