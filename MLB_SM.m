@@ -196,7 +196,7 @@ classdef MLB_SM < SeqMem
                     tempTrialWindowVect{win} = ones(size(trlTimeVects{win},1),1).*win;
                 end
                 ssnSpikes(:,:,trl) = cell2mat(tempTrialData);
-                ssnID(:,1,trl) = cell2mat(tempTrialTimeVect);
+                ssnID(:,1,trl) = round(cell2mat(tempTrialTimeVect)*1000)/1000;
                 ssnID(:,2,trl) = cell2mat(tempTrialWindowVect);
                 ssnID(:,3,trl) = ones(size(ssnID,1),1).*obj.trialInfo(trl).Position;
                 ssnID(:,4,trl) = ones(size(ssnID,1),1).*obj.trialInfo(trl).Odor;

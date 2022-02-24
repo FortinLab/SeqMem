@@ -38,6 +38,8 @@ alignment = {'PokeIn'};
 lfpWindow = [16 32];
 bayesType = 1; %1 = Poisson: use with raw spike counts; 2 = Bernoulli: use with binarized spike counts; 3 = Gaussian: Use with z-scored spike counts
 
+chancePerms = 100;
+
 postCLim = [0 0.05];
 decodeCLim = [0 0.2];
 
@@ -51,7 +53,7 @@ ri = nan(length(fileDirs),1);
 smiByOP = nan(length(fileDirs),setupSeqLength,2);
 dPrmByOP = nan(length(fileDirs),setupSeqLength,2);
 riByOP = nan(length(fileDirs),setupSeqLength,2);
-% fiscLOO analysis
+% fiscL1O analysis
 fiscL1O_Posts = cell(setupSeqLength,1,length(fileDirs));
 fiscL1O_TimePosDecode = cell(setupSeqLength,length(fileDirs));
 fiscL1O_MargDecodeTime = cell(setupSeqLength,length(fileDirs));
@@ -61,6 +63,16 @@ fiscISC_Posts = cell(setupSeqLength,1,length(fileDirs));
 fiscISC_TimePosDecode = cell(setupSeqLength,length(fileDirs));
 fiscISC_MargDecodeTime = cell(setupSeqLength,length(fileDirs));
 fiscISC_MargDecodePos = cell(setupSeqLength,length(fileDirs));
+% Chance fiscL1O
+chance_fiscL1O_Post = cell(setupSeqLength,chancePerms,length(fileDirs));
+chance_fiscL1O_TimePos = cell(setupSeqLength, length(fileDirs), chancePerms);
+chance_fiscL1O_MargTime = cell(setupSeqLength, length(fileDirs), chancePerms);
+chance_fiscL1O_MargPos = cell(setupSeqLength, length(fileDirs), chancePerms);
+% Chance fiscISC
+chance_fiscISC_Post = cell(setupSeqLength, chancePerms, length(fileDirs));
+chance_fiscISC_TimePos = cell(setupSeqLength, length(fileDirs), chancePerms);
+chance_fiscISC_MargTime = cell(setupSeqLength, length(fileDirs), chancePerms);
+chance_fiscISC_MargPos = cell(setupSeqLength, length(fileDirs), chancePerms);
 %%
 for ani = 1:length(fileDirs)
     %% Create initial object & set object parameters
@@ -131,6 +143,47 @@ for ani = 1:length(fileDirs)
     fiscISC_TimePosDecode(:,ani) = tempTimePosDecode;
     fiscISC_MargDecodeTime(:,ani) = tempMargTime;
     fiscISC_MargDecodePos(:,ani) = tempMargPos;
+    %% Calculate Chance
+    for perm = 1:chancePerms
+        chancePerm = permute(reshape(randperm(numel(mlb.fiscTrials)), size(mlb.fiscTrials)), [1,3,2]);
+        mlb.likeTrlSpikes = mlb.likeTrlSpikes(chancePerm);
+        mlb.Process_LikelyL1O;
+        % Extract Posteriors
+        chance_fiscL1O_Post(:,perm,ani) = mlb.post;
+        % Decode Index
+        chance_fiscL1O_TimePos(:,ani, perm) = mlb.DecodeBayesPost(mlb.post, (1:size(mlb.decodeIDvects,1))');
+        % Decode Time
+        chance_fiscL1O_MargTime(:,ani, perm) = mlb.DecodeBayesPost(mlb.post, mlb.decodeIDvects(:,1));
+        % Decode Position
+        chance_fiscL1O_MargPos(:,ani, perm) = mlb.DecodeBayesPost(mlb.post, mlb.decodeIDvects(:,3));
+        
+        mlb.Process_Observes;
+        % Decode Index
+        ndxDecode = mlb.DecodeBayesPost(mlb.post, (1:size(mlb.decodeIDvects,1))');
+        % Decode Time
+        timeDecode = mlb.DecodeBayesPost(mlb.post, mlb.decodeIDvects(:,1));
+        % Decode Position
+        posDecode = mlb.DecodeBayesPost(mlb.post, mlb.decodeIDvects(:,3));
+        
+        trlOdrVect = [mlb.trialInfo(mlb.postTrlIDs).Odor];
+        trlPosVect = [mlb.trialInfo(mlb.postTrlIDs).Position];
+        trlPerfVect = [mlb.trialInfo(mlb.postTrlIDs).Performance];
+        tempPosts = cell(mlb.seqLength,1);
+        tempTimePosDecode = cell(mlb.seqLength,1);
+        tempMargTime = cell(mlb.seqLength,1);
+        tempMargPos = cell(mlb.seqLength,1);
+        for pos = 1:mlb.seqLength
+            curISClog = trlOdrVect==pos & trlPosVect==pos & trlPerfVect==1;
+            tempPosts{pos} = mlb.post(:,:,curISClog);
+            tempTimePosDecode{pos} = ndxDecode(:,curISClog);
+            tempMargTime{pos} = timeDecode(:,curISClog);
+            tempMargPos{pos} = posDecode(:,curISClog);
+        end
+        chance_fiscISC_Post(:,perm,ani) = tempPosts;
+        chance_fiscISC_TimePos(:,ani, perm) = tempTimePosDecode;
+        chance_fiscISC_MargTime(:,ani, perm) = tempMargTime;
+        chance_fiscISC_MargPos(:,ani, perm) = tempMargPos;
+    end
 end
 
 pokeOutLats = cell2mat(fiscPokeOutLat(:));
@@ -149,15 +202,53 @@ for t = 1:size(fiscTP,1)
         fiscTPacc(t,ndx) = mean(curTime==ndx);
     end
 end
-fiscTime = cell2mat(fiscL1O_MargDecodeTime)
-timeVect = unique(mlb.decodeIDvects(:,1))
-fiscL1O_MargDecodePos
+fiscTime = cell2mat(fiscL1O_MargDecodeTime);
+timeVect = unique(mlb.decodeIDvects(:,1));
+fiscTimeAcc = nan(size(fiscTime,1), length(timeVect));
+for t = 1:size(fiscTime,1)
+    curTime = fiscTime(t,:);
+    for ndx = 1:length(timeVect)
+        fiscTimeAcc(t,ndx) = mean(curTime==timeVect(ndx));
+    end
+end
+fiscPos = cell2mat(fiscL1O_MargDecodePos);
+fiscPosAcc = nan(size(fiscPos,1), mlb.seqLength);
+for t = 1:size(fiscPos,1)
+    curTime = fiscPos(t,:);
+    for op = 1:mlb.seqLength
+        fiscPosAcc(t,op) = mean(curTime==op);
+    end
+end
 %% FISC-ISC
 iscPosts = cell(mlb.seqLength,1);
 for pos = 1:mlb.seqLength
     iscPosts{pos} = mean(cell2mat(fiscISC_Posts(pos,:,:)),3);
 end
 
-fiscISC_TimePosDecode
-fiscISC_MargDecodeTime
-fiscISC_MargDecodePos
+iscTP = cell2mat(fiscISC_TimePosDecode);
+iscTPacc = nan(size(mlb.decodeIDvects,1));
+for t = 1:size(iscTP,1)
+    curTime = iscTP(t,:);
+    for ndx = 1:size(mlb.decodeIDvects,1)
+        iscTPacc(t,ndx) = mean(curTime==ndx);
+    end
+end
+
+iscTime = cell2mat(fiscISC_MargDecodeTime);
+timeVect = unique(mlb.decodeIDvects(:,1));
+iscTimeAcc = nan(size(iscTime,1), length(timeVect));
+for t = 1:size(iscTime,1)
+    curTime = iscTime(t,:);
+    for ndx = 1:length(timeVect)
+        iscTimeAcc(t,ndx) = mean(curTime==timeVect(ndx));
+    end
+end
+
+iscPos = cell2mat(fiscISC_MargDecodePos);
+iscPosAcc = nan(size(iscPos,1), mlb.seqLength);
+for t = 1:size(iscPos,1)
+    curTime = iscPos(t,:);
+    for op = 1:mlb.seqLength
+        iscPosAcc(t,op) = mean(curTime==op);
+    end
+end
