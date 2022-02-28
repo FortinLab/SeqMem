@@ -311,10 +311,10 @@ classdef MLB_SM < SeqMem
         function Process_IterativeLikelyL1O(obj)
             obj.post = cell(size(obj.likeTrlSpikes));
             obj.postTrlIDs = permute(cellfun(@(a)a(1,end),obj.likeTrlIDs), [1,3,2]);
-            for pos = 1:size(obj.postTrlIDs,1)
-                for seq = 1:size(obj.postTrlIDs,2)
+            for pos = 1:size(obj.likeTrlSpikes,1)
+                for seq = 1:size(obj.likeTrlSpikes,3)
                     if ~isnan(obj.postTrlIDs(pos,seq))
-                        tempObsv = obj.likeTrlSpikes{pos,seq};
+                        tempObsv = obj.likeTrlSpikes{pos,1,seq};
                         tempLike = obj.likeTrlSpikes;
                         tempLike{pos,:,seq} = nan(size(tempLike{1}));
                         tempLike = cell2mat(tempLike);
@@ -503,10 +503,10 @@ classdef MLB_SM < SeqMem
     end
     methods % Decoding Methods
         %% Decode MLB
-        function [decode, maxPost] = DecodeBayesPost(~, post, id)
-            if ndims(post) < 4 % Output from StaticBayes versions are 3d
-                % Assumes post is in the structure of ObservTime X LikelyTime X Trial
-                if ~iscell(post)
+        function [decode, maxPost] = DecodeBayesPost(obj, post, id)
+            if ~iscell(post)
+                if ndims(post) < 4
+                    % Assumes post is in the structure of ObservTime X LikelyTime X Trial
                     decode = nan(size(post,1),size(post,3));
                     maxPost = nan(size(post,1),size(post,3));
                     for o = 1:size(post,3)
@@ -520,52 +520,114 @@ classdef MLB_SM < SeqMem
                         end
                     end
                 else
-                    decode = cell(size(post,1),1);
-                    maxPost = cell(size(post,1),1);
-                    for o = 1:size(post,1)
-                        tempPost = post{o};
-                        tempDecodes = nan(size(tempPost,1), size(tempPost,3));
-                        tempMax = nan(size(tempPost,1), size(tempPost,3));
-                        for trl = 1:size(tempPost,3)
-                            for t = 1:size(tempPost,1)
-                                tempMax(t,trl) = max(tempPost(t,:,trl));
-                                tempDecode = find(tempPost(t,:,trl)==tempMax(t,trl));
-                                select = rand(1,length(tempDecode));
-                                tempDecodes(t,trl) = id(tempDecode(select==max(select)));
+                    % Assumes post is in the structure of ObservTime X LikelyTime X GrpVar X Trial
+                    decode = nan(size(post,1),size(post,1),size(post,4));
+                    maxPost = nan(size(post,1),size(post,1),size(post,4));
+                    for trl = 1:size(post,4)
+                        curTrl = post(:,:,:,trl);
+                        for obsvTime = 1:size(curTrl,1)
+                            for likeTime = 1:size(curTrl,2)
+                                maxPost(obsvTime,likeTime,trl) = max(curTrl(obsvTime,likeTime,:));
+                                if ~isnan(maxPost(obsvTime,likeTime,trl))
+                                    tempDecode = find(curTrl(obsvTime,likeTime,:)==maxPost(obsvTime,likeTime,trl));
+                                    select = rand(1,length(tempDecode));
+                                    decode(obsvTime,likeTime,trl) = tempDecode(select==max(select));
+                                end
                             end
                         end
-                        decode{o} = tempDecodes;
-                        maxPost{o} = tempMax;
                     end
                 end
-            elseif ndims(post) == 4 % Output from IterativeBayes versions are 4d
-                % Assumes post is in the structure of ObservTime X LikelyTime X GrpVar X Trial
-                decode = nan(size(post,1),size(post,1),size(post,4));
-                maxPost = nan(size(post,1),size(post,1),size(post,4));
-                for trl = 1:size(post,4)
-                    curTrl = post(:,:,:,trl);
-                    for obsvTime = 1:size(curTrl,1)
-                        for likeTime = 1:size(curTrl,2)
-                            maxPost(obsvTime,likeTime,trl) = max(curTrl(obsvTime,likeTime,:));
-                            if ~isnan(maxPost(obsvTime,likeTime,trl))
-                                tempDecode = find(curTrl(obsvTime,likeTime,:)==maxPost(obsvTime,likeTime,trl));
-                                select = rand(1,length(tempDecode));
-                                decode(obsvTime,likeTime,trl) = tempDecode(select==max(select));
+            else
+                if ndims(post{1}) < 4 % Output from StaticBayes versions are 3d
+                    if size(post{1},3) == size(obj.postTrlIDs,2)
+                        decode = cell(size(post,1),1);
+                        maxPost = cell(size(post,1),1);
+                        for o = 1:size(post,1)
+                            tempPost = post{o};
+                            tempDecodes = nan(size(tempPost,1), size(tempPost,3));
+                            tempMax = nan(size(tempPost,1), size(tempPost,3));
+                            for trl = 1:size(tempPost,3)
+                                for t = 1:size(tempPost,1)
+                                    tempMax(t,trl) = max(tempPost(t,:,trl));
+                                    tempDecode = find(tempPost(t,:,trl)==tempMax(t,trl));
+                                    select = rand(1,length(tempDecode));
+                                    tempDecodes(t,trl) = id(tempDecode(select==max(select)));
+                                end
+                            end
+                            decode{o} = tempDecodes;
+                            maxPost{o} = tempMax;
+                        end
+                    elseif size(post,3) == size(obj.postTrlIDs,2)
+                        decode = cell(size(post,1),1,size(post,3));
+                        maxPost = cell(size(post,1), size(post,3));
+                        for o = 1:size(post,1)
+                            for seq = 1:size(post,3)
+                                curPost = post{o,1,seq};
+                                curDecode = nan(size(post{1},1), size(post{1},2));
+                                curMax = nan(size(post{1},1), size(post{1},2));
+                                if ~isempty(curPost)
+                                    for tO = 1:size(curPost,1)
+                                        for tL = 1:size(curPost,1)
+                                            curMax(tO,tL) = max(curPost(tO,tL,:));
+                                            tempDecode = find(curPost(tO,tL,:)==curMax(tO,tL));
+                                            select = rand(1,length(tempDecode));
+                                            curDecode(tO,tL) = tempDecode(find(select==max(select)));
+                                        end
+                                    end
+                                end
+                                decode{o,1,seq} = curDecode;
+                                maxPost{o,1,seq} = curMax;
                             end
                         end
-                    end
-                end                            
+                    end         
+                elseif ndims(post) == 4 % Output from IterativeBayes versions are 4d
+%                     % Assumes post is in the structure of ObservTime X LikelyTime X GrpVar X Trial
+%                     decode = cell(size(post,1),1);
+%                     maxPost = cell(size(post,1),1);
+% %                     for 
+%                     decode = nan(size(post,1),size(post,1),size(post,4));
+%                     maxPost = nan(size(post,1),size(post,1),size(post,4));
+%                     for trl = 1:size(post,4)
+%                         curTrl = post(:,:,:,trl);
+%                         for obsvTime = 1:size(curTrl,1)
+%                             for likeTime = 1:size(curTrl,2)
+%                                 maxPost(obsvTime,likeTime,trl) = max(curTrl(obsvTime,likeTime,:));
+%                                 if ~isnan(maxPost(obsvTime,likeTime,trl))
+%                                     tempDecode = find(curTrl(obsvTime,likeTime,:)==maxPost(obsvTime,likeTime,trl));
+%                                     select = rand(1,length(tempDecode));
+%                                     decode(obsvTime,likeTime,trl) = tempDecode(select==max(select));
+%                                 end
+%                             end
+%                         end
+%                     end
+                end
             end
         end
         %% Tabluate MLB
         function decode = TabulateBayesPost(~, post, id)
             idS = unique(id);
-            decode = nan(size(post,1), size(post,3), length(idS));
-            for trl = 1:size(post,3)
-                for t = 1:size(post,1)
-                    for iD = 1:length(idS)
-                        decode(t,trl,iD) = sum(post(t,id==idS(iD),trl));
+            if ~iscell(post)
+                decode = nan(size(post,1), size(post,3), length(idS));
+                for trl = 1:size(post,3)
+                    for t = 1:size(post,1)
+                        for iD = 1:length(idS)
+                            decode(t,trl,iD) = sum(post(t,id==idS(iD),trl));
+                        end
                     end
+                end
+            else
+                decode = cell(length(idS),1);
+                for p = 1:size(post,1)
+                    tempPost = post{p};
+                    tempDecode = nan(size(tempPost,1), size(tempPost,3), length(idS));
+                    for trl = 1:size(tempPost,3)
+                        for t = 1:size(tempPost,1)
+                            for iD = 1:length(idS)
+                                tempDecode(t,trl,iD) = sum(tempPost(t,id==idS(iD),trl));
+                            end
+                        end
+                    end
+                    decode{p} = tempDecode;
                 end
             end
         end
