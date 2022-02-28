@@ -607,11 +607,11 @@ classdef MLB_SM < SeqMem
         function decode = TabulateBayesPost(~, post, id)
             idS = unique(id);
             if ~iscell(post)
-                decode = nan(size(post,1), size(post,3), length(idS));
+                decode = nan(size(post,1), length(idS), size(post,3));
                 for trl = 1:size(post,3)
                     for t = 1:size(post,1)
                         for iD = 1:length(idS)
-                            decode(t,trl,iD) = sum(post(t,id==idS(iD),trl));
+                            decode(t,iD,trl) = sum(post(t,id==idS(iD),trl));
                         end
                     end
                 end
