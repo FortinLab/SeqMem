@@ -5,7 +5,6 @@ fileDirs = [{'D:\WorkBigDataFiles\PFC\Files To Process\GE11\GE11_Session132'},..
     {'D:\WorkBigDataFiles\PFC\Files To Process\GE14\GE14_Session123'},...
     {'D:\WorkBigDataFiles\PFC\Files To Process\GE17\GE17_Session095'},...
     {'D:\WorkBigDataFiles\PFC\Files To Process\GE24\Session096'}];
-setupSeqLength = 4; 
 
 % fileDirs = [{'D:\WorkBigDataFiles\HC\1. Well-Trained session\SuperChris'},...
 %     {'D:\WorkBigDataFiles\HC\1. Well-Trained session\Stella'},...
@@ -13,21 +12,18 @@ setupSeqLength = 4;
 %     {'D:\WorkBigDataFiles\HC\1. Well-Trained session\Buchanan'},...
 %     {'D:\WorkBigDataFiles\HC\1. Well-Trained session\Barat'}];
 % tets = [1,22,17,18,17];
-% setupSeqLength = 5;
-
+% 
 % fileDirs = [{'D:\WorkBigDataFiles\PFC\GE11_Session132'},...
 %     {'D:\WorkBigDataFiles\PFC\GE13_Session083'},...
 %     {'D:\WorkBigDataFiles\PFC\GE14_Session123'},...
 %     {'D:\WorkBigDataFiles\PFC\GE17_Session095'},...
 %     {'D:\WorkBigDataFiles\PFC\GE24_Session096'}];
-% setupSeqLength = 4; 
-% 
+
 % fileDirs = [
 %     {'D:\WorkBigDataFiles\PFC\GE13_Session083'},...
 %     {'D:\WorkBigDataFiles\PFC\GE14_Session123'},...
 %     {'D:\WorkBigDataFiles\PFC\GE17_Session095'},...
 %     {'D:\WorkBigDataFiles\PFC\GE24_Session096'}];
-% setupSeqLength = 4;  
 
 binSize = 200;
 dsRate = 50;
@@ -40,28 +36,31 @@ bayesType = 1; %1 = Poisson: use with raw spike counts; 2 = Bernoulli: use with 
 
 numChancePerms = 100;
 
-postCLim = [0 0.05];
+postCLim = [0 0.1];
 decodeCLim = [0 0.2];
 
-%% Create Output Variables
-% Behavior Variables
-fiscPokeOutLat = cell(length(fileDirs),1);
-fiscRwdDelivLat = cell(length(fileDirs),1);
-smi = nan(length(fileDirs),1);
-dPrm = nan(length(fileDirs),1);
-ri = nan(length(fileDirs),1);
-smiByOP = nan(length(fileDirs),setupSeqLength,2);
-dPrmByOP = nan(length(fileDirs),setupSeqLength,2);
-riByOP = nan(length(fileDirs),setupSeqLength,2);
-% Posteriors
-realPost_L1O = cell(setupSeqLength, 1, length(fileDirs));   
-chancePost_L1O = cell(setupSeqLength, numChancePerms, length(fileDirs));
-realPost_ISC = cell(setupSeqLength, 1, length(fileDirs));   
-chancePost_ISC= cell(setupSeqLength, numChancePerms, length(fileDirs));
 %%
 for ani = 1:length(fileDirs)
-    %% Create initial object & set object parameters
+    %% Create & setup initial object and data variables (if initial file)
     mlb = MLB_SM(fileDirs{ani});
+    % Create Analysis Variables
+    if ani == 1 
+        % Behavior Variables
+        fiscPokeOutLat = cell(length(fileDirs),1);
+        fiscRwdDelivLat = cell(length(fileDirs),1);
+        smi = nan(length(fileDirs),1);
+        dPrm = nan(length(fileDirs),1);
+        ri = nan(length(fileDirs),1);
+        smiByOP = nan(length(fileDirs),mlb.seqLength,2);
+        dPrmByOP = nan(length(fileDirs),mlb.seqLength,2);
+        riByOP = nan(length(fileDirs),mlb.seqLength,2);
+        % Posteriors
+        realPost_L1O = cell(mlb.seqLength, 1, length(fileDirs));
+        chancePost_L1O = cell(mlb.seqLength, numChancePerms, length(fileDirs));
+        realPost_ISC = cell(mlb.seqLength, 1, length(fileDirs));
+        chancePost_ISC= cell(mlb.seqLength, numChancePerms, length(fileDirs));
+    end
+        
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % COMMENT IN TO ONLY RUN ON BETA MODULATED CELLS & COMMENT OUT TO RUN ON ALL CELLS
 %     uniInfo = mlb.unitInfo;
@@ -114,7 +113,7 @@ for ani = 1:length(fileDirs)
         trlPerfVect = [mlb.trialInfo(mlb.postTrlIDs).Performance];
         for pos = 1:mlb.seqLength
             curISClog = trlOdrVect==pos & trlPosVect==pos & trlPerfVect==1;
-            chancePost_L1O{pos,perm,ani} = mlb.post(:,:,curISClog);
+            chancePost_ISC{pos,perm,ani} = mlb.post(:,:,curISClog);
         end
     end
 end
@@ -259,453 +258,401 @@ for pos = 1:mlb.seqLength
     groupPostTIP_ChanceL1O{pos,1} = mean(tempPostTIP_ChanceL1O, 3, 'omitnan');
     groupPostTIP_ChanceL1O{pos,2} = std(tempPostTIP_ChanceL1O, 0, 3, 'omitnan');
     groupDecodeTIP_ChanceL1O{pos,1} = mean(tempDecodeTIP_ChanceL1O, 3, 'omitnan');
-    groupDecodeTIP_ChanceL1O{pos,2} = std(tempDecodeTIP_ChanceL1O, 3, 'omitnan');
+    groupDecodeTIP_ChanceL1O{pos,2} = std(tempDecodeTIP_ChanceL1O, 0, 3, 'omitnan');
     
     groupPostTime_ChanceL1O{pos,1} = mean(tempPostTime_ChanceL1O, 3, 'omitnan');
-    groupPostTime_ChanceL1O{pos,2} = std(tempPostTime_ChanceL1O, 3, 'omitnan');
+    groupPostTime_ChanceL1O{pos,2} = std(tempPostTime_ChanceL1O, 0, 3, 'omitnan');
     groupDecodeTime_ChanceL1O{pos,1} = mean(tempDecodeTime_ChanceL1O, 3, 'omitnan');
-    groupDecodeTime_ChanceL1O{pos,2} = std(tempDecodeTime_ChanceL1O, 3, 'omitnan');
+    groupDecodeTime_ChanceL1O{pos,2} = std(tempDecodeTime_ChanceL1O, 0, 3, 'omitnan');
     
     groupPostPos_ChanceL1O{pos,1} = mean(tempPostPos_ChanceL1O, 3, 'omitnan');
     groupPostPos_ChanceL1O{pos,2} = std(tempPostPos_ChanceL1O, 0,  3, 'omitnan');
     groupDecodePos_ChanceL1O{pos,1} = mean(tempDecodePos_ChanceL1O, 3, 'omitnan');
-    groupDecodePos_ChanceL1O{pos,2} = std(tempDecodePos_ChanceL1O, 3, 'omitnan');
+    groupDecodePos_ChanceL1O{pos,2} = std(tempDecodePos_ChanceL1O, 0, 3, 'omitnan');
     
     %ISC
     groupPostTIP_ChanceISC{pos,1} = mean(tempPostTIP_ChanceISC, 3, 'omitnan');
     groupPostTIP_ChanceISC{pos,2} = std(tempPostTIP_ChanceISC, 0, 3, 'omitnan');
     groupDecodeTIP_ChanceISC{pos,1} = mean(tempDecodeTIP_ChanceISC, 3, 'omitnan');
-    groupDecodeTIP_ChanceISC{pos,2} = std(tempDecodeTIP_ChanceISC, 3, 'omitnan');
+    groupDecodeTIP_ChanceISC{pos,2} = std(tempDecodeTIP_ChanceISC, 0, 3, 'omitnan');
     
     groupPostTime_ChanceISC{pos,1} = mean(tempPostTime_ChanceISC, 3, 'omitnan');
-    groupPostTime_ChanceISC{pos,2} = std(tempPostTime_ChanceISC, 3, 'omitnan');
-    groupDecodeTime_ChanceISC{pos,1} = mean(tempDecodeTime_ChanceLISC, 3, 'omitnan');
-    groupDecodeTime_ChanceISC{pos,2} = std(tempDecodeTime_ChanceISC, 3, 'omitnan');
+    groupPostTime_ChanceISC{pos,2} = std(tempPostTime_ChanceISC, 0, 3, 'omitnan');
+    groupDecodeTime_ChanceISC{pos,1} = mean(tempDecodeTime_ChanceISC, 3, 'omitnan');
+    groupDecodeTime_ChanceISC{pos,2} = std(tempDecodeTime_ChanceISC, 0, 3, 'omitnan');
     
     groupPostPos_ChanceISC{pos,1} = mean(tempPostPos_ChanceISC, 3, 'omitnan');
     groupPostPos_ChanceISC{pos,2} = std(tempPostPos_ChanceISC, 0,  3, 'omitnan');
     groupDecodePos_ChanceISC{pos,1} = mean(tempDecodePos_ChanceISC, 3, 'omitnan');
-    groupDecodePos_ChanceISC{pos,2} = std(tempDecodePos_ChanceISC, 3, 'omitnan');
+    groupDecodePos_ChanceISC{pos,2} = std(tempDecodePos_ChanceISC, 0, 3, 'omitnan');
 end
+%%
 clear realPost_L1O realPost_ISC chancePost_L1O chancePost_ISC
+%% Plot Probability & Decodings relative to chance
+piNdx = find(mlb.likeTimeVect==0)+0.5;
+poNdx = find(mlb.likeTimeVect==nearestPOtime)+0.5;
+rwdNdx = find(mlb.likeTimeVect==nearestRWDtime)+0.5;
+posNdx = find(diff(mlb.likeTimeVect)<0)+0.5;
 
-% save('PFC_WT_Trial_Group_Posts.mat', 'realPost_L1O', 'chancePost_L1O', 'realPost_ISC', 'chancePost_ISC', 'mlb', '-v7.3');
+figure; 
+chanceMean_L1O = cell(mlb.seqLength,1);
+chanceCI_L1O = cell(mlb.seqLength,1);
 
-
-%     
-% upperBound = groupPostTIP_ChanceL1O{pos,1} + (tinv(0.975, numChancePerms-1)*groupPostTIP_ChanceL1O{pos,2});
-% lowerBound = groupPostTIP_ChanceL1O{pos,1} + (tinv(0.025, numChancePerms-1)*groupPostTIP_ChanceL1O{pos,2});
+chanceMean_ISC = cell(mlb.seqLength,1);
+chanceCI_ISC = cell(mlb.seqLength,1);
+for pos = 1:mlb.seqLength
+    chanceMean_L1O{pos} = groupPostPos_ChanceL1O{pos,1}(:,pos);
+    chanceCI_L1O{pos} = tinv(0.975, numChancePerms-1)*(groupPostPos_ChanceL1O{pos,2}(:,pos)./sqrt(numChancePerms));    
+    tempPostMeanL1O = cell2mat(cellfun(@(a){mean(a(:,pos,:),3,'omitnan')}, groupPostPos_RealL1O));
+    tempPostSEML1O = cell2mat(cellfun(@(a){std(a(:,pos,:),0,3)./sqrt(size(a,3))}, groupPostPos_RealL1O));
+    tempPostCIL1O = cell2mat(cellfun(@(a){tinv(0.975, size(a,3)-1)*(std(a(:,pos,:),0,3)./sqrt(size(a,3)))}, groupPostPos_RealL1O));
+    subplot(2,1,1);
+    hold on;
+    plot(tempPostMeanL1O, 'color', mlb.PositionColors(pos,:), 'linewidth', 1.5);
+    patch('XData', [1:length(mlb.likeTimeVect), length(mlb.likeTimeVect):-1:1],...
+        'YData', [(tempPostMeanL1O+tempPostSEML1O)', flipud(tempPostMeanL1O-tempPostSEML1O)'],...
+        'linestyle', 'none', 'edgecolor', mlb.PositionColors(pos,:), 'facecolor', mlb.PositionColors(pos,:), 'facealpha', 0.25);
+    patch('XData', [1:length(mlb.likeTimeVect), length(mlb.likeTimeVect):-1:1],...
+        'YData', [(tempPostMeanL1O+tempPostCIL1O)', flipud(tempPostMeanL1O-tempPostCIL1O)'],...
+        'linestyle', ':', 'linewidth', 1.5, 'edgecolor', mlb.PositionColors(pos,:), 'facecolor', mlb.PositionColors(pos,:), 'facealpha', 0);
     
-    
-    
+    chanceMean_ISC{pos} = groupPostPos_ChanceISC{pos,1}(:,pos);
+    chanceCI_ISC{pos} = tinv(0.975, numChancePerms-1)*(groupPostPos_ChanceISC{pos,2}(:,pos)./sqrt(numChancePerms));
+    tempPostMeanISC = cell2mat(cellfun(@(a){mean(a(:,pos,:),3,'omitnan')}, groupPostPos_RealISC));
+    tempPostSEMISC = cell2mat(cellfun(@(a){std(a(:,pos,:),0,3)./sqrt(size(a,3))}, groupPostPos_RealISC));
+    tempPostCIISC = cell2mat(cellfun(@(a){tinv(0.975, size(a,3)-1)*(std(a(:,pos,:),0,3)./sqrt(size(a,3)))}, groupPostPos_RealISC));
+    subplot(2,1,2)
+    hold on;
+    plot(tempPostMeanISC, 'color', mlb.PositionColors(pos,:), 'linewidth', 1.5);
+    patch('XData', [1:length(mlb.likeTimeVect), length(mlb.likeTimeVect):-1:1],...
+        'YData', [(tempPostMeanISC+tempPostSEMISC)', flipud(tempPostMeanISC-tempPostSEMISC)'],...
+        'linestyle', 'none', 'edgecolor', mlb.PositionColors(pos,:), 'facecolor', mlb.PositionColors(pos,:), 'facealpha', 0.25);
+    patch('XData', [1:length(mlb.likeTimeVect), length(mlb.likeTimeVect):-1:1],...
+        'YData', [(tempPostMeanISC+tempPostCIISC)', flipud(tempPostMeanISC-tempPostCIISC)'],...
+        'linestyle', ':', 'linewidth', 1.5, 'edgecolor', mlb.PositionColors(pos,:), 'facecolor', mlb.PositionColors(pos,:), 'facealpha', 0);
+end
+for sp = 1:2
+    for ndx = 1:length(piNdx)
+        subplot(2,1,sp)
+        plot(repmat(piNdx(ndx), [1,2]), get(gca, 'ylim'), '--k','linewidth', 2);
+        plot(repmat(poNdx(ndx), [1,2]), get(gca, 'ylim'), '--k','linewidth', 2);
+        plot(repmat(rwdNdx(ndx), [1,2]), get(gca, 'ylim'), ':k','linewidth', 2);
+        
+        if ndx<length(piNdx)
+            plot(repmat(posNdx(ndx), [1,2]), get(gca, 'ylim'), '-k','linewidth', 2);
+        end
+    end
+end
+chanceMean_L1O = cell2mat(chanceMean_L1O);
+chanceCI_L1O = cell2mat(chanceCI_L1O);
+chanceMean_ISC = cell2mat(chanceMean_ISC);
+chanceCI_ISC = cell2mat(chanceCI_ISC);
+subplot(2,1,1)
+plot(chanceMean_L1O, 'k');
+patch('XData', [1:length(mlb.likeTimeVect), length(mlb.likeTimeVect):-1:1],...
+    'YData', [(chanceMean_L1O+chanceCI_L1O)', flipud(chanceMean_L1O-chanceCI_L1O)'],...
+    'edgecolor', 'k', 'facecolor', 'k', 'facealpha', 0.25, 'edgealpha', 0.5);
+axis tight
+title('Fully InSeq Correct: Leave-One-Out Decoding)');
+ylabel('Probability');
+set(gca, 'xticklabel', []);
 
-    
+subplot(2,1,2)
+plot(chanceMean_ISC, 'k');
+patch('XData', [1:length(mlb.likeTimeVect), length(mlb.likeTimeVect):-1:1],...
+    'YData', [(chanceMean_ISC+chanceCI_ISC)', flipud(chanceMean_ISC-chanceCI_ISC)'],...
+    'edgecolor', 'k', 'facecolor', 'k', 'facealpha', 0.25, 'edgealpha', 0.5);
+axis tight
+title('Fully InSeq Correct: Decode Remaining InSeq Correct)');
+ylabel('Probability');
+set(gca, 'xticklabel', []);
 
-% 
-% %% Collapse Trials Across Animals
-% realPostL1O = cell(mlb.seqLength,1,3);
-% realPostMargTimeL1O = cell(mlb.seqLength,1,3);
-% realPostMargPosL1O = cell(mlb.seqLength,1,3);
-% 
-% realPostISC = cell(mlb.seqLength,1,2);
-% realPostMargTimeISC = cell(mlb.seqLength,1,2);
-% realPostMargPosISC = cell(mlb.seqLength,1,2);
-% 
-% chancePostL1O = cell(mlb.seqLength,1,permChance);
-% chancePostMargTimeL1O = cell(mlb.seqLength,1,permChance);
-% chancePostMargPosL1O = cell(mlb.seqLength,1,permChance);
-% 
-% chancePostISC = cell(mlb.seqLength,1,permChance);
-% chancePostMargTimeISC = cell(mlb.seqLength,1,permChance);
-% chancePostMargPosISC = cell(mlb.seqLength,1,permChance);
-% for pos = 1:mlb.seqLength
-%     tempPostL1O = cell2mat(realPost_L1O(pos,:,:));
-%     realPostL1O{pos,1,1} = mean(tempPostL1O,3);
-%     realPostL1O{pos,1,2} = std(tempPostL1O,0,3);
-%     realPostL1O{pos,1,3} = sum(~isnan(tempPostL1O),3);
-%     
-%     tempPostISC = cell2mat(realPost_ISC(pos,:,:));
-%     realPostISC{pos,1,1} = mean(tempPostISC,3);
-%     realPostISC{pos,1,2} = std(tempPostISC,0,3);
-%     realPostISC{pos,1,3} = sum(~isnan(tempPostL1O),3);
-%     
-%     for perm = 1:numChancePerms 
-%         chancePostL1O{pos,1,perm} = mean(cell2mat(chancePost_L1O(pos,perm,:)),3);
-%         chancePostISC{pos,1,perm} = mean(cell2mat(chancePost_ISC(pos,perm,:)),3);
-%     end
-% end
-% 
-% 
-% realDecodeL1O = nan(length(mlb.likeTimeVect));
-% realDecodeTimeL1O = nan(length(mlb.likeTimeVect), length(mlb.obsvTimeVect));
-% realDecodePosL1O = nan(length(mlb.likeTimeVect), mlb.seqLength);
-% 
-% realDecodeISC = nan(length(mlb.likeTimeVect));
-% realDecodeTimeISC = nan(length(mlb.likeTimeVect), length(mlb.obsvTimeVect));
-% realDecodePosISC = nan(length(mlb.likeTimeVect), mlb.seqLength);
-% 
-% chancePostL1O = nan(length(mlb.likeTimeVect),length(mlb.likeTimeVect), 2);
-% chancePostMargTimeL10 = nan(length(mlb.likeTimeVect), length(mlb.obsvTimeVect), 2);
-% chancePostMargPosL1O = nan(length(mlb.likeTimeVect), mlb.seqLength, 2);
-% chanceDecodeL1O = nan(length(mlb.likeTimeVect),length(mlb.likeTimeVect),2);
-% chanceDecodeTimeL1O = nan(length(mlb.likeTimeVect), length(mlb.obsvTimeVect), 2);
-% chanceDecodePosL1O = nan(length(mlb.likeTimeVect), mlb.seqLength, 2);
-% 
-% chancePostISC = nan(length(mlb.likeTimeVect),length(mlb.likeTimeVect), 2);
-% chancePostMargTimeISC = nan(length(mlb.likeTimeVect), length(mlb.obsvTimeVect), 2);
-% chancePostMargPosISC = nan(length(mlb.likeTimeVect), mlb.seqLength, 2);
-% chanceDecodeISC = nan(length(mlb.likeTimeVect),length(mlb.likeTimeVect),2);
-% chanceDecodeTimeISC = nan(length(mlb.likeTimeVect), length(mlb.obsvTimeVect), 2);
-% chanceDecodePosISC = nan(length(mlb.likeTimeVect), mlb.seqLength, 2);
-% 
-% 
-% 
-% 
-% %% Process L1O Chance Data
-% % FISC L1O Posterior Values
-% fiscChancePost = cell(mlb.seqLength, numChancePerms );
-% for c = 1:numChancePerms 
-%     for o = 1:mlb.seqLength
-%         fiscChancePost{o,c} = mean(cell2mat(chance_fiscL1O_Post(o,c,:)),3);
-%     end
-% end
-% clear chance_fiscL1O_Post
-% 
-% % FISC L1O Time-Position Coding
-% fiscChanceTimePosAcc = nan(length(mlb.likeTimeVect), length(mlb.likeTimeVect), numChancePerms );
-% for c = 1:numChancePerms 
-%     tempChance = cell2mat(chance_fiscL1O_TimePos(:,:,c));
-%     for t = 1:length(mlb.likeTimeVect)
-%         for ndx = 1:length(mlb.likeTimeVect)
-%             fiscChanceTimePosAcc(t,ndx,c) = mean(tempChance(t,:)==ndx);
-%         end
-%     end
-% end
-% clear chance_fiscL1O_TimePos
-% 
-% % FISC L1O Time Coding
-% fiscChanceTimeAcc = nan(length(mlb.likeTimeVect), length(mlb.obsvTimeVect), numChancePerms );
-% for c = 1:numChancePerms 
-%     tempChance = cell2mat(chance_fiscL1O_MargTime(:,:,c));
-%     for t = 1:length(mlb.likeTimeVect)
-%         for ndx = 1:length(mlb.obsvTimeVect)
-%             fiscChanceTimeAcc(t,ndx,c) = mean(tempChance(t,:)==mlb.obsvTimeVect(ndx));
-%         end
-%     end
-% end
-% clear chance_fiscL1O_MargTime
-% 
-% % FISC L1O Odor Coding
-% fiscChancePosAcc = nan(length(mlb.likeTimeVect), mlb.seqLength, numChancePerms );
-% for c = 1:numChancePerms 
-%     tempChance = cell2mat(chance_fiscL1O_MargPos(:,:,c));
-%     for t = 1:length(mlb.likeTimeVect)
-%         for ndx = 1:mlb.seqLength
-%             fiscChancePosAcc(t,ndx,c) = mean(tempChance(t,:)==ndx);
-%         end
-%     end
-% end
-% clear chance_fiscL1O_MargPos 
-% 
-% %% Plot FISC-L1O Observed Data Relative to Chance 
-% figure; 
-% piNdx = find(mlb.likeTimeVect==0)+0.5;
-% poNdx = find(mlb.likeTimeVect==nearestPOtime)+0.5;
-% rwdNdx = find(mlb.likeTimeVect==nearestRWDtime)+0.5;
-% posNdx = find(diff(mlb.likeTimeVect)<0)+0.5;
-% 
-% fiscPosts = mean(cell2mat(fiscL1O_Posts),3);
-% 
-% fiscTP = cell2mat(fiscL1O_TimePosDecode);
-% fiscTPacc = nan(size(mlb.likeTimeVect,1));
-% for t = 1:size(fiscTP,1)
-%     curTime = fiscTP(t,:);
-%     for ndx = 1:size(mlb.likeTimeVect,1)
-%         fiscTPacc(t,ndx) = mean(curTime==ndx);
-%     end
-% end
-% sp(1) = subplot(3,3,[2:3, 5:6]);
-% z_fiscTPacc = (fiscTPacc-mean(fiscChanceTimePosAcc,3))./std(fiscChanceTimePosAcc,0,3);
-% z_fiscTPacc(z_fiscTPacc<2 & z_fiscTPacc>-2) = 0;
-% imagesc(z_fiscTPacc, [-2 2]);
-% hold on;
-% for ndx = 1:length(piNdx)
-%     plot(repmat(piNdx(ndx), [1,2]), get(gca, 'ylim'), '--k','linewidth', 2);
-%     plot(repmat(poNdx(ndx), [1,2]), get(gca, 'ylim'), '--k','linewidth', 2);
-%     plot(repmat(rwdNdx(ndx), [1,2]), get(gca, 'ylim'), ':k','linewidth', 2);
-%     plot(get(gca, 'xlim'),repmat(piNdx(ndx), [1,2]), '--k','linewidth', 2);
-%     plot(get(gca, 'xlim'),repmat(poNdx(ndx), [1,2]), '--k','linewidth', 2);
-%     plot(get(gca, 'xlim'),repmat(rwdNdx(ndx), [1,2]), ':k','linewidth', 2);
-% 
-%     if ndx<length(piNdx)
-%         plot(repmat(posNdx(ndx), [1,2]), get(gca, 'ylim'), '-k','linewidth', 2);
-%         plot(get(gca, 'xlim'),repmat(posNdx(ndx), [1,2]), '-k','linewidth', 2);
-%     end
-% end
-% title('Time-In-Position Decoding Accuracy');
-% set(sp(1), 'xticklabel', [], 'yticklabel', []);
-% 
-% fiscTime = cell2mat(fiscL1O_MargDecodeTime);
-% timeVect = unique(mlb.decodeIDvects(:,1));
-% fiscTimeAcc = nan(size(fiscTime,1), length(timeVect));
-% for t = 1:size(fiscTime,1)
-%     curTime = fiscTime(t,:);
-%     for ndx = 1:length(timeVect)
-%         fiscTimeAcc(t,ndx) = mean(curTime==timeVect(ndx));
-%     end
-% end
-% sp(2) = subplot(3,3,[1,4]);
-% z_fiscTimeAcc = (fiscTimeAcc-mean(fiscChanceTimeAcc,3))./std(fiscChanceTimeAcc,0,3);
-% z_fiscTimeAcc(z_fiscTimeAcc<2 & z_fiscTimeAcc>-2) = 0;
-% imagesc(mlb.obsvTimeVect,1:length(mlb.likeTimeVect), z_fiscTimeAcc, [-2 2]);
-% hold on;
-% plot(repmat(piNdx(1), [1,2]), get(gca, 'ylim'), '--k','linewidth', 2);
-% plot(repmat(poNdx(1), [1,2]), get(gca, 'ylim'), '--k','linewidth', 2);
-% plot(repmat(rwdNdx(1), [1,2]), get(gca, 'ylim'), ':k','linewidth', 2);
-% for ndx = 1:length(piNdx)
-%     plot(get(gca, 'xlim'),repmat(piNdx(ndx), [1,2]), '--k','linewidth', 2);
-%     plot(get(gca, 'xlim'),repmat(poNdx(ndx), [1,2]), '--k','linewidth', 2);
-%     plot(get(gca, 'xlim'),repmat(rwdNdx(ndx), [1,2]), ':k','linewidth', 2);
-% 
-%     if ndx<length(piNdx)
-%         plot(get(gca, 'xlim'),repmat(posNdx(ndx), [1,2]), '-k','linewidth', 2);
-%     end
-% end
-% title('Temporal Decoding Accuracy');
-% set(sp(2), 'xtick', [0, nearestPOtime, nearestRWDtime], 'xticklabel', [{'PI'}, {'PO'}, {'RWD'}], 'xticklabelrotation', 45, 'yticklabel', [], 'TickDir', 'out');
-% cb = colorbar;
-% cb.Location = 'westoutside';
-% cb.Label.String = [{'Z-Score'};{'Norm to Chance'}];
-% cb.Label.Position(1) = 0;
-% cb.Label.FontWeight = 'Bold';
-% cb.Ticks = [-2 2];
-% 
-% fiscPos = cell2mat(fiscL1O_MargDecodePos);
-% fiscPosAcc = nan(size(fiscPos,1), mlb.seqLength);
-% for t = 1:size(fiscPos,1)
-%     curTime = fiscPos(t,:);
-%     for op = 1:mlb.seqLength
-%         fiscPosAcc(t,op) = mean(curTime==op);
-%     end
-% end
-% sp(3) = subplot(3,3,8:9);
-% cpID = nan(1,mlb.seqLength);
-% for op = 1:mlb.seqLength
-%     cpID(op) = plot((fiscPosAcc(:,op)-mean(fiscChancePosAcc(:,op,:),3))./std(fiscChancePosAcc(:,op,:),0,3), 'color', mlb.PositionColors(op,:), 'linewidth', 2);
-%     hold on;
-%     plot(repmat(piNdx(op), [1,2]), get(gca, 'ylim'), '--k', 'linewidth', 2);
-%     plot(repmat(poNdx(op), [1,2]), get(gca, 'ylim'), '--k', 'linewidth', 2);
-%     plot(repmat(rwdNdx(op), [1,2]), get(gca, 'ylim'), ':k','linewidth', 2);
-%     if op<length(piNdx)
-%         plot(repmat(posNdx(op), [1,2]), get(gca, 'ylim'), '-k', 'linewidth',2);
-%     end
-% end
-% axis tight;
-% plot(sp(3), get(gca, 'xlim'), [2 2], ':k', 'linewidth', 2);
-% plot(sp(3), get(gca, 'xlim'), [-2 -2], ':k', 'linewidth', 2);
-% title('Odor Decoding Accuracy');
-% set(sp(3), 'xticklabel', [], 'ytick', [-10 -5 -2 0 2 5 10]);
-% sp(3).TickDir = 'out';
-% sp(3).XRuler.FirstCrossoverValue = 0;
-% sp(3).XRuler.SecondCrossoverValue = 0;
-% legend(sp(3), cpID, arrayfun(@(a){sprintf('Pos%i', a)}, 1:mlb.seqLength), 'location', 'north', 'NumColumns', mlb.seqLength);
-% box 'off'
-% ylabel([{'Z-Score'};{'Norm to Chance'}]);
-% linkaxes(sp([1,3]), 'x');
-% 
-% 
-% annotation(gcf,'textbox', [0.1 0.95 0.9 0.05],...
-%     'String', sprintf("FISC Leave-One-Out Decode FISC: binSize = %.0fms, dsRate = %.0fms, Trial Window = (%.0fms:%.0fms to %s), BayesType = %.0f",...
-%     binSize, dsRate, trlWindow{1}(1), trlWindow{1}(2), alignment{1}, bayesType),...
-%     'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left');
-% %% Process ISC Chance Data
-% % FISC ISC Posterior Values
-% iscChancePost = cell(mlb.seqLength, numChancePerms );
-% for c = 1:numChancePerms 
-%     for o = 1:mlb.seqLength
-%         iscChancePost{o,c} = mean(cell2mat(chance_fiscISC_Post(o,c,:)),3);
-%     end
-% end
-% clear chance_fiscISC_Post
-% 
-% % FISC ISC Time-Position Coding
-% iscChanceTimePosAcc = nan(length(mlb.likeTimeVect), length(mlb.likeTimeVect), numChancePerms );
-% for c = 1:numChancePerms 
-%     curPerm = chance_fiscISC_TimePos(:,:,c);
-%     tempAcc = cell(mlb.seqLength,1);
-%     for op = 1:mlb.seqLength
-%         tempChance = cell2mat(curPerm(op,:));
-%         tempTPacc = nan(length(mlb.obsvTimeVect), length(mlb.likeTimeVect));
-%         for t = 1:length(mlb.obsvTimeVect)
-%             for ndx = 1:length(mlb.likeTimeVect)
-%                 tempTPacc(t,ndx) = mean(tempChance(t,:)==ndx);
-%             end
-%         end
-%         tempAcc{op} = tempTPacc;
-%     end
-%     iscChanceTimePosAcc(:,:,c) = cell2mat(tempAcc);
-% end
-% clear chance_fiscISC_TimePos
-% 
-% % FISC ISC Time Coding
-% iscChanceTimeAcc = nan(length(mlb.likeTimeVect), length(mlb.obsvTimeVect), numChancePerms );
-% for c = 1:numChancePerms 
-%     curPerm = chance_fiscISC_MargTime(:,:,c);
-%     tempAcc = cell(mlb.seqLength,1);
-%     for op = 1:mlb.seqLength
-%         tempChance = cell2mat(curPerm(op,:));
-%         tempTacc = nan(length(mlb.obsvTimeVect), length(mlb.obsvTimeVect));
-%         for t = 1:length(mlb.obsvTimeVect)
-%             for ndx = 1:length(mlb.obsvTimeVect)
-%                 tempTacc(t,ndx) = mean(tempChance(t,:)==mlb.obsvTimeVect(ndx));
-%             end
-%         end
-%         tempAcc{op} = tempTacc;
-%     end
-%     iscChanceTimeAcc(:,:,c) = cell2mat(tempAcc);
-% end
-% clear chance_fiscISC_MargTime
-% 
-% % FISC ISC Odor Coding
-% iscChancePosAcc = nan(length(mlb.likeTimeVect), mlb.seqLength, numChancePerms );
-% for c = 1:numChancePerms 
-%     curPerm = chance_fiscISC_MargPos(:,:,c);
-%     tempAcc = cell(mlb.seqLength,1);
-%     for op = 1:mlb.seqLength
-%         tempChance = cell2mat(curPerm(op,:));
-%         tempPacc = nan(length(mlb.obsvTimeVect), mlb.seqLength);
-%         for t = 1:length(mlb.obsvTimeVect)
-%             for ndx = 1:mlb.seqLength
-%                 tempPacc(t,ndx) = mean(tempChance(t,:)==ndx);
-%             end
-%         end
-%         tempAcc{op} = tempPacc;
-%     end
-%     iscChancePosAcc(:,:,c) = cell2mat(tempAcc);
-% end
-% clear chance_fiscISC_MargPos 
-% 
-% %% Plot FISC-ISC Observed Data Relative to Chance 
-% figure; 
-% piNdx = find(mlb.likeTimeVect==0)+0.5;
-% poNdx = find(mlb.likeTimeVect==nearestPOtime)+0.5;
-% rwdNdx = find(mlb.likeTimeVect==nearestRWDtime)+0.5;
-% posNdx = find(diff(mlb.likeTimeVect)<0)+0.5;
-% 
-% iscPosts = cell(mlb.seqLength,1);
-% for pos = 1:mlb.seqLength
-%     iscPosts{pos} = mean(cell2mat(fiscISC_Posts(pos,:,:)),3);
-% end
-% 
-% iscTPacc = cell(mlb.seqLength,1);
-% for op = 1:mlb.seqLength
-%     curISCtp = cell2mat(fiscISC_TimePosDecode(op,:));
-%     tempAcc = nan(length(mlb.obsvTimeVect), length(mlb.likeTimeVect));
-%     for t = 1:length(mlb.obsvTimeVect)
-%         for ndx = 1:length(mlb.likeTimeVect)
-%             tempAcc(t,ndx) = mean(curISCtp(t,:)==ndx);
-%         end
-%     end
-%     iscTPacc{op} = tempAcc;
-% end
-% iscTPacc = cell2mat(iscTPacc);
-% sp(1) = subplot(3,3,[2:3 5:6]);
-% z_iscTPacc = (iscTPacc-mean(iscChanceTimePosAcc,3))./std(iscChanceTimePosAcc,0,3);
-% z_iscTPacc(z_iscTPacc<2 & z_iscTPacc>-2) = 0;
-% imagesc(z_iscTPacc, [-2 2]);
-% hold on; 
-% for ndx = 1:length(piNdx)
-%     plot(repmat(piNdx(ndx), [1,2]), get(gca, 'ylim'), '--k','linewidth', 2);
-%     plot(repmat(poNdx(ndx), [1,2]), get(gca, 'ylim'), '--k','linewidth', 2);
-%     plot(repmat(rwdNdx(ndx), [1,2]), get(gca, 'ylim'), ':k','linewidth', 2);
-%     plot(get(gca, 'xlim'),repmat(piNdx(ndx), [1,2]), '--k','linewidth', 2);
-%     plot(get(gca, 'xlim'),repmat(poNdx(ndx), [1,2]), '--k','linewidth', 2);
-%     plot(get(gca, 'xlim'),repmat(rwdNdx(ndx), [1,2]), ':k','linewidth', 2);
-% 
-%     if ndx<length(piNdx)
-%         plot(repmat(posNdx(ndx), [1,2]), get(gca, 'ylim'), '-k','linewidth', 2);
-%         plot(get(gca, 'xlim'),repmat(posNdx(ndx), [1,2]), '-k','linewidth', 2);
-%     end
-% end
-% title('Time-In-Position Decoding Accuracy');
-% set(sp(1), 'xticklabel', [], 'yticklabel', []);
-% 
-% iscTimeAcc = cell(mlb.seqLength, 1);
-% for op = 1:mlb.seqLength
-%     curISCt = cell2mat(fiscISC_MargDecodeTime(op,:));
-%     tempAcc = nan(length(mlb.obsvTimeVect));
-%     for t = 1:length(mlb.obsvTimeVect)
-%         for ndx = 1:length(mlb.obsvTimeVect)
-%             tempAcc(t,ndx) = mean(curISCt(t,:)==mlb.obsvTimeVect(ndx));
-%         end
-%     end
-%     iscTimeAcc{op} = tempAcc;
-% end
-% iscTimeAcc = cell2mat(iscTimeAcc);
-% sp(2) = subplot(3,3,[1,4]);
-% z_iscTimeAcc = (iscTimeAcc-mean(iscChanceTimeAcc,3))./std(iscChanceTimeAcc,0,3);
-% z_iscTimeAcc(z_iscTimeAcc<2 & z_iscTimeAcc>-2) = 0;
-% imagesc(mlb.obsvTimeVect, 1:length(mlb.likeTimeVect), z_iscTimeAcc, [-2 2]);
-% hold on;
-% plot(repmat(piNdx(1), [1,2]), get(gca, 'ylim'), '--k','linewidth', 2);
-% plot(repmat(poNdx(1), [1,2]), get(gca, 'ylim'), '--k','linewidth', 2);
-% plot(repmat(rwdNdx(1), [1,2]), get(gca, 'ylim'), ':k','linewidth', 2);
-% for ndx = 1:length(piNdx)
-%     plot(get(gca, 'xlim'),repmat(piNdx(ndx), [1,2]), '--k','linewidth', 2);
-%     plot(get(gca, 'xlim'),repmat(poNdx(ndx), [1,2]), '--k','linewidth', 2);
-%     plot(get(gca, 'xlim'),repmat(rwdNdx(ndx), [1,2]), ':k','linewidth', 2);
-% 
-%     if ndx<length(piNdx)
-%         plot(get(gca, 'xlim'),repmat(posNdx(ndx), [1,2]), '-k','linewidth', 2);
-%     end
-% end
-% title('Temporal Decoding Accuracy');
-% set(sp(2), 'xtick', [0, nearestPOtime, nearestRWDtime], 'xticklabel', [{'PI'}, {'PO'}, {'RWD'}], 'xticklabelrotation', 45, 'yticklabel', [], 'TickDir', 'out');
-% cb = colorbar;
-% cb.Location = 'westoutside';
-% cb.Label.String = [{'Z-Score'};{'Norm to Chance'}];
-% cb.Label.Position(1) = 0;
-% cb.Label.FontWeight = 'Bold';
-% cb.Ticks = [-2 2];
-% 
-% iscPosAcc = cell(mlb.seqLength,1);
-% for op = 1:mlb.seqLength
-%     curISCp = cell2mat(fiscISC_MargDecodePos(op,:));
-%     tempAcc = nan(length(mlb.obsvTimeVect),mlb.seqLength);
-%     for t = 1:length(mlb.obsvTimeVect)
-%         for pos = 1:mlb.seqLength
-%             tempAcc(t,pos) = mean(curISCp(t,:)==pos);
-%         end
-%     end
-%     iscPosAcc{op} = tempAcc;
-% end
-% iscPosAcc = cell2mat(iscPosAcc);
-% sp(3) = subplot(3,3,8:9);
-% cpID = nan(1,mlb.seqLength);
-% for op = 1:mlb.seqLength
-%     cpID(op) = plot((iscPosAcc(:,op)-mean(iscChancePosAcc(:,op,:),3))./std(iscChancePosAcc(:,op,:),0,3), 'color', mlb.PositionColors(op,:), 'linewidth', 2);
-%     hold on;
-%     plot(repmat(piNdx(op), [1,2]), get(gca, 'ylim'), '--k', 'linewidth', 2);
-%     plot(repmat(poNdx(op), [1,2]), get(gca, 'ylim'), '--k', 'linewidth', 2);
-%     plot(repmat(rwdNdx(op), [1,2]), get(gca, 'ylim'), ':k','linewidth', 2);
-%     if op<length(piNdx)
-%         plot(repmat(posNdx(op), [1,2]), get(gca, 'ylim'), '-k', 'linewidth',2);
-%     end
-% end
-% axis tight;
-% plot(sp(3), get(gca, 'xlim'), [2 2], ':k', 'linewidth', 2);
-% plot(sp(3), get(gca, 'xlim'), [-2 -2], ':k', 'linewidth', 2);
-% title('Odor Decoding Accuracy');
-% set(sp(3), 'xticklabel', [], 'ytick', [-10 -5 -2 0 2 5 10]);
-% sp(3).TickDir = 'out';
-% sp(3).XRuler.FirstCrossoverValue = 0;
-% sp(3).XRuler.SecondCrossoverValue = 0;
-% legend(sp(3), cpID, arrayfun(@(a){sprintf('Pos%i', a)}, 1:mlb.seqLength), 'location', 'north', 'NumColumns', mlb.seqLength);
-% box 'off'
-% ylabel([{'Z-Score'};{'Norm to Chance'}]);
-% linkaxes(sp([1,3]), 'x');
-% 
-% annotation(gcf,'textbox', [0.1 0.95 0.9 0.05],...
-%     'String', sprintf("FISC Decode ISC: binSize = %.0fms, dsRate = %.0fms, Trial Window = (%.0fms:%.0fms to %s), BayesType = %.0f",...
-%     binSize, dsRate, trlWindow{1}(1), trlWindow{1}(2), alignment{1}, bayesType),...
-%     'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left');
+linkaxes;
+
+%% Plot Probability summary figure
+cMap = load('roma.mat'); % flip
+% cMap = load('nuuk.mat');
+% cMap = load('imola.mat');
+% cMap = load('lapaz.mat'); %flip
+cMap = cMap.(cell2mat(fieldnames(cMap)));
+cMap = flipud(cMap);
+
+piNdx = find(mlb.likeTimeVect==0)+0.5;
+poNdx = find(mlb.likeTimeVect==nearestPOtime)+0.5;
+rwdNdx = find(mlb.likeTimeVect==nearestRWDtime)+0.5;
+posNdx = find(diff(mlb.likeTimeVect)<0)+0.5;
+for dataToPlot = 1:2
+    if dataToPlot == 1
+        tipPostReal = groupPostTIP_RealL1O;
+        tipPostChance = groupPostTIP_ChanceL1O;
+        
+        timePostReal = groupPostTime_RealL1O;
+        timePostChance = groupPostTime_ChanceL1O;
+        
+        posPostReal = groupPostPos_RealL1O;
+        posPostChance = groupPostPos_ChanceL1O;
+        
+    elseif dataToPlot == 2
+        tipPostReal = groupPostTIP_RealISC;
+        tipPostChance = groupPostTIP_ChanceISC;
+        
+        timePostReal = groupPostTime_RealISC;
+        timePostChance = groupPostTime_ChanceISC;
+        
+        posPostReal = groupPostPos_RealISC;
+        posPostChance = groupPostPos_ChanceISC;
+    end
+    
+    figure;
+    colormap(cMap);
+    z = colormap;
+    for pos = 1:mlb.seqLength
+        subplot(5,5,sub2ind([mlb.seqLength+1,5],1,pos))
+        imagesc(mlb.obsvTimeVect, mlb.obsvTimeVect,mean(timePostReal{pos},3), [0 0.125]);
+        hold on;
+        plot(zeros(1,2), get(gca, 'ylim'), '--k','linewidth', 2);
+        plot(repmat(nearestPOtime, [1,2]), get(gca, 'ylim'), '--k','linewidth', 2);
+        plot(repmat(nearestRWDtime, [1,2]), get(gca, 'ylim'), ':k','linewidth', 2);
+        plot(get(gca, 'xlim'),zeros(1,2), '--k','linewidth', 2);
+        plot(get(gca, 'xlim'),repmat(nearestPOtime, [1,2]), '--k','linewidth', 2);
+        plot(get(gca, 'xlim'),repmat(nearestRWDtime, [1,2]), ':k','linewidth', 2);
+        if pos==mlb.seqLength
+            cb = colorbar;
+            cb.Location = 'westoutside';
+            cb.Label.String = 'P(T|Spks,Pos)';
+            cb.Label.Position(1) = 0;
+            cb.Label.FontWeight = 'Bold';
+            cb.Ticks = [0 0.125];
+        end
+        set(gca, 'xticklabel', [], 'yticklabel', []);
+        title(sprintf('Time Info %i', pos));
+        tempTimeReal = mean(timePostReal{pos},3)-(tinv(0.975,size(timePostReal{pos},3)-1).*mlb.SEMcalc(timePostReal{pos},0,3));
+        tempTimeThresh = timePostChance{pos,1}+(tinv(0.975,numChancePerms-1).*(timePostChance{pos,1}./sqrt(numChancePerms-1)));
+        abvThresh = tempTimeReal>tempTimeThresh;
+        bounds = bwboundaries(abvThresh);
+        for b = 1:length(bounds)
+            plot(mlb.obsvTimeVect(bounds{b}(:,2)), mlb.obsvTimeVect(bounds{b}(:,1)), 'k', 'linewidth', 2);
+        end
+        
+        subplot(5,5,sub2ind([mlb.seqLength+1,5],2:mlb.seqLength+1,repmat(pos, [1,mlb.seqLength])))
+        imagesc(mean(tipPostReal{pos},3),[0 0.05]);
+        hold on;
+        plot(get(gca, 'xlim'),repmat(piNdx(1), [1,2]), '--k','linewidth', 2);
+        plot(get(gca, 'xlim'),repmat(poNdx(1), [1,2]), '--k','linewidth', 2);
+        plot(get(gca, 'xlim'),repmat(rwdNdx(1), [1,2]), ':k','linewidth', 2);
+        for ndx = 1:length(piNdx)
+            plot(repmat(piNdx(ndx), [1,2]), get(gca, 'ylim'), '--k','linewidth', 2);
+            plot(repmat(poNdx(ndx), [1,2]), get(gca, 'ylim'), '--k','linewidth', 2);
+            plot(repmat(rwdNdx(ndx), [1,2]), get(gca, 'ylim'), ':k','linewidth', 2);
+            
+            if ndx<length(piNdx)
+                plot(repmat(posNdx(ndx), [1,2]), get(gca, 'ylim'), '-k','linewidth', 2);
+            end
+        end
+        if pos==mlb.seqLength
+            cb = colorbar;
+            cb.Location = 'eastoutside';
+            cb.Label.String = 'P(T,Pos|Spks)';
+            cb.Label.Position(1) = 0;
+            cb.Label.FontWeight = 'Bold';
+            cb.Ticks = [0 0.05];
+        end
+        set(gca, 'xticklabel', [], 'yticklabel', []);
+        title(sprintf('Time in Pos Info Position %i', pos));
+        tempTIPReal = mean(tipPostReal{pos},3)-(tinv(0.975,size(tipPostReal{pos},3)-1).*mlb.SEMcalc(tipPostReal{pos},0,3));
+        tempTIPThresh = tipPostChance{pos,1}+(tinv(0.975,numChancePerms-1).*(tipPostChance{pos,1}./sqrt(numChancePerms-1)));
+        abvThresh = tempTIPReal>tempTIPThresh;
+        bounds = bwboundaries(abvThresh);
+        for b = 1:length(bounds)
+            plot(bounds{b}(:,2), bounds{b}(:,1), 'k', 'linewidth', 2);
+        end
+        
+        
+        subplot(5,5,sub2ind([mlb.seqLength+1,5],pos+1,mlb.seqLength+1))
+        tempChanceMean = posPostChance{pos,1}(:,pos);
+        tempChanceSEM = posPostChance{pos,2}(:,pos)./sqrt(numChancePerms-1);
+        tempChanceCI = tinv(0.975, numChancePerms-1).*tempChanceSEM;
+        tempReal = posPostReal{pos};
+        tempRealMean = mean(tempReal,3, 'omitnan');
+        tempRealSEM = mlb.SEMcalc(tempReal,0,3);
+        tempRealCI = tinv(0.975, size(tempReal,3)-1).*tempRealSEM;
+        for p = 1:mlb.seqLength
+            plot(mlb.obsvTimeVect, tempRealMean(:,p), 'color', mlb.PositionColors(p,:), 'linewidth', 1.5);
+            hold on;
+            patch('XData', [mlb.obsvTimeVect; flipud(mlb.obsvTimeVect)],...
+                'YData', [(tempRealMean(:,p)+tempRealSEM(:,p))', flipud(tempRealMean(:,p)-tempRealSEM(:,p))'],...
+                'linestyle', 'none', 'edgecolor', mlb.PositionColors(p,:), 'facecolor', mlb.PositionColors(p,:), 'facealpha', 0.25);
+            patch('XData', [mlb.obsvTimeVect; flipud(mlb.obsvTimeVect)],...
+                'YData', [(tempRealMean(:,p)+tempRealCI(:,p))', flipud(tempRealMean(:,p)-tempRealCI(:,p))'],...
+                'linestyle', ':', 'linewidth', 1.5, 'edgecolor', mlb.PositionColors(p,:), 'facecolor', mlb.PositionColors(p,:), 'facealpha', 0);
+            
+            plot(mlb.obsvTimeVect, tempChanceMean, 'color', 'k', 'linewidth', 1.5);
+            patch('XData', [mlb.obsvTimeVect; flipud(mlb.obsvTimeVect)],...
+                'YData', [(tempChanceMean+tempChanceSEM)', flipud(tempChanceMean-tempChanceSEM)'],...
+                'linestyle', 'none', 'edgecolor', 'k', 'facecolor', 'k', 'facealpha', 0.25);
+            patch('XData', [mlb.obsvTimeVect; flipud(mlb.obsvTimeVect)],...
+                'YData', [(tempChanceMean+tempChanceCI)', flipud(tempChanceMean-tempChanceCI)'],...
+                'linestyle', ':', 'linewidth', 1.5, 'edgecolor', 'k', 'facecolor', mlb.PositionColors(p,:), 'facealpha', 0);
+            set(gca, 'ylim', [0 1]);
+            
+            plot(zeros(1,2), get(gca, 'ylim'), '--k','linewidth', 2);
+            plot(repmat(nearestPOtime, [1,2]), get(gca, 'ylim'), '--k','linewidth', 2);
+            plot(repmat(nearestRWDtime, [1,2]), get(gca, 'ylim'), ':k','linewidth', 2);
+            if pos==1
+                sortedYticks = sortrows([{0};{tempChanceMean(1)}; {0.5};{1}]);
+                sortedYtickLabels = sortedYticks;
+                sortedYtickLabels{cellfun(@(a)a==tempChanceMean(1),sortedYticks)} = 'Chance';
+                set(gca, 'ytick', cell2mat(sortedYticks), 'yticklabel', sortedYtickLabels);
+                ylabel('P(Pos|Spks,Pos)');
+            else
+                set(gca, 'yticklabel', []);
+            end
+            title(sprintf('Pos Info Position %i', pos));
+            
+        end
+    end
+    if dataToPlot == 1
+        annotation(gcf,'textbox', [0.1 0.95 0.9 0.05],...
+            'String', sprintf("Train:FISC Test:FISC via Leave-One-Out; binSize = %.0fms, dsRate = %.0fms, Trial Window = (%.0fms:%.0fms to %s), BayesType = %.0f",...
+            binSize, dsRate, trlWindow{1}(1), trlWindow{1}(2), alignment{1}, bayesType),...
+            'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left');
+    else
+        annotation(gcf,'textbox', [0.1 0.95 0.9 0.05],...
+            'String', sprintf("Train:FISC Test:ISC; binSize = %.0fms, dsRate = %.0fms, Trial Window = (%.0fms:%.0fms to %s), BayesType = %.0f",...
+            binSize, dsRate, trlWindow{1}(1), trlWindow{1}(2), alignment{1}, bayesType),...
+            'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left');
+    end
+end
+
+%% Plot Decoding summary figure
+for dataToPlot = 1:2
+    if dataToPlot == 1
+        tipPostReal = groupDecodeTIP_RealL1O;
+        tipPostChance = groupDecodeTIP_ChanceL1O;
+        
+        timePostReal = groupDecodeTime_RealL1O;
+        timePostChance = groupDecodeTime_ChanceL1O;
+        
+        posPostReal = groupDecodePos_RealL1O;
+        posPostChance = groupDecodePos_ChanceL1O;
+        
+    elseif dataToPlot == 2
+        tipPostReal = groupDecodeTIP_RealISC;
+        tipPostChance = groupDecodeTIP_ChanceISC;
+        
+        timePostReal = groupDecodeTime_RealISC;
+        timePostChance = groupDecodeTime_ChanceISC;
+        
+        posPostReal = groupDecodePos_RealISC;
+        posPostChance = groupDecodePos_ChanceISC;
+    end
+    
+    figure;
+    colormap(cMap);
+    for pos = 1:mlb.seqLength
+        subplot(5,5,sub2ind([mlb.seqLength+1,5],1,pos))
+        imagesc(mlb.obsvTimeVect, mlb.obsvTimeVect,timePostReal{pos}, [0 0.125]);
+        hold on;
+        plot(zeros(1,2), get(gca, 'ylim'), '--k','linewidth', 2);
+        plot(repmat(nearestPOtime, [1,2]), get(gca, 'ylim'), '--k','linewidth', 2);
+        plot(repmat(nearestRWDtime, [1,2]), get(gca, 'ylim'), ':k','linewidth', 2);
+        plot(get(gca, 'xlim'),zeros(1,2), '--k','linewidth', 2);
+        plot(get(gca, 'xlim'),repmat(nearestPOtime, [1,2]), '--k','linewidth', 2);
+        plot(get(gca, 'xlim'),repmat(nearestRWDtime, [1,2]), ':k','linewidth', 2);
+        if pos==mlb.seqLength
+            cb = colorbar;
+            cb.Location = 'westoutside';
+            cb.Label.String = 'Accuracy';
+            cb.Label.Position(1) = 0;
+            cb.Label.FontWeight = 'Bold';
+            cb.Ticks = [0 0.125];
+        end
+        set(gca, 'xticklabel', [], 'yticklabel', []);
+        title(sprintf('Time Decoding %i', pos));
+        tempTimeReal = timePostReal{pos};
+        tempTimeThresh = timePostChance{pos,1}+(tinv(0.975,numChancePerms-1).*(timePostChance{pos,1}./sqrt(numChancePerms-1)));
+        abvThresh = tempTimeReal>tempTimeThresh;
+        bounds = bwboundaries(abvThresh);
+        for b = 1:length(bounds)
+            plot(mlb.obsvTimeVect(bounds{b}(:,2)), mlb.obsvTimeVect(bounds{b}(:,1)), 'k', 'linewidth', 2);
+        end
+        
+        subplot(5,5,sub2ind([mlb.seqLength+1,5],2:mlb.seqLength+1,repmat(pos, [1,mlb.seqLength])))
+        imagesc(tipPostReal{pos},[0 0.05]);
+        hold on;
+        plot(get(gca, 'xlim'),repmat(piNdx(1), [1,2]), '--k','linewidth', 2);
+        plot(get(gca, 'xlim'),repmat(poNdx(1), [1,2]), '--k','linewidth', 2);
+        plot(get(gca, 'xlim'),repmat(rwdNdx(1), [1,2]), ':k','linewidth', 2);
+        for ndx = 1:length(piNdx)
+            plot(repmat(piNdx(ndx), [1,2]), get(gca, 'ylim'), '--k','linewidth', 2);
+            plot(repmat(poNdx(ndx), [1,2]), get(gca, 'ylim'), '--k','linewidth', 2);
+            plot(repmat(rwdNdx(ndx), [1,2]), get(gca, 'ylim'), ':k','linewidth', 2);
+            
+            if ndx<length(piNdx)
+                plot(repmat(posNdx(ndx), [1,2]), get(gca, 'ylim'), '-k','linewidth', 2);
+            end
+        end
+        if pos==mlb.seqLength
+            cb = colorbar;
+            cb.Location = 'eastoutside';
+            cb.Label.String = 'Accuracy';
+            cb.Label.Position(1) = 0;
+            cb.Label.FontWeight = 'Bold';
+            cb.Ticks = [0 0.05];
+        end
+        set(gca, 'xticklabel', [], 'yticklabel', []);
+        title(sprintf('Time in Pos Decoding Position %i', pos));
+        tempTIPReal = tipPostReal{pos};
+        tempTIPThresh = tipPostChance{pos,1}+(tinv(0.975,numChancePerms-1).*(tipPostChance{pos,1}./sqrt(numChancePerms-1)));
+        abvThresh = tempTIPReal>tempTIPThresh;
+        bounds = bwboundaries(abvThresh);
+        for b = 1:length(bounds)
+            plot(bounds{b}(:,2), bounds{b}(:,1), 'k', 'linewidth', 2);
+        end
+        
+        
+        subplot(5,5,sub2ind([mlb.seqLength+1,5],pos+1,mlb.seqLength+1))
+        tempChanceMean = posPostChance{pos,1}(:,pos);
+        tempChanceSEM = posPostChance{pos,2}(:,pos)./sqrt(numChancePerms-1);
+        tempChanceCI = tinv(0.975, numChancePerms-1).*tempChanceSEM;
+        for p = 1:mlb.seqLength
+            plot(mlb.obsvTimeVect, posPostReal{pos}(:,p), 'color', mlb.PositionColors(p,:), 'linewidth', 1.5);
+            hold on;
+           
+            plot(mlb.obsvTimeVect, tempChanceMean, 'color', 'k', 'linewidth', 1.5);
+            patch('XData', [mlb.obsvTimeVect; flipud(mlb.obsvTimeVect)],...
+                'YData', [(tempChanceMean+tempChanceSEM)', flipud(tempChanceMean-tempChanceSEM)'],...
+                'linestyle', 'none', 'edgecolor', 'k', 'facecolor', 'k', 'facealpha', 0.25);
+            patch('XData', [mlb.obsvTimeVect; flipud(mlb.obsvTimeVect)],...
+                'YData', [(tempChanceMean+tempChanceCI)', flipud(tempChanceMean-tempChanceCI)'],...
+                'linestyle', ':', 'linewidth', 1.5, 'edgecolor', 'k', 'facecolor', mlb.PositionColors(p,:), 'facealpha', 0);
+            set(gca, 'ylim', [0 1]);
+            
+            plot(zeros(1,2), get(gca, 'ylim'), '--k','linewidth', 2);
+            plot(repmat(nearestPOtime, [1,2]), get(gca, 'ylim'), '--k','linewidth', 2);
+            plot(repmat(nearestRWDtime, [1,2]), get(gca, 'ylim'), ':k','linewidth', 2);
+            if pos==1
+                sortedYticks = sortrows([{0};{tempChanceMean(1)}; {0.5};{1}]);
+                sortedYtickLabels = sortedYticks;
+                sortedYtickLabels{cellfun(@(a)a==tempChanceMean(1),sortedYticks)} = 'Chance';
+                set(gca, 'ytick', cell2mat(sortedYticks), 'yticklabel', sortedYtickLabels);
+                ylabel('Accuracy');
+            else
+                set(gca, 'yticklabel', []);
+            end
+            title(sprintf('Pos Decoding Position %i', pos));
+            
+        end
+    end
+    if dataToPlot == 1
+        annotation(gcf,'textbox', [0.1 0.95 0.9 0.05],...
+            'String', sprintf("Train:FISC Decode:FISC via Leave-One-Out; binSize = %.0fms, dsRate = %.0fms, Trial Window = (%.0fms:%.0fms to %s), BayesType = %.0f",...
+            binSize, dsRate, trlWindow{1}(1), trlWindow{1}(2), alignment{1}, bayesType),...
+            'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left');
+    else
+        annotation(gcf,'textbox', [0.1 0.95 0.9 0.05],...
+            'String', sprintf("Train:FISC Decode:ISC; binSize = %.0fms, dsRate = %.0fms, Trial Window = (%.0fms:%.0fms to %s), BayesType = %.0f",...
+            binSize, dsRate, trlWindow{1}(1), trlWindow{1}(2), alignment{1}, bayesType),...
+            'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left');
+    end
+end
