@@ -9,6 +9,7 @@ classdef SeqMem < handle
         seqLength
         numSeqs
         odrSeqs
+        odrVect
         lagVect
         sampleRate
     end
@@ -281,6 +282,7 @@ classdef SeqMem < handle
             obj.lagVect = (1:obj.seqLength*2-1)-obj.seqLength;
             obj.numSeqs = length(unique(cell2mat(trialOdor)))/length(unique(cell2mat(trialPosition)));
             obj.odrSeqs = reshape(unique(cell2mat(trialOdor)), [obj.seqLength, obj.numSeqs])';
+            obj.odrVect = unique(cell2mat(trialOdor))';
         end
         %% Create LFP matrix
         function CompileLFPmatrix(obj)

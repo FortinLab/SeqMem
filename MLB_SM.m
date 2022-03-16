@@ -633,6 +633,34 @@ classdef MLB_SM < SeqMem
         end
     end
     methods % "Analyses"
+        %% Unsure if will need later... no use for right now
+%         function [ssnDovT, trlDovT] = CalcDprmVectFromPosts(obj, decodeMtx, trlIDvect)
+%             unq = unique(decodeMtx);
+%             minProb = unq(2);
+%             maxProb = unq(end-1);
+%             ssnDovT = cell(obj.seqLength,1);
+%             trlDovT = cell(obj.seqLength,1);
+%             for pos = 1:obj.seqLength
+%                 curPosTrls = permute(decodeMtx(:,:,pos,trlIDvect==pos), [1,2,4,3]);
+%                 curNonPosTrls = permute(decodeMtx(:,:,pos,trlIDvect~=pos), [1,2,4,3]);
+%                 
+%                 meanHR = median(curPosTrls,3);
+%                 meanHR(meanHR==0) = minProb;
+%                 meanHR(meanHR==1) = maxProb;
+%                 meanFAR = median(curNonPosTrls,3);
+%                 meanFAR(meanFAR==0) = minProb;
+%                 meanFAR(meanFAR==1) = maxProb;
+%                 ssnDovT{pos} = arrayfun(@(a,b)norminv(a)-norminv(b), meanHR, meanFAR);
+%                 tempTrlDovT = nan(size(curPosTrls));
+%                 for t = 1:size(curPosTrls,3)
+%                     tempHR = curPosTrls(:,:,t);
+%                     tempHR(tempHR==0) = minProb;
+%                     tempHR(tempHR==1) = maxProb;
+%                     tempTrlDovT = arrayfun(@(a,b)norminv(a)-norminv(b), tempHR, meanFAR);
+%                 end
+%                 trlDovT{pos} = tempTrlDovT;
+%             end
+%         end
         %%
         function dOvrT = CalcDprmVectFromDecode(obj, decodeMtx, trlIDvect)
             % decodeMtx here is a matrix NxM where N=time and M=trials
