@@ -36,7 +36,7 @@ trlWindow = {[-1500 2000]};
 alignment = {'PokeOut'};
 bayesType = 1; %1 = Poisson: use with raw spike counts; 2 = Bernoulli: use with binarized spike counts; 3 = Gaussian: Use with z-scored spike counts
 
-numChancePerms = 2;
+numChancePerms = 100;
 
 postCLim = [0 0.05];
 decodeCLim = [0 0.2];
@@ -195,7 +195,7 @@ fprintf('Processing chance now...\n');
 chancePostPerms = cell(mlb.seqLength, mlb.seqLength, numChancePerms);
 chanceSsnDPerms = cell(mlb.seqLength, mlb.seqLength, numChancePerms);
 chanceTrlDPerms = cell(mlb.seqLength, mlb.seqLength, numChancePerms);
-for perm = 1:numChancePerms
+for perm = 53:numChancePerms
     tempChancePost = cell(mlb.seqLength,mlb.seqLength,length(fileDirs));
     tempChanceSsnD = cell(mlb.seqLength,mlb.seqLength,length(fileDirs));
     tempChanceTrlD = cell(mlb.seqLength,mlb.seqLength,length(fileDirs));
@@ -331,7 +331,7 @@ aniDynFit_Trial = cell(mlb.seqLength,1);
 for pos = 1:mlb.seqLength
     % Calculate ideal dynamic fit across trials
     curTrlDecode = grpTrlD{pos,pos};
-    curTrlDecode(curTrlDecode<0) = 0;                                               % Comment out if negative decodability is desired
+%     curTrlDecode(curTrlDecode<0) = 0;                                               % Comment out if negative decodability is desired
     tempPreTrlFit = nan(size(curTrlDecode,3), size(preTrlDynMod,3));
     tempTrlFit = nan(size(curTrlDecode,3), size(trlDynMod,3));
     tempRlyTrlFit = nan(size(curTrlDecode,3), size(rlyTrlDynMod,3));
@@ -525,7 +525,6 @@ figure;
     
     subplot(1,4,sub2ind([4, 1], 4,1));
     corrScatPlot(tempLats(:,1), tempLats(:,2), 'Pre-Trial', 'Trial', []);
-%%
 %% Plot things
 pokeOutLats = cell2mat(fiscPokeOutLat(:));
 nearestPOtime = mlb.obsvTimeVect(find(mlb.obsvTimeVect<median(pokeOutLats),1,'last'));
@@ -547,8 +546,8 @@ colormap(cMap);
 for a = 1:length(fileDirs)
     for p = 1:mlb.seqLength
         subplot(length(fileDirs),mlb.seqLength,sub2ind([mlb.seqLength, length(fileDirs)], p,a));
-%         imagesc(grpAniD{p,p}(:,:,a)', [-2 2]);
-        imagesc(zscore(grpAniD{p,p}(:,:,a)',0, 'all'), [-2 2]);
+        imagesc(grpAniD{p,p}(:,:,a)', [-2 2]);
+%         imagesc(zscore(grpAniD{p,p}(:,:,a)',0, 'all'), [-2 2]);
         colorbar;
         set(gca,'ydir', 'normal');
         hold on;
@@ -572,7 +571,6 @@ end
 
 figure;
 colormap(cMap);
-
 for p = 1:mlb.seqLength
     % Trial Averages
     subplot(2,mlb.seqLength,sub2ind([mlb.seqLength, 2],p,1));
@@ -609,8 +607,9 @@ for p = 1:mlb.seqLength
 %     imagesc(mlb.obsvTimeVect, mlb.obsvTimeVect, zscore(tempGroupD',0,'all'), [-2 2]);    
     imagesc(mlb.obsvTimeVect, mlb.obsvTimeVect, tempGroupD'); colorbar;    set(gca, 'clim', [max(get(gca, 'clim'))*-1, max(get(gca, 'clim'))]);
     hold on;
-    tempDthresh = chanceSsnD{p,p,1}+(tinv(0.99,numChancePerms-1).*(chanceSsnD{p,p,2}./sqrt(numChancePerms-1)));
-    abvThresh = tempGroupD>tempDthresh;
+    tempDthresh = chanceSsnD{p,p,1}+(tinv(0.95,numChancePerms-1).*(chanceSsnD{p,p,2}./sqrt(numChancePerms-1)));
+%     abvThresh = tempGroupD>tempDthresh;
+    abvThresh = tempGroupD-(tinv(0.95,sum(~isnan(grpAniD{p,p}(1,1,:)),3)-1).*mlb.SEMcalc(grpAniD{p,p},0,3))>tempDthresh;
     bounds = bwboundaries(abvThresh);
     for b = 1:length(bounds)
         if numel(bounds{b})>4
@@ -632,7 +631,93 @@ for p = 1:mlb.seqLength
         ylabel('Train Time');
     end
 end
- 
+%%
+figure;
+colormap(cMap);
+for p = 1:mlb.seqLength
+    for o = 1:mlb.seqLength
+        % Trial Averages
+        subplot(mlb.seqLength,mlb.seqLength,sub2ind([mlb.seqLength, mlb.seqLength],p,o));
+        tempGroupD = mean(grpTrlD{p,o},3);
+        imagesc(mlb.obsvTimeVect, mlb.obsvTimeVect, tempGroupD');    colorbar;    %set(gca, 'clim', [max(get(gca, 'clim'))*-1, max(get(gca, 'clim'))]);
+        if o==p
+            set(gca, 'clim', [max(get(gca, 'clim'))*-1, max(get(gca, 'clim'))]);
+            tempClim = get(gca,'clim');
+        end
+        hold on;
+        tempDthresh = chanceTrlD{p,o,1}+(tinv(0.99,numChancePerms-1).*(chanceTrlD{p,o,2}./sqrt(numChancePerms-1)));
+        abvThresh = tempGroupD-(tinv(0.99,sum(~isnan(grpTrlD{p,o}(1,1,:)),3)-1).*mlb.SEMcalc(grpTrlD{p,o},0,3))>tempDthresh;
+        bounds = bwboundaries(abvThresh);
+        for b = 1:length(bounds)
+            if numel(bounds{b})>4
+                plot(mlb.obsvTimeVect(bounds{b}(:,1)), mlb.obsvTimeVect(bounds{b}(:,2)), 'k', 'linewidth', 2);
+            end
+        end
+        colorbar;
+        set(gca,'ydir', 'normal');
+        plot(get(gca, 'xlim'),zeros(1,2), '--k','linewidth', 2);
+        plot(get(gca, 'xlim'),repmat(nearestPOtime, [1,2]), '--k','linewidth', 2);
+        plot(get(gca, 'xlim'),repmat(nearestRWDtime, [1,2]), ':k','linewidth', 2);
+        
+        plot(zeros(1,2),get(gca, 'ylim'), '--k','linewidth', 2);
+        plot(repmat(nearestPOtime, [1,2]),get(gca, 'ylim'), '--k','linewidth', 2);
+        plot(repmat(nearestRWDtime, [1,2]),get(gca, 'ylim'), ':k','linewidth', 2);
+        title(sprintf('Pos %i; Decode %i',p,o));
+        if o==mlb.seqLength
+            xlabel('Test Time');
+        end
+        if p==1
+            ylabel('Train Time');
+        end
+    end
+    for o = 1:mlb.seqLength
+        % Trial Averages
+        subplot(mlb.seqLength,mlb.seqLength,sub2ind([mlb.seqLength, mlb.seqLength],p,o));
+        set(gca,'clim', tempClim);
+    end
+end
+
+%% Plot Lag Averages
+lagTrlVect = cell(size(mlb.lagVect));
+for pos = 1:mlb.seqLength
+    for odr = 2:3
+%         if odr~=4 && pos~=4
+            tempLagLog = (pos-odr)==mlb.lagVect;
+            lagTrlVect{tempLagLog} = cat(3,lagTrlVect{tempLagLog},grpTrlD{pos,odr});
+%         end
+    end
+end
+figure;
+colormap(cMap);
+for lag = 1:length(mlb.lagVect)
+    subplot(1,length(mlb.lagVect), lag);
+    imagesc(mlb.obsvTimeVect, mlb.obsvTimeVect, zscore(mean(lagTrlVect{lag},3),0,'all')', [-2 2]); 
+%     imagesc(mlb.obsvTimeVect, mlb.obsvTimeVect, mean(lagTrlVect{lag},3)', [-1 1]); 
+%     imagesc(mlb.obsvTimeVect, mlb.obsvTimeVect, mean(lagTrlVect{lag},3)'); 
+%     if lag==0
+%         set(gca, 'clim', [max(get(gca, 'clim'))*-1, max(get(gca, 'clim'))]);
+%         tempClim = get(gca,'clim');
+%     end
+    colorbar;
+    set(gca,'ydir', 'normal');
+    hold on;
+    plot(get(gca, 'xlim'),zeros(1,2), '--k','linewidth', 2);
+    plot(get(gca, 'xlim'),repmat(nearestPOtime, [1,2]), '--k','linewidth', 2);
+    plot(get(gca, 'xlim'),repmat(nearestRWDtime, [1,2]), ':k','linewidth', 2);
+    
+    plot(zeros(1,2),get(gca, 'ylim'), '--k','linewidth', 2);
+    plot(repmat(nearestPOtime, [1,2]),get(gca, 'ylim'), '--k','linewidth', 2);
+    plot(repmat(nearestRWDtime, [1,2]),get(gca, 'ylim'), ':k','linewidth', 2);
+    title(mlb.lagVect(lag));
+end
+% 
+% for lag = 1:length(mlb.lagVect)
+%     subplot(1,length(mlb.lagVect), lag);
+%     set(gca, 'clim', tempClim);
+% end
+        
+    
+
 %% Quiiiiick look at beta and xtd
 % figure;
 % trl = 2;
