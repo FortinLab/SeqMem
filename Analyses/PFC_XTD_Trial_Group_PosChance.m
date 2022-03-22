@@ -195,7 +195,10 @@ fprintf('Processing chance now...\n');
 chancePostPerms = cell(mlb.seqLength, mlb.seqLength, numChancePerms);
 chanceSsnDPerms = cell(mlb.seqLength, mlb.seqLength, numChancePerms);
 chanceTrlDPerms = cell(mlb.seqLength, mlb.seqLength, numChancePerms);
-for perm = 53:numChancePerms
+chancePostLagPerms = cell(1, length(mlb.lagVect), numChancePerms);
+chancePostLag23Perms = cell(1, length(mlb.lagVect), numChancePerms);
+chancePostLag123Perms = cell(1, length(mlb.lagVect), numChancePerms);
+for perm = 1:numChancePerms
     tempChancePost = cell(mlb.seqLength,mlb.seqLength,length(fileDirs));
     tempChanceSsnD = cell(mlb.seqLength,mlb.seqLength,length(fileDirs));
     tempChanceTrlD = cell(mlb.seqLength,mlb.seqLength,length(fileDirs));
@@ -248,12 +251,34 @@ for perm = 53:numChancePerms
             end
         end
     end
+    tempGrpTrlD = cell(mlb.seqLength, mlb.seqLength);
     for pos = 1:mlb.seqLength
         for p = 1:mlb.seqLength
             chancePostPerms{pos,p,perm} = mean(cell2mat(tempChancePost(pos,p,:)),3);
             chanceSsnDPerms{pos,p,perm} = mean(cell2mat(tempChanceSsnD(pos,p,:)),3);
             chanceTrlDPerms{pos,p,perm} = mean(cell2mat(tempChanceTrlD(pos,p,:)),3);
+            tempGrpTrlD{pos,p} = cell2mat(tempChanceTrlD(pos,p,:));
         end
+    end    
+    tempChancePostLag = cell(size(mlb.lagVect));
+    tempChancePost23Lag = cell(size(mlb.lagVect));
+    tempChancePost123Lag = cell(size(mlb.lagVect));
+    for pos = 1:mlb.seqLength
+        for odr = 1:mlb.seqLength
+            tempLagLog = (pos-odr)==mlb.lagVect;
+            if pos~=4 && odr~=4
+                tempChancePost123Lag{tempLagLog} = cat(3,tempChancePostLag{tempLagLog}, tempGrpTrlD{pos,odr});
+                if pos~=1 && odr~=1
+                    tempChancePost23Lag{tempLagLog} = cat(3,tempChancePostLag{tempLagLog}, tempGrpTrlD{pos,odr});
+                end
+            end
+            tempChancePostLag{tempLagLog} = cat(3,tempChancePostLag{tempLagLog}, tempGrpTrlD{pos,odr});
+        end
+    end
+    for lag = 1:length(mlb.lagVect)
+        chancePostLagPerms{1,lag,perm} = mean(tempChancePostLag{lag},3);
+        chancePostLag23Perms{1,lag,perm} = mean(tempChancePost23Lag{lag},3);
+        chancePostLag123Perms{1,lag,perm} = mean(tempChancePost123Lag{lag},3);
     end
     fprintf('Iteration %i complete\n', perm);
 end
@@ -271,6 +296,17 @@ for pos = 1:mlb.seqLength
         chanceTrlD{pos,p,1} = mean(cell2mat(chanceTrlDPerms(pos,p,:)),3);
         chanceTrlD{pos,p,2} = std(cell2mat(chanceTrlDPerms(pos,p,:)),0,3);
     end
+end
+chanceLag = cell(2,length(mlb.lagVect));
+chance23Lag = cell(2,length(mlb.lagVect));
+chance123Lag = cell(2,length(mlb.lagVect));
+for lag = 1:length(mlb.lagVect)
+    chanceLag{1,lag} = mean(cell2mat(chancePostLagPerms(1,lag,:)),3);
+    chanceLag{2,lag} = std(cell2mat(chancePostLagPerms(1,lag,:)),0,3);
+    chance23Lag{1,lag} = mean(cell2mat(chancePostLag23Perms(1,lag,:)),3);
+    chance23Lag{2,lag} = std(cell2mat(chancePostLag23Perms(1,lag,:)),0,3);
+    chance123Lag{1,lag} = mean(cell2mat(chancePostLag123Perms(1,lag,:)),3);
+    chance123Lag{2,lag} = std(cell2mat(chancePostLag123Perms(1,lag,:)),0,3);
 end
 
 
@@ -680,7 +716,7 @@ end
 %% Plot Lag Averages
 lagTrlVect = cell(size(mlb.lagVect));
 for pos = 1:mlb.seqLength
-    for odr = 2:3
+    for odr = 1:mlb.seqLength
 %         if odr~=4 && pos~=4
             tempLagLog = (pos-odr)==mlb.lagVect;
             lagTrlVect{tempLagLog} = cat(3,lagTrlVect{tempLagLog},grpTrlD{pos,odr});
@@ -691,13 +727,22 @@ figure;
 colormap(cMap);
 for lag = 1:length(mlb.lagVect)
     subplot(1,length(mlb.lagVect), lag);
-    imagesc(mlb.obsvTimeVect, mlb.obsvTimeVect, zscore(mean(lagTrlVect{lag},3),0,'all')', [-2 2]); 
-%     imagesc(mlb.obsvTimeVect, mlb.obsvTimeVect, mean(lagTrlVect{lag},3)', [-1 1]); 
+%     imagesc(mlb.obsvTimeVect, mlb.obsvTimeVect, zscore(mean(lagTrlVect{lag},3),0,'all')', [-2 2]); 
+    imagesc(mlb.obsvTimeVect, mlb.obsvTimeVect, mean(lagTrlVect{lag},3)', [-1 1]); 
 %     imagesc(mlb.obsvTimeVect, mlb.obsvTimeVect, mean(lagTrlVect{lag},3)'); 
 %     if lag==0
 %         set(gca, 'clim', [max(get(gca, 'clim'))*-1, max(get(gca, 'clim'))]);
 %         tempClim = get(gca,'clim');
 %     end
+    hold on;
+    tempDthresh = chanceLag{1,lag}+(tinv(0.99,numChancePerms-1).*(chanceLag{2,lag}./sqrt(numChancePerms-1)));
+    abvThresh = mean(lagTrlVect{lag},3)-(tinv(0.99,sum(~isnan(lagTrlVect{lag}),3)-1).*mlb.SEMcalc(lagTrlVect{lag},0,3))>tempDthresh;
+    bounds = bwboundaries(abvThresh);
+    for b = 1:length(bounds)
+        if numel(bounds{b})>4
+            plot(mlb.obsvTimeVect(bounds{b}(:,1)), mlb.obsvTimeVect(bounds{b}(:,2)), 'k', 'linewidth', 2);
+        end
+    end
     colorbar;
     set(gca,'ydir', 'normal');
     hold on;
@@ -783,4 +828,4 @@ end
 % end
 
 clear chancePostPerms chanceSsnDPerms chanceTrlDPerms
-save('PFC_XTD_PosChance_PO.mat', '-v7.3');
+save('PFC_XTD_PosChance_PI.mat', '-v7.3');
