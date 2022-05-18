@@ -2,24 +2,24 @@
 clear all; %#ok<CLALL>
 %%
 
-% fileDirs = [{'D:\WorkBigDataFiles\PFC\Dual_List\GE11_Session146'},...
-%     {'D:\WorkBigDataFiles\PFC\Dual_List\GE13_Session103'},...
-%     {'D:\WorkBigDataFiles\PFC\Dual_List\GE17_Session110'}];
+fileDirs = [{'D:\WorkBigDataFiles\PFC\Dual_List\GE11_Session146'},...
+    {'D:\WorkBigDataFiles\PFC\Dual_List\GE13_Session103'},...
+    {'D:\WorkBigDataFiles\PFC\Dual_List\GE17_Session110'}];
 
-fileDirs = [{'D:\WorkBigDataFiles\PFC\Dual List Sessions\GE11_Session146'},...
-    {'D:\WorkBigDataFiles\PFC\Dual List Sessions\GE13_Session103'},...
-    {'D:\WorkBigDataFiles\PFC\Dual List Sessions\GE17_Session110'}];
+% fileDirs = [{'D:\WorkBigDataFiles\PFC\Dual List Sessions\GE11_Session146'},...
+%     {'D:\WorkBigDataFiles\PFC\Dual List Sessions\GE13_Session103'},...
+%     {'D:\WorkBigDataFiles\PFC\Dual List Sessions\GE17_Session110'}];
 
 binSize = 200;
 dsRate = 50;
-trlWindow = {[-1000 2000]};
-alignment = {'PokeIn'};
-% trlWindow = {[-2000 800]};
-% alignment = {'PokeOut'};
+% trlWindow = {[-1000 2000]};
+% alignment = {'PokeIn'};
+trlWindow = {[-1500 2000]};
+alignment = {'PokeOut'};
 lfpWindow = [16 32];
 bayesType = 1; %1 = Poisson: use with raw spike counts; 2 = Bernoulli: use with binarized spike counts; 3 = Gaussian: Use with z-scored spike counts
 
-numChancePerms = 100;
+numChancePerms = 1;
 
 postCLim = [0 0.05];
 decodeCLim = [0 0.2];
@@ -30,9 +30,13 @@ for ani = 1:length(fileDirs)
     mlb = MLB_SM(fileDirs{ani});
     % Create Analysis Variables
     if ani == 1 
+        % General Variables
+        aniIDs = cell(1,1,length(fileDirs),1);
         % Behavior Variables
         fiscPokeOutLat = cell(length(fileDirs),1);
         fiscRwdDelivLat = cell(length(fileDirs),1);
+        trlTypePokeLatFAM = cell(2,2,length(fileDirs));
+        trlTypePokeLatNOV = cell(2,2,length(fileDirs));
         smi = nan(length(fileDirs),size(mlb.odrSeqs,1));
         dPrm = nan(length(fileDirs),size(mlb.odrSeqs,1));
         ri = nan(length(fileDirs),size(mlb.odrSeqs,1));
@@ -57,8 +61,24 @@ for ani = 1:length(fileDirs)
     mlb.bayesType = bayesType;
     
     %% Extract Behavioral Variables
-    fiscPokeOutLat{ani} = ([mlb.trialInfo(mlb.fiscTrials(~isnan(mlb.fiscTrials))).PokeOutIndex] - [mlb.trialInfo(mlb.fiscTrials(~isnan(mlb.fiscTrials))).PokeInIndex])'/1000;
-    fiscRwdDelivLat{ani} = ([mlb.trialInfo(mlb.fiscTrials(~isnan(mlb.fiscTrials))).RewardIndex] - [mlb.trialInfo(mlb.fiscTrials(~isnan(mlb.fiscTrials))).PokeInIndex])'/1000;
+    if strcmp(alignment{1}, 'PokeIn')
+        fiscPokeOutLat{ani} = ([mlb.trialInfo(mlb.fiscTrials(~isnan(mlb.fiscTrials))).PokeOutIndex] - [mlb.trialInfo(mlb.fiscTrials(~isnan(mlb.fiscTrials))).PokeInIndex])'/1000;
+        fiscRwdDelivLat{ani} = ([mlb.trialInfo(mlb.fiscTrials(~isnan(mlb.fiscTrials))).RewardIndex] - [mlb.trialInfo(mlb.fiscTrials(~isnan(mlb.fiscTrials))).PokeInIndex])'/1000;
+    elseif strcmp(alignment{1}, 'PokeOut')
+        fiscPokeOutLat{ani} = ([mlb.trialInfo(mlb.fiscTrials(~isnan(mlb.fiscTrials))).PokeInIndex] - [mlb.trialInfo(mlb.fiscTrials(~isnan(mlb.fiscTrials))).PokeOutIndex])'/1000;
+        fiscRwdDelivLat{ani} = ([mlb.trialInfo(mlb.fiscTrials(~isnan(mlb.fiscTrials))).RewardIndex] - [mlb.trialInfo(mlb.fiscTrials(~isnan(mlb.fiscTrials))).PokeOutIndex])'/1000;
+    end
+    isLog = [mlb.trialInfo.TranspositionDistance]==0;
+    perfLog = [mlb.trialInfo.Performance]==1;
+    seqLog = [mlb.trialInfo.Odor]<10;
+    trlTypePokeLatFAM{1,1,ani} = [mlb.trialInfo(isLog & perfLog & seqLog).PokeDuration];
+    trlTypePokeLatFAM{1,2,ani} = [mlb.trialInfo(isLog & ~perfLog & seqLog).PokeDuration];
+    trlTypePokeLatFAM{2,1,ani} = [mlb.trialInfo(~isLog & ~perfLog & seqLog).PokeDuration];
+    trlTypePokeLatFAM{2,2,ani} = [mlb.trialInfo(~isLog & perfLog & seqLog).PokeDuration];
+    trlTypePokeLatNOV{1,1,ani} = [mlb.trialInfo(isLog & perfLog & ~seqLog).PokeDuration];
+    trlTypePokeLatNOV{1,2,ani} = [mlb.trialInfo(isLog & ~perfLog & ~seqLog).PokeDuration];
+    trlTypePokeLatNOV{2,1,ani} = [mlb.trialInfo(~isLog & ~perfLog & ~seqLog).PokeDuration];
+    trlTypePokeLatNOV{2,2,ani} = [mlb.trialInfo(~isLog & perfLog & ~seqLog).PokeDuration];
     smi(ani,:) = mlb.smi;
     dPrm(ani,:) = mlb.dPrime;
     ri(ani,:) = mlb.ri;
@@ -75,24 +95,43 @@ for ani = 1:length(fileDirs)
     mlb.SetLikes_ISC;
     mlb.Process_LikelyL1O;
     realPost(:,1,ani) = mlb.post;
+    aniIDs{ani} = ones(1,1,size(mlb.post{1},3)).*ani;
     %% Process Chance
+    fprintf('Processing Chance... ');
     for perm = 1:numChancePerms 
+        if perm<10
+            fprintf('\b%i', perm);
+        elseif perm == 10
+            fprintf('\b%i', perm);
+        else
+            fprintf('\b\b%i', perm);
+        end
         chancePerm = sortrows([randperm(numel(mlb.postTrlIDs(~isnan(mlb.postTrlIDs))))',find(~isnan(mlb.postTrlIDs))]);
         mlb.likeTrlSpikes(mlb.postTrlIDs(~isnan(mlb.postTrlIDs))) = mlb.likeTrlSpikes(chancePerm(:,2));
         mlb.Process_LikelyL1O;
         chancePost(:,perm,ani) = mlb.post;
     end
+    fprintf('\b\bComplete\n');    
 end
 
 pokeOutLats = cell2mat(fiscPokeOutLat(:));
 nearestPOtime = mlb.obsvTimeVect(find(mlb.obsvTimeVect<median(pokeOutLats),1,'last'));
 rwdDelivLat = cell2mat(fiscRwdDelivLat(:));
 nearestRWDtime = mlb.obsvTimeVect(find(mlb.obsvTimeVect<median(rwdDelivLat),1,'last'));
+%% Plot Behavior Latencies
+histBins = 0:0.05:2;
+histogram(cell2mat([squeeze(trlTypePokeLatFAM(1,1,:))', squeeze(trlTypePokeLatNOV(1,1,:))']),histBins); 
+hold on; 
+histogram(cell2mat([squeeze(trlTypePokeLatFAM(1,2,:))', squeeze(trlTypePokeLatNOV(1,2,:))']),histBins); 
+histogram(cell2mat([squeeze(trlTypePokeLatFAM(2,2,:))', squeeze(trlTypePokeLatNOV(2,2,:))']),histBins); 
+histogram(cell2mat([squeeze(trlTypePokeLatFAM(2,1,:))', squeeze(trlTypePokeLatNOV(2,1,:))']),histBins);
+legend([{'InSeq Correct'}, {'InSeq Incorrect'}, {'OutSeq Correct'}, {'OutSeq Incorrect'}]);
 %% Collapse Trials Across Animals
 groupPostTIP_Real = cell(length(mlb.odrVect),1);            groupPostTIP_Chance = cell(length(mlb.odrVect),2);
 groupPostOdr_Real = cell(length(mlb.odrVect),1);            groupPostOdr_Chance = cell(length(mlb.odrVect),2);
 groupPostPos_Real = cell(length(mlb.odrVect),1);            groupPostPos_Chance = cell(length(mlb.odrVect),2);
 groupPostSeqDiff_Real = cell(length(mlb.odrVect),1);        groupPostSeqDiff_Chance = cell(length(mlb.odrVect),2);
+
 for odr = 1:length(mlb.odrVect)
     %% Real Data
     groupPostTIP_Real{odr} = cell2mat(realPost(odr,:,:));
@@ -100,7 +139,7 @@ for odr = 1:length(mlb.odrVect)
     groupPostPos_Real{odr} = mlb.TabulateBayesPost(groupPostTIP_Real{odr}, mlb.decodeIDvects(:,3));
     tempSeqDiff = nan(length(mlb.obsvTimeVect),mlb.seqLength, size(groupPostOdr_Real{odr},3));
     for pos = 1:mlb.seqLength
-        tempSeqDiff(:,pos,:) = diff(groupPostOdr_Real{odr}(:,[pos, pos+mlb.seqLength],:),1,2);
+        tempSeqDiff(:,pos,:) = diff(groupPostOdr_Real{odr}(:,[pos+mlb.seqLength, pos],:),1,2);
     end
     groupPostSeqDiff_Real{odr} = tempSeqDiff;
     %% Chance
@@ -133,6 +172,102 @@ for odr = 1:length(mlb.odrVect)
     groupPostSeqDiff_Chance{odr,2} = std(tempPostSeqDiff_Chance,0,3,'omitnan');
 end
 
+%% Collect True Positive Sequence Differences
+groupPostTruPosDiffOdr_Real = cell(mlb.seqLength,1);  groupPostTruPosDiffOdr_Chance = cell(mlb.seqLength,1);
+groupPostTruPosDiffPos_Real = cell(mlb.seqLength,1);  groupPostTruPosDiffPos_Chance = cell(mlb.seqLength,1);
+figure;
+for pos = 1:mlb.seqLength
+    posOdrs = mlb.odrSeqs(:,pos);
+    s1OdrLog = mlb.odrVect==posOdrs(1);
+    s1TPOdr = groupPostOdr_Real{s1OdrLog}(:,s1OdrLog,:);
+    s1TPPos = groupPostPos_Real{s1OdrLog}(:,pos,:);
+    s2OdrLog = mlb.odrVect==posOdrs(2);
+    s2TPOdr = groupPostOdr_Real{s2OdrLog}(:,s2OdrLog,:);
+    s2TPPos = groupPostPos_Real{s2OdrLog}(:,pos,:);
+    odrDiffs = nan(size(s1TPOdr,1), size(s1TPOdr,3), size(s1TPOdr,3));
+    posDiffs = nan(size(s1TPOdr,1), size(s1TPOdr,3), size(s1TPOdr,3));
+    for t1 = 1:size(s1TPOdr,3)
+        for t2 = 1:size(s2TPOdr,3)
+            odrDiffs(:,t1,t2) = s1TPOdr(:,:,t1) - s2TPOdr(:,:,t2);
+            posDiffs(:,t1,t2) = s1TPPos(:,:,t1) - s2TPPos(:,:,t2);
+        end
+    end
+    h = subplot(5,2,sub2ind([2,mlb.seqLength+1],1,pos));
+    groupPostTruPosDiffOdr_Real{pos} = mean(odrDiffs,3,'omitnan');
+    tempOdrMean = mean(groupPostTruPosDiffOdr_Real{pos},2,'omitnan');
+    tempOdrSEM = mlb.SEMcalc(groupPostTruPosDiffOdr_Real{pos},0,2);
+    tempOdrCI = tinv(0.975, sum(~isnan(groupPostTruPosDiffOdr_Real{pos}),2)-1).*tempOdrSEM;
+    plot(mlb.obsvTimeVect, tempOdrMean, 'color', mlb.PositionColors(pos,:), 'linewidth', 1.5);
+    h.XAxisLocation = 'origin';
+    hold on;
+    patch('XData', [mlb.obsvTimeVect; flipud(mlb.obsvTimeVect)],...
+        'YData', [(tempOdrMean+tempOdrSEM)', flipud(tempOdrMean-tempOdrSEM)'],...
+        'linestyle', 'none', 'edgecolor', mlb.PositionColors(pos,:), 'facecolor', mlb.PositionColors(pos,:), 'facealpha', 0.25);
+    patch('XData', [mlb.obsvTimeVect; flipud(mlb.obsvTimeVect)],...
+        'YData', [(tempOdrMean+tempOdrCI)', flipud(tempOdrMean-tempOdrCI)'],...
+        'linestyle', ':', 'linewidth', 1.5, 'edgecolor', mlb.PositionColors(pos,:), 'facecolor', mlb.PositionColors(pos,:), 'facealpha', 0);
+    axis tight
+    if pos == 1
+        title('TP Odor Difference');
+    end
+    ylabel(pos);
+    
+    h = subplot(5,2,sub2ind([2,mlb.seqLength+1],2,pos));
+    groupPostTruPosDiffPos_Real{pos} = mean(posDiffs,3,'omitnan');
+    tempPosMean = mean(groupPostTruPosDiffPos_Real{pos},2,'omitnan');
+    tempPosSEM = mlb.SEMcalc(groupPostTruPosDiffPos_Real{pos},0,2);
+    tempPosCI = tinv(0.975, sum(~isnan(groupPostTruPosDiffPos_Real{pos}),2)-1).*tempPosSEM;
+    plot(mlb.obsvTimeVect, tempPosMean, 'color', mlb.PositionColors(pos,:), 'linewidth', 1.5);
+    h.XAxisLocation = 'origin';
+    hold on;
+    patch('XData', [mlb.obsvTimeVect; flipud(mlb.obsvTimeVect)],...
+        'YData', [(tempPosMean+tempPosSEM)', flipud(tempPosMean-tempPosSEM)'],...
+        'linestyle', 'none', 'edgecolor', mlb.PositionColors(pos,:), 'facecolor', mlb.PositionColors(pos,:), 'facealpha', 0.25);
+    patch('XData', [mlb.obsvTimeVect; flipud(mlb.obsvTimeVect)],...
+        'YData', [(tempPosMean+tempPosCI)', flipud(tempPosMean-tempPosCI)'],...
+        'linestyle', ':', 'linewidth', 1.5, 'edgecolor', mlb.PositionColors(pos,:), 'facecolor', mlb.PositionColors(pos,:), 'facealpha', 0);
+    axis tight
+    if pos == 1
+        title('TP Position Difference');
+    end
+end
+
+h = subplot(5,2,sub2ind([2,mlb.seqLength+1],1,pos+1));
+tempTPDiffOdr = cell2mat(groupPostTruPosDiffOdr_Real');
+tempOdrMean = mean(tempTPDiffOdr,2,'omitnan');
+tempOdrSEM = mlb.SEMcalc(tempTPDiffOdr,0,2);
+tempOdrCI = tinv(0.975, sum(~isnan(tempTPDiffOdr),2)-1).*tempOdrSEM;
+plot(mlb.obsvTimeVect, tempOdrMean, 'color', 'r', 'linewidth', 1.5);
+h.XAxisLocation = 'origin';
+hold on;
+patch('XData', [mlb.obsvTimeVect; flipud(mlb.obsvTimeVect)],...
+    'YData', [(tempOdrMean+tempOdrSEM)', flipud(tempOdrMean-tempOdrSEM)'],...
+    'linestyle', 'none', 'edgecolor', 'r', 'facecolor', 'r', 'facealpha', 0.25);
+patch('XData', [mlb.obsvTimeVect; flipud(mlb.obsvTimeVect)],...
+    'YData', [(tempOdrMean+tempOdrCI)', flipud(tempOdrMean-tempOdrCI)'],...
+    'linestyle', ':', 'linewidth', 1.5, 'edgecolor', 'r', 'facecolor', 'r', 'facealpha', 0);
+axis tight
+ylabel('All Trials');
+
+h = subplot(5,2,sub2ind([2,mlb.seqLength+1],2,pos+1));
+tempTPDiffPos = cell2mat(groupPostTruPosDiffPos_Real');
+tempPosMean = mean(tempTPDiffPos,2,'omitnan');
+tempPosSEM = mlb.SEMcalc(tempTPDiffPos,0,2);
+tempPosCI = tinv(0.975, sum(~isnan(tempTPDiffPos),2)-1).*tempPosSEM;
+plot(mlb.obsvTimeVect, tempPosMean, 'color', 'r', 'linewidth', 1.5);
+h.XAxisLocation = 'origin';
+hold on;
+patch('XData', [mlb.obsvTimeVect; flipud(mlb.obsvTimeVect)],...
+    'YData', [(tempPosMean+tempPosSEM)', flipud(tempPosMean-tempPosSEM)'],...
+    'linestyle', 'none', 'edgecolor', 'r', 'facecolor', 'r', 'facealpha', 0.25);
+patch('XData', [mlb.obsvTimeVect; flipud(mlb.obsvTimeVect)],...
+    'YData', [(tempPosMean+tempPosCI)', flipud(tempPosMean-tempPosCI)'],...
+    'linestyle', ':', 'linewidth', 1.5, 'edgecolor', 'r', 'facecolor', 'r', 'facealpha', 0);
+axis tight
+linkaxes
+
+    
+
 %% Plot things
 cMap = load('roma.mat'); % flip
 % cMap = load('nuuk.mat');
@@ -150,7 +285,7 @@ figure;
 colormap(cMap);
 z = colormap;
 for odr = 1:length(mlb.odrVect)     
-    figure
+%     figure
     subplot(length(mlb.odrVect)+2,length(mlb.odrVect),sub2ind([length(mlb.odrVect),length(mlb.odrVect)+2],1:length(mlb.odrVect),repmat(odr, [1,length(mlb.odrVect)])));
     imagesc(mean(groupPostTIP_Real{odr},3, 'omitnan'),[0 0.05]);
     hold on;
@@ -311,6 +446,7 @@ for pos = 1:mlb.seqLength
     patch('XData', [mlb.obsvTimeVect; flipud(mlb.obsvTimeVect)],...
         'YData', [(seq2Mean+seq2CI)', flipud(seq2Mean-seq2CI)'],...
         'linestyle', ':', 'linewidth', 1.5, 'edgecolor', mlb.PositionColors(pos,:), 'facecolor', mlb.PositionColors(pos,:), 'facealpha', 0);
+    
     allTrls_Seq2{pos} = tempReal_Seq2;
     
     tempChanceMean = groupPostSeqDiff_Chance{pos,1}(:,pos);
@@ -369,5 +505,4 @@ h.XRuler.SecondCrossoverValue = 0;
 linkaxes
     
 %%
-clear chancePost
-save('PFC_DualList_PosChance.mat', '-v7.3');
+% save('PFC_DualList_PosChance_PO.mat', '-v7.3');

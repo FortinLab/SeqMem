@@ -31,11 +31,11 @@ setupSeqLength = 4;
 binSize = 200;
 dsRate = 50;
 % trlWindow = {[-1000 2000]}; %pi1
-trlWindow = {[-2000 2000]}; %pi2
-alignment = {'PokeIn'};
+% trlWindow = {[-1500 2000]}; %pi2
+% alignment = {'PokeIn'};
 % trlWindow = {[-1800 2000]}; %po1
-% trlWindow = {[-2000 1500]}; %po2
-% alignment = {'PokeOut'};
+trlWindow = {[-2000 1500]}; %po2
+alignment = {'PokeOut'};
 bayesType = 1; %1 = Poisson: use with raw spike counts; 2 = Bernoulli: use with binarized spike counts; 3 = Gaussian: Use with z-scored spike counts
 
 numChancePerms = 100;
@@ -66,7 +66,6 @@ for ani = 1:length(fileDirs)
         realSsnD = cell(mlb.seqLength,mlb.seqLength,length(fileDirs));
         realDecode = cell(mlb.seqLength,1,length(fileDirs));
         realDecodeD = cell(mlb.seqLength,mlb.seqLength,length(fileDirs));
-        grpLFP = cell(mlb.seqLength,length(fileDirs),2);
     end
     mlb.binSize = binSize;
     mlb.dsRate = dsRate;
@@ -97,8 +96,6 @@ for ani = 1:length(fileDirs)
     end
     
     %% Process Neural Data
-    [~, betaPower] = mlb.PP_TrialMatrix_LFP([16 32], trlWindow{1}, alignment{1});
-    [~, thetaPower] = mlb.PP_TrialMatrix_LFP([4 12], trlWindow{1}, alignment{1});
 %     mlb.SetLikes_FISC;
     mlb.SetLikes_ISC;
     %% Comment in if running L1O
@@ -170,8 +167,6 @@ for ani = 1:length(fileDirs)
             end
             realTrlD{pos,p,ani} = tempTrlD;
         end
-        grpLFP{pos,ani,1} = permute(betaPower(:,:,trlIDs(trlPosVect==pos)), [1,3,2]);
-        grpLFP{pos,ani,2} = permute(thetaPower(:,:,trlIDs(trlPosVect==pos)), [1,3,2]);
     end    
 end
 
@@ -179,15 +174,12 @@ end
 grpTrlPost = cell(mlb.seqLength);
 grpTrlD = cell(mlb.seqLength);
 grpAniD = cell(mlb.seqLength);
-grpTrlLFP = cell(mlb.seqLength,2);
 for pos = 1:mlb.seqLength
     for p = 1:mlb.seqLength
         grpTrlPost{pos,p} = cell2mat(realPost(pos,p,:));
         grpTrlD{pos,p} = cell2mat(realTrlD(pos,p,:));
         grpAniD{pos,p} = cell2mat(realSsnD(pos,p,:));
     end
-    grpTrlLFP{pos,1} = cell2mat(grpLFP(pos,:,1));
-    grpTrlLFP{pos,2} = cell2mat(grpLFP(pos,:,2));
 end
     
 pokeOutLats = cell2mat(fiscPokeOutLat(:));
@@ -202,6 +194,7 @@ chanceTrlDPerms = cell(mlb.seqLength, mlb.seqLength, numChancePerms);
 chancePostLagPerms = cell(1, length(mlb.lagVect), numChancePerms);
 chancePostLag23Perms = cell(1, length(mlb.lagVect), numChancePerms);
 chancePostLag123Perms = cell(1, length(mlb.lagVect), numChancePerms);
+chancePostLag234Perms = cell(1, length(mlb.lagVect), numChancePerms);
 for perm = 1:numChancePerms
     tempChancePost = cell(mlb.seqLength,mlb.seqLength,length(fileDirs));
     tempChanceSsnD = cell(mlb.seqLength,mlb.seqLength,length(fileDirs));
@@ -267,14 +260,18 @@ for perm = 1:numChancePerms
     tempChancePostLag = cell(size(mlb.lagVect));
     tempChancePost23Lag = cell(size(mlb.lagVect));
     tempChancePost123Lag = cell(size(mlb.lagVect));
+    tempChancePost234Lag = cell(size(mlb.lagVect));
     for pos = 1:mlb.seqLength
         for odr = 1:mlb.seqLength
             tempLagLog = (pos-odr)==mlb.lagVect;
             if pos~=4 && odr~=4
-                tempChancePost123Lag{tempLagLog} = cat(3,tempChancePostLag{tempLagLog}, tempGrpTrlD{pos,odr});
-                if pos~=1 && odr~=1
-                    tempChancePost23Lag{tempLagLog} = cat(3,tempChancePostLag{tempLagLog}, tempGrpTrlD{pos,odr});
-                end
+                tempChancePost123Lag{tempLagLog} = cat(3,tempChancePost123Lag{tempLagLog}, tempGrpTrlD{pos,odr});
+            end
+            if pos~=1 && odr~=1
+                tempChancePost234Lag{tempLagLog} = cat(3,tempChancePost234Lag{tempLagLog}, tempGrpTrlD{pos,odr});
+            end
+            if (pos~=1 && odr~=1) && (pos~=4 && odr~=4)
+                tempChancePost23Lag{tempLagLog} = cat(3,tempChancePost23Lag{tempLagLog}, tempGrpTrlD{pos,odr});
             end
             tempChancePostLag{tempLagLog} = cat(3,tempChancePostLag{tempLagLog}, tempGrpTrlD{pos,odr});
         end
@@ -283,6 +280,7 @@ for perm = 1:numChancePerms
         chancePostLagPerms{1,lag,perm} = mean(tempChancePostLag{lag},3);
         chancePostLag23Perms{1,lag,perm} = mean(tempChancePost23Lag{lag},3);
         chancePostLag123Perms{1,lag,perm} = mean(tempChancePost123Lag{lag},3);
+        chancePostLag234Perms{1,lag,perm} = mean(tempChancePost234Lag{lag},3);
     end
     fprintf('Iteration %i complete\n', perm);
 end
@@ -304,6 +302,7 @@ end
 chanceLag = cell(2,length(mlb.lagVect));
 chance23Lag = cell(2,length(mlb.lagVect));
 chance123Lag = cell(2,length(mlb.lagVect));
+chance234Lag = cell(2,length(mlb.lagVect));
 for lag = 1:length(mlb.lagVect)
     chanceLag{1,lag} = mean(cell2mat(chancePostLagPerms(1,lag,:)),3);
     chanceLag{2,lag} = std(cell2mat(chancePostLagPerms(1,lag,:)),0,3);
@@ -311,6 +310,8 @@ for lag = 1:length(mlb.lagVect)
     chance23Lag{2,lag} = std(cell2mat(chancePostLag23Perms(1,lag,:)),0,3);
     chance123Lag{1,lag} = mean(cell2mat(chancePostLag123Perms(1,lag,:)),3);
     chance123Lag{2,lag} = std(cell2mat(chancePostLag123Perms(1,lag,:)),0,3);
+    chance234Lag{1,lag} = mean(cell2mat(chancePostLag234Perms(1,lag,:)),3);
+    chance234Lag{2,lag} = std(cell2mat(chancePostLag234Perms(1,lag,:)),0,3);    
 end
 
 
@@ -319,14 +320,14 @@ end
 % Create pre-trial dynamic models
 if strcmp(alignment{1}, 'PokeIn')
     preTrlPrdLog = mlb.obsvTimeVect<0;
-    trlPrdLog = mlb.obsvTimeVect>0 & mlb.obsvTimeVect<nearestPOtime;
-    rlyTrlPrdLog = mlb.obsvTimeVect>0 & mlb.obsvTimeVect<(nearestPOtime/2);
-    latTrlPrdLog = mlb.obsvTimeVect>(nearestPOtime/2) & mlb.obsvTimeVect<nearestPOtime;
+    trlPrdLog = mlb.obsvTimeVect>=0 & mlb.obsvTimeVect<nearestPOtime;
+    rlyTrlPrdLog = mlb.obsvTimeVect>=0 & mlb.obsvTimeVect<(nearestPOtime/2);
+    latTrlPrdLog = mlb.obsvTimeVect>=(nearestPOtime/2) & mlb.obsvTimeVect<nearestPOtime;
 elseif strcmp(alignment{1}, 'PokeOut')
     preTrlPrdLog = mlb.obsvTimeVect>0;
-    trlPrdLog = mlb.obsvTimeVect<0 & mlb.obsvTimeVect>nearestPOtime;
-    rlyTrlPrdLog = mlb.obsvTimeVect>nearestPOtime & mlb.obsvTimeVect<(nearestPOtime/2);
-    latTrlPrdLog = mlb.obsvTimeVect>(nearestPOtime/2) & mlb.obsvTimeVect<0;    
+    trlPrdLog = mlb.obsvTimeVect<0 & mlb.obsvTimeVect>=nearestPOtime;
+    rlyTrlPrdLog = mlb.obsvTimeVect>=nearestPOtime & mlb.obsvTimeVect<(nearestPOtime/2);
+    latTrlPrdLog = mlb.obsvTimeVect>=(nearestPOtime/2) & mlb.obsvTimeVect<0;    
 end
 preTrlLogMtx = false(length(mlb.obsvTimeVect));
 preTrlLogMtx(preTrlPrdLog, preTrlPrdLog) = true;
@@ -410,16 +411,16 @@ for pos = 1:mlb.seqLength
     trialDynFit_RlyTrial{pos} = tempRlyTrlFit;
     trialDynFit_LatTrial{pos} = tempLatTrlFit;
     [~,preLat] = min(tempPreTrlFit,[],2);
-    trialDynFit_Latencies{pos}(:,1) = preLat/binSize*1000;
+    trialDynFit_Latencies{pos}(:,1) = preLat/(1/dsRate);
 %     trialDynFit_Latencies{pos}(:,1) = preLat./preTrlDynCap;
     [~,trlLat] = min(tempTrlFit,[],2);
-    trialDynFit_Latencies{pos}(:,2) = trlLat/binSize*1000;
+    trialDynFit_Latencies{pos}(:,2) = trlLat/(1/dsRate);
 %     trialDynFit_Latencies{pos}(:,2) = trlLat./trlDynCap;
     [~,rlyLat] = min(tempRlyTrlFit,[],2);
-    trialDynFit_Latencies{pos}(:,3) = rlyLat/binSize*1000;
+    trialDynFit_Latencies{pos}(:,3) = rlyLat/(1/dsRate);
 %     trialDynFit_Latencies{pos}(:,3) = rlyLat./rlyTrlDynCap;
     [~,latLat] = min(tempLatTrlFit,[],2);
-    trialDynFit_Latencies{pos}(:,4) = latLat/binSize*1000;
+    trialDynFit_Latencies{pos}(:,4) = latLat/(1/dsRate);
 %     trialDynFit_Latencies{pos}(:,4) = latLat./latTrlDynCap;
 end
 
@@ -435,20 +436,12 @@ for pos = 1:mlb.seqLength
     preMean = mean(tempPreTrl,1,'omitnan');
     preSEM = mlb.SEMcalc(tempPreTrl,0,1);
     preCI = tinv(0.975, size(tempPreTrl,1)-1).*preSEM;
-%     plot((1:length(preMean))./length(preMean),preMean, 'color', 'k', 'linewidth', 1.5);
-%     hold on;
-%     patch('XData', [(1:length(preMean))./length(preMean), fliplr((1:length(preMean))./length(preMean))],...
-%         'YData', [(preMean+preSEM), fliplr(preMean-preSEM)],...
-%         'linestyle', 'none', 'edgecolor', 'k', 'facecolor', 'k', 'facealpha', 0.25);
-%     patch('XData', [(1:length(preMean))./length(preMean), fliplr((1:length(preMean))./length(preMean))],...
-%         'YData', [(preMean+preCI), fliplr(preMean-preCI)],...
-%         'linestyle', ':', 'linewidth', 1.5, 'edgecolor', 'k', 'facealpha', 0);
-    plot(1:length(preMean),preMean, 'color', 'k', 'linewidth', 1.5);
+    plot((1:length(preMean))/(1/dsRate),preMean, 'color', 'k', 'linewidth', 1.5);
     hold on;
-    patch('XData', [1:length(preMean), length(preMean):-1:1],...
+    patch('XData', [(1:length(preMean))/(1/dsRate), fliplr((1:length(preMean))/(1/dsRate))],...
         'YData', [(preMean+preSEM), fliplr(preMean-preSEM)],...
         'linestyle', 'none', 'edgecolor', 'k', 'facecolor', 'k', 'facealpha', 0.25);
-    patch('XData', [1:length(preMean), length(preMean):-1:1],...
+    patch('XData', [(1:length(preMean))/(1/dsRate), fliplr((1:length(preMean))/(1/dsRate))],...
         'YData', [(preMean+preCI), fliplr(preMean-preCI)],...
         'linestyle', ':', 'linewidth', 1.5, 'edgecolor', 'k', 'facealpha', 0);
     
@@ -456,33 +449,24 @@ for pos = 1:mlb.seqLength
     trlMean = mean(tempTrl,1,'omitnan');
     trlSEM = mlb.SEMcalc(tempTrl,0,1);
     trlCI = tinv(0.975, size(tempTrl,1)-1).*trlSEM;
-%     plot((1:length(trlMean))./length(trlMean),trlMean, 'color', mlb.PositionColors(pos,:), 'linewidth', 1.5);
-%     hold on;
-%     patch('XData', [(1:length(trlMean))./length(trlMean), fliplr((1:length(trlMean))./length(trlMean))],...
-%         'YData', [(trlMean+trlSEM), fliplr(trlMean-trlSEM)],...
-%         'linestyle', 'none', 'edgecolor', mlb.PositionColors(pos,:), 'facecolor', mlb.PositionColors(pos,:), 'facealpha', 0.25);
-%     patch('XData', [(1:length(trlMean))./length(trlMean), fliplr((1:length(trlMean))./length(trlMean))],...
-%         'YData', [(trlMean+trlCI), fliplr(trlMean-trlCI)],...
-%         'linestyle', ':', 'linewidth', 1.5, 'edgecolor', mlb.PositionColors(pos,:), 'facealpha', 0);
-    plot(1:length(trlMean),trlMean, 'color', mlb.PositionColors(pos,:), 'linewidth', 1.5);
+    plot((1:length(trlMean))/(1/dsRate),trlMean, 'color', mlb.PositionColors(pos,:), 'linewidth', 1.5);
     hold on;    
-    patch('XData', [1:length(trlMean), length(trlMean):-1:1],...
+    patch('XData', [(1:length(trlMean))/(1/dsRate), fliplr((1:length(trlMean))/(1/dsRate))],...
         'YData', [(trlMean+trlSEM), fliplr(trlMean-trlSEM)],...
         'linestyle', 'none', 'edgecolor', mlb.PositionColors(pos,:), 'facecolor', mlb.PositionColors(pos,:), 'facealpha', 0.25);
-    patch('XData', [1:length(trlMean), length(trlMean):-1:1],...
+    patch('XData', [(1:length(trlMean))/(1/dsRate), fliplr((1:length(trlMean))/(1/dsRate))],...
         'YData', [(trlMean+trlCI), fliplr(trlMean-trlCI)],...
         'linestyle', ':', 'linewidth', 1.5, 'edgecolor', mlb.PositionColors(pos,:), 'facealpha', 0);
-    xlabel('Proportion Persistent');
+    xlabel('Persistence duration (ms)');
     ylabel('Distance (cosine similarity)');
     
     subplot(mlb.seqLength,4,sub2ind([4, mlb.seqLength], 3,pos));
     tempLats = trialDynFit_Latencies{pos};%./dsRate;
     bar([mean(tempLats(:,1)), mean(tempLats(:,2))]);
     hold on;
-    swarmchart(ones(size(tempLats,1),1),tempLats(:,1), 'ok', 'filled', 'markerfacecolor', 'k', 'markeredgecolor', 'k', 'markerfacealpha', 0.2);
-    swarmchart(ones(size(tempLats,1),1)+1, tempLats(:,2), 'ok', 'filled', 'markerfacecolor', mlb.PositionColors(pos,:), 'markeredgecolor', 'k', 'markerfacealpha', 0.2);
+    swarmchart(ones(size(tempLats,1),1),tempLats(:,1), 'ok', 'filled', 'markerfacecolor', 'k', 'markeredgecolor', 'none', 'markerfacealpha', 0.2);
+    swarmchart(ones(size(tempLats,1),1)+1, tempLats(:,2), 'ok', 'filled', 'markerfacecolor', mlb.PositionColors(pos,:), 'markeredgecolor', 'none', 'markerfacealpha', 0.2);
     [h,p,ci,stats] = ttest(tempLats(:,1), tempLats(:,2));
-%     annotation(gcf, 'textbox', get(gca, 'position'), 'string', sprintf('t = %.02f; p = %.02i', stats.tstat, p), 'linestyle', 'none');
     if p<0.05
         title(sprintf('t = %.02f; p = %.02i', stats.tstat, p), 'color','r');
     else
@@ -497,71 +481,60 @@ end
 linkaxes(sp1, 'xy');
 
 figure;
- subplot(1,4,sub2ind([4, 1], 1:2,ones(1,2)));
-    tempPreTrl = cell2mat(trialDynFit_PreTrial);
-    preMean = mean(tempPreTrl,1,'omitnan');
-    preSEM = mlb.SEMcalc(tempPreTrl,0,1);
-    preCI = tinv(0.975, size(tempPreTrl,1)-1).*preSEM;
-%     plot((1:length(preMean))./length(preMean),preMean, 'color', 'k', 'linewidth', 1.5);
-%     hold on;
-%     patch('XData', [(1:length(preMean))./length(preMean), fliplr((1:length(preMean))./length(preMean))],...
-%         'YData', [(preMean+preSEM), fliplr(preMean-preSEM)],...
-%         'linestyle', 'none', 'edgecolor', 'k', 'facecolor', 'k', 'facealpha', 0.25);
-%     patch('XData', [(1:length(preMean))./length(preMean), fliplr((1:length(preMean))./length(preMean))],...
-%         'YData', [(preMean+preCI), fliplr(preMean-preCI)],...
-%         'linestyle', ':', 'linewidth', 1.5, 'edgecolor', 'k', 'facealpha', 0);
-    plot(1:length(preMean),preMean, 'color', 'k', 'linewidth', 1.5);
-    hold on;
-    patch('XData', [1:length(preMean), length(preMean):-1:1],...
-        'YData', [(preMean+preSEM), fliplr(preMean-preSEM)],...
-        'linestyle', 'none', 'edgecolor', 'k', 'facecolor', 'k', 'facealpha', 0.25);
-    patch('XData', [1:length(preMean), length(preMean):-1:1],...
-        'YData', [(preMean+preCI), fliplr(preMean-preCI)],...
-        'linestyle', ':', 'linewidth', 1.5, 'edgecolor', 'k', 'facealpha', 0);
-    
-    tempTrl = cell2mat(trialDynFit_Trial);
-    trlMean = mean(tempTrl,1,'omitnan');
-    trlSEM = mlb.SEMcalc(tempTrl,0,1);
-    trlCI = tinv(0.975, size(tempTrl,1)-1).*trlSEM;
-%     plot((1:length(trlMean))./length(trlMean),trlMean, 'color', 'r', 'linewidth', 1.5);
-%     hold on;
-%     patch('XData', [(1:length(trlMean))./length(trlMean), fliplr((1:length(trlMean))./length(trlMean))],...
-%         'YData', [(trlMean+trlSEM), fliplr(trlMean-trlSEM)],...
-%         'linestyle', 'none', 'edgecolor', 'r', 'facecolor', 'r', 'facealpha', 0.25);
-%     patch('XData', [(1:length(trlMean))./length(trlMean), fliplr((1:length(trlMean))./length(trlMean))],...
-%         'YData', [(trlMean+trlCI), fliplr(trlMean-trlCI)],...
-%         'linestyle', ':', 'linewidth', 1.5, 'edgecolor', 'r', 'facealpha', 0);
-    plot(1:length(trlMean),trlMean, 'color', mlb.PositionColors(pos,:), 'linewidth', 1.5);
-    hold on;    
-    patch('XData', [1:length(trlMean), length(trlMean):-1:1],...
-        'YData', [(trlMean+trlSEM), fliplr(trlMean-trlSEM)],...
-        'linestyle', 'none', 'edgecolor', mlb.PositionColors(pos,:), 'facecolor', mlb.PositionColors(pos,:), 'facealpha', 0.25);
-    patch('XData', [1:length(trlMean), length(trlMean):-1:1],...
-        'YData', [(trlMean+trlCI), fliplr(trlMean-trlCI)],...
-        'linestyle', ':', 'linewidth', 1.5, 'edgecolor', mlb.PositionColors(pos,:), 'facealpha', 0);
-    xlabel('Proportion Persistent');
-    ylabel('Distance (cosine similarity)');
-    
-    subplot(1,4,sub2ind([4, 1], 3,1));
-    tempLats = cell2mat(trialDynFit_Latencies);%./dsRate;
-    bar([mean(tempLats(:,1)), mean(tempLats(:,2))]);
-    hold on;
-    errorbar([mean(tempLats(:,1)), mean(tempLats(:,2))], [mlb.SEMcalc(tempLats(:,1)), mlb.SEMcalc(tempLats(:,2))],...
-        'linestyle', 'none', 'color', 'k', 'capsize', 0);
-    swarmchart(ones(size(tempLats,1),1), tempLats(:,1), 'ok', 'filled', 'markerfacecolor', 'k', 'markeredgecolor','k', 'markerfacealpha', 0.2);
-    swarmchart(ones(size(tempLats,1),1)+1, tempLats(:,2), 'ok', 'filled', 'markerfacecolor', 'r', 'markeredgecolor','k', 'markerfacealpha', 0.2);
-    [h,p,ci,stats] = ttest(tempLats(:,1), tempLats(:,2));
-%     annotation(gcf, 'textbox', get(gca, 'position'), 'string', sprintf('t = %.02f; p = %.02i', stats.tstat, p), 'linestyle', 'none');
-    if p<0.05
-        title(sprintf('t = %.02f; p = %.02i', stats.tstat, p), 'color','r');
-    else
-        title(sprintf('t = %.02f; p = %.02f', stats.tstat, p));
-    end
-        set(gca, 'xtick', [1 2], 'xticklabel', [{'Pre-Trial'}, {'Trial'}]);
+subplot(1,4,sub2ind([4, 1], 1:2,ones(1,2)));
+tempPreTrl = cell2mat(trialDynFit_PreTrial);
+% tempPreTrl = cell2mat(trialDynFit_PreTrial(1:3));
+% tempPreTrl = cell2mat(trialDynFit_PreTrial(2:end));
+preMean = mean(tempPreTrl,1,'omitnan');
+preSEM = mlb.SEMcalc(tempPreTrl,0,1);
+preCI = tinv(0.975, size(tempPreTrl,1)-1).*preSEM;
+plot((1:length(preMean))/(1/dsRate),preMean, 'color', 'k', 'linewidth', 1.5);
+hold on;
+patch('XData', [(1:length(preMean))/(1/dsRate), fliplr((1:length(preMean))/(1/dsRate))],...
+    'YData', [(preMean+preSEM), fliplr(preMean-preSEM)],...
+    'linestyle', 'none', 'edgecolor', 'k', 'facecolor', 'k', 'facealpha', 0.25);
+patch('XData', [(1:length(preMean))/(1/dsRate), fliplr((1:length(preMean))/(1/dsRate))],...
+    'YData', [(preMean+preCI), fliplr(preMean-preCI)],...
+    'linestyle', ':', 'linewidth', 1.5, 'edgecolor', 'k', 'facealpha', 0);
 
-    
-    subplot(1,4,sub2ind([4, 1], 4,1));
-    corrScatPlot(tempLats(:,1), tempLats(:,2), 'Pre-Trial', 'Trial', []);
+tempTrl = cell2mat(trialDynFit_Trial);
+% tempTrl = cell2mat(trialDynFit_Trial(1:3));
+% tempTrl = cell2mat(trialDynFit_Trial(2:end));
+trlMean = mean(tempTrl,1,'omitnan');
+trlSEM = mlb.SEMcalc(tempTrl,0,1);
+trlCI = tinv(0.975, size(tempTrl,1)-1).*trlSEM;
+plot((1:length(trlMean))/(1/dsRate),trlMean, 'color', 'r', 'linewidth', 1.5);
+hold on;
+patch('XData', [(1:length(trlMean))/(1/dsRate), fliplr((1:length(trlMean))/(1/dsRate))],...
+    'YData', [(trlMean+trlSEM), fliplr(trlMean-trlSEM)],...
+    'linestyle', 'none', 'edgecolor', 'r', 'facecolor', 'r', 'facealpha', 0.25);
+patch('XData', [(1:length(trlMean))/(1/dsRate), fliplr((1:length(trlMean))/(1/dsRate))],...
+    'YData', [(trlMean+trlCI), fliplr(trlMean-trlCI)],...
+    'linestyle', ':', 'linewidth', 1.5, 'edgecolor', 'r', 'facealpha', 0);
+xlabel('Persistence duration (ms)');
+ylabel('Distance (cosine similarity)');
+
+subplot(1,4,sub2ind([4, 1], 3,1));
+tempLats = cell2mat(trialDynFit_Latencies);
+% tempLats = cell2mat(trialDynFit_Latencies(1:3));
+% tempLats = cell2mat(trialDynFit_Latencies(2:end));
+bar([mean(tempLats(:,1)), mean(tempLats(:,2))]);
+hold on;
+errorbar([mean(tempLats(:,1)), mean(tempLats(:,2))], [mlb.SEMcalc(tempLats(:,1)), mlb.SEMcalc(tempLats(:,2))],...
+    'linestyle', 'none', 'color', 'k', 'capsize', 0);
+swarmchart(ones(size(tempLats,1),1), tempLats(:,1), 'ok', 'filled', 'markerfacecolor', 'k', 'markeredgecolor','none', 'markerfacealpha', 0.2);
+swarmchart(ones(size(tempLats,1),1)+1, tempLats(:,2), 'ok', 'filled', 'markerfacecolor', 'r', 'markeredgecolor','none', 'markerfacealpha', 0.2);
+[h,p,ci,stats] = ttest(tempLats(:,1), tempLats(:,2));
+if p<0.05
+    title(sprintf('t = %.02f; p = %.02i', stats.tstat, p), 'color','r');
+else
+    title(sprintf('t = %.02f; p = %.02f', stats.tstat, p));
+end
+set(gca, 'xtick', [1 2], 'xticklabel', [{'Pre-Trial'}, {'Trial'}]);
+
+
+subplot(1,4,sub2ind([4, 1], 4,1));
+corrScatPlot(tempLats(:,1), tempLats(:,2), 'Pre-Trial', 'Trial', []);
 %% Plot things
 pokeOutLats = cell2mat(fiscPokeOutLat(:));
 nearestPOtime = mlb.obsvTimeVect(find(mlb.obsvTimeVect<median(pokeOutLats),1,'last'));
@@ -583,11 +556,9 @@ colormap(cMap);
 for a = 1:length(fileDirs)
     for p = 1:mlb.seqLength
         subplot(length(fileDirs),mlb.seqLength,sub2ind([mlb.seqLength, length(fileDirs)], p,a));
-        imagesc(grpAniD{p,p}(:,:,a)');     colorbar;    set(gca, 'clim', [max(get(gca, 'clim'))*-1, max(get(gca, 'clim'))]);
-%         imagesc(grpAniD{p,p}(:,:,a)', [-2 2]);
-%         imagesc(zscore(grpAniD{p,p}(:,:,a)',0, 'all'), [-2 2]);
-        colorbar;
-        set(gca,'ydir', 'normal');
+        imagesc(grpAniD{p,p}(:,:,a)');     
+        colorbar;    
+        set(gca,'ydir', 'normal', 'clim', [max(get(gca, 'clim'))*-1, max(get(gca, 'clim'))]);
         hold on;
         plot(get(gca, 'xlim'),repmat(piNdx(1), [1,2]), '--k','linewidth', 2);
         plot(get(gca, 'xlim'),repmat(poNdx(1), [1,2]), '--k','linewidth', 2);
@@ -613,7 +584,6 @@ for p = 1:mlb.seqLength
     % Trial Averages
     subplot(2,mlb.seqLength,sub2ind([mlb.seqLength, 2],p,1));
     tempGroupD = mean(grpTrlD{p,p},3);
-%     imagesc(mlb.obsvTimeVect, mlb.obsvTimeVect, zscore(tempGroupD',0,'all'), [-2 2]);    
     imagesc(mlb.obsvTimeVect, mlb.obsvTimeVect, tempGroupD');    colorbar;    set(gca, 'clim', [max(get(gca, 'clim'))*-1, max(get(gca, 'clim'))]);
     hold on;
     tempDthresh = chanceTrlD{p,p,1}+(tinv(0.99,numChancePerms-1).*(chanceTrlD{p,p,2}./sqrt(numChancePerms-1)));
@@ -642,7 +612,6 @@ for p = 1:mlb.seqLength
     % Animal Averages
     subplot(2,mlb.seqLength,sub2ind([mlb.seqLength, 2],p,2));
     tempGroupD = mean(grpAniD{p,p},3);
-%     imagesc(mlb.obsvTimeVect, mlb.obsvTimeVect, zscore(tempGroupD',0,'all'), [-2 2]);    
     imagesc(mlb.obsvTimeVect, mlb.obsvTimeVect, tempGroupD'); colorbar;    set(gca, 'clim', [max(get(gca, 'clim'))*-1, max(get(gca, 'clim'))]);
     hold on;
     tempDthresh = chanceSsnD{p,p,1}+(tinv(0.95,numChancePerms-1).*(chanceSsnD{p,p,2}./sqrt(numChancePerms-1)));
@@ -669,7 +638,7 @@ for p = 1:mlb.seqLength
         ylabel('Train Time');
     end
 end
-%%
+%% Plot TransMat
 figure;
 colormap(cMap);
 for p = 1:mlb.seqLength
@@ -677,7 +646,8 @@ for p = 1:mlb.seqLength
         % Trial Averages
         subplot(mlb.seqLength,mlb.seqLength,sub2ind([mlb.seqLength, mlb.seqLength],p,o));
         tempGroupD = mean(grpTrlD{p,o},3);
-        imagesc(mlb.obsvTimeVect, mlb.obsvTimeVect, tempGroupD');    colorbar;    %set(gca, 'clim', [max(get(gca, 'clim'))*-1, max(get(gca, 'clim'))]);
+        imagesc(mlb.obsvTimeVect, mlb.obsvTimeVect, tempGroupD');    
+        colorbar;
         if o==p
             set(gca, 'clim', [max(get(gca, 'clim'))*-1, max(get(gca, 'clim'))]);
             tempClim = get(gca,'clim');
@@ -718,8 +688,10 @@ end
 %% Plot Lag Averages
 lagTrlVect = cell(size(mlb.lagVect));
 for pos = 1:mlb.seqLength
-    for odr = 1:mlb.seqLength
+    for odr = 1:mlb.seqLength       
+%         if (odr~=1 && pos~=1) && (odr~=4 && pos~=4)
 %         if odr~=4 && pos~=4
+%         if odr~=1 && pos~=1
             tempLagLog = (pos-odr)==mlb.lagVect;
             lagTrlVect{tempLagLog} = cat(3,lagTrlVect{tempLagLog},grpTrlD{pos,odr});
 %         end
@@ -729,16 +701,12 @@ figure;
 colormap(cMap);
 for lag = 1:length(mlb.lagVect)
     subplot(1,length(mlb.lagVect), lag);
-%     imagesc(mlb.obsvTimeVect, mlb.obsvTimeVect, zscore(mean(lagTrlVect{lag},3),0,'all')', [-2 2]); 
-    imagesc(mlb.obsvTimeVect, mlb.obsvTimeVect, mean(lagTrlVect{lag},3)', [-1 1]); 
-%     imagesc(mlb.obsvTimeVect, mlb.obsvTimeVect, mean(lagTrlVect{lag},3)'); 
-%     if lag==0
-%         set(gca, 'clim', [max(get(gca, 'clim'))*-1, max(get(gca, 'clim'))]);
-%         tempClim = get(gca,'clim');
-%     end
+    imagesc(mlb.obsvTimeVect, mlb.obsvTimeVect, mean(lagTrlVect{lag},3)', [-1.5 1.5]); 
     hold on;
     tempDthresh = chanceLag{1,lag}+(tinv(0.99,numChancePerms-1).*(chanceLag{2,lag}./sqrt(numChancePerms-1)));
+%     tempDthresh = chance23Lag{1,lag}+(tinv(0.99,numChancePerms-1).*(chance23Lag{2,lag}./sqrt(numChancePerms-1)));
 %     tempDthresh = chance123Lag{1,lag}+(tinv(0.99,numChancePerms-1).*(chance123Lag{2,lag}./sqrt(numChancePerms-1)));
+%     tempDthresh = chance234Lag{1,lag}+(tinv(0.99,numChancePerms-1).*(chance234Lag{2,lag}./sqrt(numChancePerms-1)));
     abvThresh = mean(lagTrlVect{lag},3)-(tinv(0.99,sum(~isnan(lagTrlVect{lag}),3)-1).*mlb.SEMcalc(lagTrlVect{lag},0,3))>tempDthresh;
     bounds = bwboundaries(abvThresh);
     for b = 1:length(bounds)
@@ -759,77 +727,221 @@ for lag = 1:length(mlb.lagVect)
     xlabel('Test Time');
     ylabel('Train Time');
 end
-% 
-% for lag = 1:length(mlb.lagVect)
-%     subplot(1,length(mlb.lagVect), lag);
-%     set(gca, 'clim', tempClim);
-% end
+
+%% Quantify Off Diagonal Quadrents in decodings
+% Create Logical Vectors
+if strcmp(alignment{1}, 'PokeIn')
+    preTrlPrdLog = mlb.obsvTimeVect<0;
+    trlPrdLog = mlb.obsvTimeVect>=0 & mlb.obsvTimeVect<nearestPOtime;
+    pstTrlPrdLog = mlb.obsvTimeVect>=nearestPOtime;
+elseif strcmp(alignment{1}, 'PokeOut')
+    preTrlPrdLog = mlb.obsvTimeVect<nearestPOtime;
+    trlPrdLog = mlb.obsvTimeVect<0 & mlb.obsvTimeVect>=nearestPOtime;
+    pstTrlPrdLog = mlb.obsvTimeVect>=0;
+end
+% Pre-Trial & Trial
+ttPrTrMtxLog = false(length(mlb.obsvTimeVect));
+ttTrPrMtxLog = false(length(mlb.obsvTimeVect));
+ttTrPrMtxLog(preTrlPrdLog,trlPrdLog) = true;
+ttPrTrMtxLog(trlPrdLog, preTrlPrdLog) = true;
+% Pre-Trial & Post-Trial
+ttPrPoMtxLog = false(length(mlb.obsvTimeVect));
+ttPoPrMtxLog = false(length(mlb.obsvTimeVect));
+ttPoPrMtxLog(preTrlPrdLog, pstTrlPrdLog) = true;
+ttPrPoMtxLog(pstTrlPrdLog, preTrlPrdLog) = true;
+% Trial & Post-Trial
+ttPoTrMtxLog = false(length(mlb.obsvTimeVect));
+ttTrPoMtxLog = false(length(mlb.obsvTimeVect));
+ttTrPoMtxLog(pstTrlPrdLog, trlPrdLog) = true;
+ttPoTrMtxLog(trlPrdLog, pstTrlPrdLog) = true;
+
+prTrSVM = cell(size(grpTrlPost));
+trPrSVM = cell(size(grpTrlPost));
+prPoSVM = cell(size(grpTrlPost));
+poPrSVM = cell(size(grpTrlPost));
+poTrSVM = cell(size(grpTrlPost));
+trPoSVM = cell(size(grpTrlPost));
+
+prTrTrPrSVM = cell(size(grpTrlPost));
+trPoPoTrSVM = cell(size(grpTrlPost));
+poPrPrPoSVM = cell(size(grpTrlPost));
+for op = 1:numel(grpTrlPost)
+%     tempPosts = grpTrlPost{op};
+    tempPosts = grpTrlD{op};
+    tempPrTrSVM = nan(size(tempPosts,3),1);
+    tempTrPrSVM = nan(size(tempPosts,3),1);
+    tempPrPoSVM = nan(size(tempPosts,3),1);
+    tempPoPrSVM = nan(size(tempPosts,3),1);
+    tempPoTrSVM = nan(size(tempPosts,3),1);
+    tempTrPoSVM = nan(size(tempPosts,3),1);
+    tempPrTrTrPrSVM = nan(size(tempPosts,3),1);
+    tempTrPoPoTrSVM = nan(size(tempPosts,3),1);
+    tempPoPrPrPoSVM = nan(size(tempPosts,3),1);
+    for trl = 1:size(tempPosts,3)
+        tempPostTrl = tempPosts(:,:,trl);
+        tempPrTrSVM(trl) = mean(tempPostTrl(ttPrTrMtxLog));
+        tempTrPrSVM(trl) = mean(tempPostTrl(ttTrPrMtxLog));
+        tempPrPoSVM(trl) = mean(tempPostTrl(ttPrPoMtxLog));
+        tempPoPrSVM(trl) = mean(tempPostTrl(ttPoPrMtxLog));
+        tempPoTrSVM(trl) = mean(tempPostTrl(ttPoTrMtxLog));
+        tempTrPoSVM(trl) = mean(tempPostTrl(ttTrPoMtxLog));
         
+        tempPrTrTrPrSVM(trl) = mean(tempPostTrl(ttPrTrMtxLog | ttTrPrMtxLog));
+        tempTrPoPoTrSVM(trl) = mean(tempPostTrl(ttPrPoMtxLog | ttPoPrMtxLog));
+        tempPoPrPrPoSVM(trl) = mean(tempPostTrl(ttPoTrMtxLog | ttTrPoMtxLog));
+    end
+    prTrSVM{op} = tempPrTrSVM;
+    trPrSVM{op} = tempTrPrSVM;
+    prPoSVM{op} = tempPrPoSVM;
+    poPrSVM{op} = tempPoPrSVM;
+    poTrSVM{op} = tempPoTrSVM;
+    trPoSVM{op} = tempTrPoSVM;
     
+    prTrTrPrSVM{op} = tempPrTrTrPrSVM;
+    trPoPoTrSVM{op} = tempTrPoPoTrSVM;
+    poPrPrPoSVM{op} = tempPoPrPrPoSVM;
+end
+figure;
+% Pre-Trial vs Trial 
+subplot(3,6,1)
+imagesc(ttPrTrMtxLog);
+set(gca, 'ydir', 'normal');
+subplot(3,6,2)
+for pos = 1:mlb.seqLength
+    swarmchart(ones(size(prTrSVM{pos,pos}))+pos-1, prTrSVM{pos,pos}, 10, mlb.PositionColors(pos,:));
+    hold on;
+end
+% set(gca, 'ylim', [0 1]);
+% set(gca, 'ylim', [-10 10]); grid on;
+% Trial vs Pre-Trial
+subplot(3,6,3)
+imagesc(ttTrPrMtxLog);
+set(gca, 'ydir', 'normal');
+subplot(3,6,4)
+for pos = 1:mlb.seqLength
+    swarmchart(ones(size(trPrSVM{pos,pos}))+pos-1, trPrSVM{pos,pos}, 10, mlb.PositionColors(pos,:));
+    hold on;
+end
+% set(gca, 'ylim', [0 1]);
+% set(gca, 'ylim', [-10 10]); grid on;
+% Both Pre-Trl & Trial
+subplot(3,6,5)
+imagesc(ttPrTrMtxLog | ttTrPrMtxLog);
+set(gca, 'ydir', 'normal');
+subplot(3,6,6)
+for pos = 1:mlb.seqLength
+    swarmchart(ones(size(prTrTrPrSVM{pos,pos}))+pos-1, prTrTrPrSVM{pos,pos}, 10, mlb.PositionColors(pos,:));
+    hold on;
+end
+% set(gca, 'ylim', [0 1]);
+% set(gca, 'ylim', [-10 10]); grid on;
+% Pre-Trial vs Post-Trial
+subplot(3,6,7)
+imagesc(ttPrPoMtxLog);
+set(gca, 'ydir', 'normal');
+subplot(3,6,8)
+for pos = 1:mlb.seqLength
+    swarmchart(ones(size(prPoSVM{pos,pos}))+pos-1, prPoSVM{pos,pos}, 10, mlb.PositionColors(pos,:));
+    hold on;
+end
+% set(gca, 'ylim', [0 1]);
+% set(gca, 'ylim', [-10 10]); grid on;
+% Post-Trial vs Pre-Trial
+subplot(3,6,9)
+imagesc(ttPoPrMtxLog);
+set(gca, 'ydir', 'normal');
+subplot(3,6,10)
+for pos = 1:mlb.seqLength
+    swarmchart(ones(size(poPrSVM{pos,pos}))+pos-1, poPrSVM{pos,pos}, 10, mlb.PositionColors(pos,:));
+    hold on;
+end
+% set(gca, 'ylim', [0 1]);
+% set(gca, 'ylim', [-10 10]); grid on;
+% Both Post-Trial & Pre-Trial
+subplot(3,6,11)
+imagesc(ttPrPoMtxLog | ttPoPrMtxLog);
+set(gca,'ydir', 'normal');
+subplot(3,6,12)
+for pos = 1:mlb.seqLength
+    swarmchart(ones(size(trPoPoTrSVM{pos,pos}))+pos-1, trPoPoTrSVM{pos,pos}, 10, mlb.PositionColors(pos,:));
+    hold on;
+end
+% set(gca, 'ylim', [0 1]);
+% set(gca, 'ylim', [-10 10]); grid on;
+% Trial vs Post-Trial
+subplot(3,6,13)
+imagesc(ttTrPoMtxLog);
+set(gca, 'ydir', 'normal');
+subplot(3,6,14)
+for pos = 1:mlb.seqLength
+    swarmchart(ones(size(trPoSVM{pos,pos}))+pos-1, trPoSVM{pos,pos}, 10, mlb.PositionColors(pos,:));
+    hold on;
+end
+% set(gca, 'ylim', [0 1]);
+% set(gca, 'ylim', [-10 10]); grid on;
+% Post-Trial vs Trial
+subplot(3,6,15)
+imagesc(ttPoTrMtxLog);
+set(gca, 'ydir', 'normal');
+subplot(3,6,16)
+for pos = 1:mlb.seqLength
+    swarmchart(ones(size(poTrSVM{pos,pos}))+pos-1, poTrSVM{pos,pos}, 10, mlb.PositionColors(pos,:));
+    hold on;
+end
+% set(gca, 'ylim', [0 1]);
+% set(gca, 'ylim', [-10 10]); grid on;
+% Both Post-Trial & Trial
+subplot(3,6,17)
+imagesc(ttTrPoMtxLog | ttPoTrMtxLog);
+set(gca, 'ydir', 'normal');
+subplot(3,6,18)
+for pos = 1:mlb.seqLength
+    swarmchart(ones(size(poPrPrPoSVM{pos,pos}))+pos-1, poPrPrPoSVM{pos,pos}, 10, mlb.PositionColors(pos,:));
+    hold on;
+end
+% set(gca, 'ylim', [0 1]);
+% set(gca, 'ylim', [-10 10]); grid on;
 
-%% Quiiiiick look at beta and xtd
-% figure;
-% trl = 2;
-% for t = 1:size(grpTrlLFP{1,1},2)
-%     
-%     sp1 = subplot(3,1,1:2);
-%     imagesc(grpTrlD{trl,trl}(:,:,t)',[-2 2]);
-%     hold on;
-%     plot(get(gca, 'xlim'),repmat(piNdx(1), [1,2]), '--k','linewidth', 2);
-%     plot(get(gca, 'xlim'),repmat(poNdx(1), [1,2]), '--k','linewidth', 2);
-%     plot(get(gca, 'xlim'),repmat(rwdNdx(1), [1,2]), ':k','linewidth', 2);
-%     
-%     plot(repmat(piNdx(1), [1,2]),get(gca, 'ylim'), '--k','linewidth', 2);
-%     plot(repmat(poNdx(1), [1,2]),get(gca, 'ylim'), '--k','linewidth', 2);
-%     plot(repmat(rwdNdx(1), [1,2]),get(gca, 'ylim'), ':k','linewidth', 2);
-%     hold off;
-%     set(gca, 'ydir', 'normal');
-%     sp2 = subplot(3,1,3);
-%     plot(grpTrlLFP{trl,1}(:,t), 'k');
-%     hold on;
-%     plot(grpTrlLFP{trl,2}(:,t), 'r');
-%     plot(repmat(piNdx(1), [1,2]),get(gca, 'ylim'), '--k','linewidth', 2);
-%     plot(repmat(poNdx(1), [1,2]),get(gca, 'ylim'), '--k','linewidth', 2);
-%     plot(repmat(rwdNdx(1), [1,2]),get(gca, 'ylim'), ':k','linewidth', 2);
-%     hold off;
-%     axis tight
-%     linkaxes([sp1, sp2], 'x');
-%     
-%     pause(2);
-% end
-% 
-% %% Quiiiiick look at beta and xtd (XTDd diagonal across positions)
-% figure;
-% trl = 2;
-% for t = 1:size(grpTrlLFP{1,1},2)
-%     
-%     sp1 = subplot(2,1,1);
-%     tempDecode = cell2mat(cellfun(@(a){diag(a)},cellfun(@(a){a(:,:,t)},grpTrlD(trl,:))));
-%     for pos = 1:mlb.seqLength
-%         plot(tempDecode(:,pos),'color',mlb.PositionColors(pos,:), 'linewidth', 2);
-%         hold on;
-%     end    
-%     axis tight;
-%     set(gca,'ylim', [0 10]);
-%     plot(repmat(piNdx(1), [1,2]),get(gca, 'ylim'), '--k','linewidth', 2);
-%     plot(repmat(poNdx(1), [1,2]),get(gca, 'ylim'), '--k','linewidth', 2);
-%     plot(repmat(rwdNdx(1), [1,2]),get(gca, 'ylim'), ':k','linewidth', 2);
-%     hold off;
-%     set(gca, 'ydir', 'normal');
-%     sp2 = subplot(2,1,2);
-%     plot(grpTrlLFP{trl,1}(:,t), 'k');
-%     hold on;
-%     plot(grpTrlLFP{trl,2}(:,t), 'r');
-%     plot(repmat(piNdx(1), [1,2]),get(gca, 'ylim'), '--k','linewidth', 2);
-%     plot(repmat(poNdx(1), [1,2]),get(gca, 'ylim'), '--k','linewidth', 2);
-%     plot(repmat(rwdNdx(1), [1,2]),get(gca, 'ylim'), ':k','linewidth', 2);
-%     hold off;
-%     axis tight
-%     set(gca, 'ylim', [-2 8]);
-%     linkaxes([sp1, sp2], 'x');
-%     
-%     pause(2);
-% end
+% Set up big ANOVA
+anovaData = [prTrSVM(logical(eye(size(prTrSVM))));...
+    trPrSVM(logical(eye(size(trPrSVM))));...
+    prPoSVM(logical(eye(size(prPoSVM))));...
+    poPrSVM(logical(eye(size(poPrSVM))));...
+    trPoSVM(logical(eye(size(trPoSVM))));...
+    poTrSVM(logical(eye(size(poTrSVM))))];
 
-clear chancePostPerms chanceSsnDPerms chanceTrlDPerms
+windowLog = [cellfun(@(a){ones(size(a))},prTrSVM(logical(eye(size(prTrSVM)))));...
+    cellfun(@(a){ones(size(a))+1},trPrSVM(logical(eye(size(trPrSVM)))));...
+    cellfun(@(a){ones(size(a))+2},prPoSVM(logical(eye(size(prPoSVM)))));...
+    cellfun(@(a){ones(size(a))+3},poPrSVM(logical(eye(size(poPrSVM)))));...
+    cellfun(@(a){ones(size(a))+5},trPoSVM(logical(eye(size(trPoSVM)))));...
+    cellfun(@(a){ones(size(a))+4},poTrSVM(logical(eye(size(poTrSVM)))))];
+
+symLog = [cellfun(@(a){ones(size(a))},prTrSVM(logical(eye(size(prTrSVM)))));...
+    cellfun(@(a){ones(size(a))},trPrSVM(logical(eye(size(trPrSVM)))));...
+    cellfun(@(a){ones(size(a))+1},prPoSVM(logical(eye(size(prPoSVM)))));...
+    cellfun(@(a){ones(size(a))+1},poPrSVM(logical(eye(size(poPrSVM)))));...
+    cellfun(@(a){ones(size(a))+2},trPoSVM(logical(eye(size(trPoSVM)))));...
+    cellfun(@(a){ones(size(a))+2},poTrSVM(logical(eye(size(poTrSVM)))))];
+
+posLog = [cellfun(@(a,b){zeros(size(a))+b},prTrSVM(logical(eye(size(prTrSVM)))), num2cell(1:mlb.seqLength)');...
+    cellfun(@(a,b){zeros(size(a))+b},trPrSVM(logical(eye(size(trPrSVM)))), num2cell(1:mlb.seqLength)');...
+    cellfun(@(a,b){zeros(size(a))+b},prPoSVM(logical(eye(size(prPoSVM)))), num2cell(1:mlb.seqLength)');...
+    cellfun(@(a,b){zeros(size(a))+b},poPrSVM(logical(eye(size(poPrSVM)))), num2cell(1:mlb.seqLength)');...
+    cellfun(@(a,b){zeros(size(a))+b},trPoSVM(logical(eye(size(trPoSVM)))), num2cell(1:mlb.seqLength)');...
+    cellfun(@(a,b){zeros(size(a))+b},poTrSVM(logical(eye(size(poTrSVM)))), num2cell(1:mlb.seqLength)')];
+
+% [p,tbl,stats] = anovan(cell2mat(anovaData')', [cell2mat(windowLog')', cell2mat(symLog')', cell2mat(posLog')'],...
+%     'model', 'full', 'sstype', 2,'varnames', [{'Window'}, {'WindowGroup'}, {'Position'}]);
+
+[p,tbl,stats] = anova1(cell2mat(anovaData), cell2mat(windowLog));
+multcompare(stats, 'CType', 'bonferroni');
+
+[p,tbl,stats] = anova1(cell2mat([prTrTrPrSVM(logical(eye(size(prTrTrPrSVM)))); trPoPoTrSVM(logical(eye(size(trPoPoTrSVM)))); poPrPrPoSVM(logical(eye(size(poPrPrPoSVM))))]),...
+    cell2mat([cellfun(@(a){ones(size(a))},prTrTrPrSVM(logical(eye(size(prTrTrPrSVM))))); cellfun(@(a){ones(size(a))+1},trPoPoTrSVM(logical(eye(size(trPoPoTrSVM))))); cellfun(@(a){ones(size(a))+2},poPrPrPoSVM(logical(eye(size(poPrPrPoSVM)))))]));
+multcompare(stats, 'CType', 'bonferroni');
+
+
+
+%% Save output
 save('PFC_XTD_PosChance_-2to1p5_PO.mat', '-v7.3');

@@ -200,17 +200,15 @@ classdef SeqMem < handle
                     seq = seq+1;
                 end
                 % Identify temporal context feature
-                if curTrlInSeqLog
+                if curTrlPos == 1
                     trialItmItmDist{trl} = 1;
-                    trialTransDist{trl} = 0;
                 else
-                    if curTrlOdor < 10
-                        trialTransDist{trl} = curTrlPos - curTrlOdor;
-                        trialItmItmDist{trl} = curTrlOdor - curTrlPos + 1;
-                    else
-                        trialTransDist{trl} = curTrlPos+10 - curTrlOdor;
-                        trialItmItmDist{trl} = curTrlOdor - (curTrlPos+10) + 1;
-                    end
+                    trialItmItmDist{trl} = curTrlOdor-trialOdor{trl-1};
+                end
+                if curTrlOdor < 10
+                    trialTransDist{trl} = curTrlPos - curTrlOdor;
+                else
+                    trialTransDist{trl} = curTrlPos+10 - curTrlOdor;
                 end
                 seqNum{trl} = seq;
                 
@@ -524,6 +522,45 @@ classdef SeqMem < handle
                     ri(grp) = (h(grp) + fa(grp) - 1) / (1 - (h(grp) - fa(grp))^2);
                 end
             end
+        end
+    end
+    %% Standard Plots
+    methods
+        %% Line Plot w/Mean, SEM & CI
+        function [plt] = PlotMeanVarLine(obj,timeVect,data,repDim,pCrit,color)
+            dtaMean = mean(data, repDim, 'omitnan');
+            dtaSEM = obj.SEMcalc(data,0,repDim);
+            if ~exist('pCrit','var')
+                dtaCI = tinv(0.975, size(data,repDim)-1).*dtaSEM;
+            else
+                dtaCI = tinv(1-(pCrit/2), size(data,repDim)-1).*dtaSEM;
+            end
+            if ~exist('color','var')
+                color = 'k';
+            end
+            plt = plot(timeVect, dtaMean, 'color', color, 'linewidth', 1.5);
+            hold on;
+            patch('XData', [timeVect(:); flipud(timeVect(:))],...
+                'YData', [(dtaMean+dtaSEM)', flipud(dtaMean-dtaSEM)'],...
+                'linestyle', 'none', 'facecolor', color, 'facealpha', 0.25);
+            patch('XData', [timeVect(:); flipud(timeVect(:))],...
+                'YData', [(dtaMean+dtaCI)', flipud(dtaMean-dtaCI)'],...
+                'linestyle', ':', 'linewidth', 1.5, 'edgecolor', color, 'facealpha', 0);
+        end
+        %% Bar & Swarm Plot w/Mean, SEM (and CI if updated)
+        function [plt] = PlotMeanVarSwarmBar(obj,xVal,data,repDim,pCrit,color)
+            dtaMean = mean(data, repDim, 'omitnan');
+            dtaSEM = obj.SEMcalc(data,0,repDim);
+            if ~exist('pCrit','var')
+                dtaCI = tinv(0.975, size(data,repDim)-1).*dtaSEM;
+            else
+                dtaCI = tinv(1-(pCrit/2), size(data,repDim)-1).*dtaSEM;
+            end
+            swarmchart(zeros(numel(data),1)+xVal,data, 20, 'markerfacecolor', color,...
+                'markeredgecolor', 'none', 'markerfacealpha', 0.5);
+            hold on;
+            plt = bar(xVal, dtaMean, color, 'facealpha', 0.25);
+            errorbar(xVal, dtaMean, dtaSEM, dtaSEM, 'color', 'k', 'capsize', 0);
         end
     end
     %% Misc

@@ -1,10 +1,10 @@
 % PFC_WellTrained_Group_OsTAOs_PositionChance
 %%
-% fileDirs = [{'D:\WorkBigDataFiles\PFC\Files To Process\GE11\GE11_Session132'},...
-%     {'D:\WorkBigDataFiles\PFC\Files To Process\GE13\GE13_Session083'},...
-%     {'D:\WorkBigDataFiles\PFC\Files To Process\GE14\GE14_Session123'},...
-%     {'D:\WorkBigDataFiles\PFC\Files To Process\GE17\GE17_Session095'},...
-%     {'D:\WorkBigDataFiles\PFC\Files To Process\GE24\Session096'}];
+fileDirs = [{'D:\WorkBigDataFiles\PFC\Files To Process\GE11\GE11_Session132'},...
+    {'D:\WorkBigDataFiles\PFC\Files To Process\GE13\GE13_Session083'},...
+    {'D:\WorkBigDataFiles\PFC\Files To Process\GE14\GE14_Session123'},...
+    {'D:\WorkBigDataFiles\PFC\Files To Process\GE17\GE17_Session095'},...
+    {'D:\WorkBigDataFiles\PFC\Files To Process\GE24\Session096'}];
 
 % fileDirs = [{'D:\WorkBigDataFiles\HC\1. Well-Trained session\SuperChris'},...
 %     {'D:\WorkBigDataFiles\HC\1. Well-Trained session\Stella'},...
@@ -13,11 +13,11 @@
 %     {'D:\WorkBigDataFiles\HC\1. Well-Trained session\Barat'}];
 % tets = [1,22,17,18,17];
 
-fileDirs = [{'D:\WorkBigDataFiles\PFC\GE11_Session132'},...
-    {'D:\WorkBigDataFiles\PFC\GE13_Session083'},...
-    {'D:\WorkBigDataFiles\PFC\GE14_Session123'},...
-    {'D:\WorkBigDataFiles\PFC\GE17_Session095'},...
-    {'D:\WorkBigDataFiles\PFC\GE24_Session096'}];
+% fileDirs = [{'D:\WorkBigDataFiles\PFC\GE11_Session132'},...
+%     {'D:\WorkBigDataFiles\PFC\GE13_Session083'},...
+%     {'D:\WorkBigDataFiles\PFC\GE14_Session123'},...
+%     {'D:\WorkBigDataFiles\PFC\GE17_Session095'},...
+%     {'D:\WorkBigDataFiles\PFC\GE24_Session096'}];
 %
 % fileDirs = [
 %     {'D:\WorkBigDataFiles\PFC\GE13_Session083'},...
@@ -31,7 +31,7 @@ trlWindow = {[-800 500]; [-500 800]};
 alignment = [{'PokeIn'}, {'PokeOut'}];
 bayesType = 1; %1 = Poisson: use with raw spike counts; 2 = Bernoulli: use with binarized spike counts; 3 = Gaussian: Use with z-scored spike counts
 
-numChancePerms = 100;
+numChancePerms = 1; %%%%%%%%%%%%%%%%%%%%%%%%%%% Chance
 
 postCLim = [0 0.05];
 decodeCLim = [0 0.2];
@@ -424,199 +424,187 @@ poNdx = find(mlb.likeTimeVect==nearestPOtime)+0.5;
 rwdNdx = find(mlb.likeTimeVect==nearestRWDtime)+0.5;
 posNdx = find(diff(mlb.likeTimeVect)<0)+0.5;
 
+piAlignLog = mlb.decodeIDvects(mlb.decodeIDvects(:,4)==1,2)==1;
+poAlignLog = mlb.decodeIDvects(mlb.decodeIDvects(:,4)==1,2)==2;
+
+prePIalignLog = mlb.decodeIDvects(mlb.decodeIDvects(:,4)==1,1)<=0 & piAlignLog;
+rlyTrlLog = mlb.decodeIDvects(mlb.decodeIDvects(:,4)==1,1)>0 & piAlignLog;
+latTrlLog = mlb.decodeIDvects(mlb.decodeIDvects(:,4)==1,1)<nearestPOtime & poAlignLog;
+pstPOalignLog = mlb.decodeIDvects(mlb.decodeIDvects(:,4)==1,1)>=nearestPOtime & poAlignLog;
+
+%% OutSeq
 figure;
-%%%%%%%%%%%% OutSeq
-subplot(2,3,1:2)
+sp(1) = subplot(2,4,1:2);
 groupTrlOvP_OS = cell2mat(groupPostOvP_OutSeq);
-posMean = mean(groupTrlOvP_OS(:,1,:),3, 'omitnan');
-posSEM = mlb.SEMcalc(groupTrlOvP_OS(:,1,:),0,3);
-posCI = tinv(0.975, size(groupTrlOvP_OS,3)-1).*posSEM;
-posPlot = plot(mlb.obsvTimeVect, posMean, 'color', 'b', 'linewidth', 1.5);
-hold on;
-patch('XData', [mlb.obsvTimeVect; flipud(mlb.obsvTimeVect)],...
-    'YData', [(posMean+posSEM)', flipud(posMean-posSEM)'],...
-    'linestyle', 'none', 'facecolor', 'b', 'facealpha', 0.25);
-patch('XData', [mlb.obsvTimeVect; flipud(mlb.obsvTimeVect)],...
-    'YData', [(posMean+posCI)', flipud(posMean-posCI)'],...
-    'linestyle', ':', 'linewidth', 1.5, 'edgecolor', 'b', 'facealpha', 0);
-
-odrMean = mean(groupTrlOvP_OS(:,2,:),3, 'omitnan');
-odrSEM = mlb.SEMcalc(groupTrlOvP_OS(:,2,:),0,3);
-odrCI = tinv(0.975, size(groupTrlOvP_OS,3)-1).*odrSEM;
-odrPlot = plot(mlb.obsvTimeVect, odrMean, 'color', 'r', 'linewidth', 1.5);
-hold on;
-patch('XData', [mlb.obsvTimeVect; flipud(mlb.obsvTimeVect)],...
-    'YData', [(odrMean+odrSEM)', flipud(odrMean-odrSEM)'],...
-    'linestyle', 'none', 'facecolor', 'r', 'facealpha', 0.25);
-patch('XData', [mlb.obsvTimeVect; flipud(mlb.obsvTimeVect)],...
-    'YData', [(odrMean+odrCI)', flipud(odrMean-odrCI)'],...
-    'linestyle', ':', 'linewidth', 1.5, 'edgecolor', 'r', 'facealpha', 0);
-
-nxtPosMean = mean(groupTrlOvP_OS(:,3,:),3, 'omitnan');
-nxtPosSEM = mlb.SEMcalc(groupTrlOvP_OS(:,3,:),0,3);
-nxtPosCI = tinv(0.975, size(groupTrlOvP_OS,3)-1).*nxtPosSEM;
-nxtPosPlot = plot(mlb.obsvTimeVect, nxtPosMean, 'color', 'g', 'linewidth', 1.5);
-hold on;
-patch('XData', [mlb.obsvTimeVect; flipud(mlb.obsvTimeVect)],...
-    'YData', [(nxtPosMean+nxtPosSEM)', flipud(nxtPosMean-nxtPosSEM)'],...
-    'linestyle', 'none', 'facecolor', 'g', 'facealpha', 0.25);
-patch('XData', [mlb.obsvTimeVect; flipud(mlb.obsvTimeVect)],...
-    'YData', [(nxtPosMean+nxtPosCI)', flipud(nxtPosMean-nxtPosCI)'],...
-    'linestyle', ':', 'linewidth', 1.5, 'edgecolor', 'g', 'facealpha', 0);
+posPlot = mlb.PlotMeanVarLine(mlb.obsvTimeVect(piAlignLog), groupTrlOvP_OS(piAlignLog,1,:), 3, 0.05, 'b');
+odrPlot = mlb.PlotMeanVarLine(mlb.obsvTimeVect(piAlignLog), groupTrlOvP_OS(piAlignLog,2,:), 3, 0.05, 'r');
+nxtPosPlot = mlb.PlotMeanVarLine(mlb.obsvTimeVect(piAlignLog), groupTrlOvP_OS(piAlignLog,3,:), 3, 0.05, 'g');
 
 chanceTrlOvP_OS = cell2mat(chancePostOvP_OutSeq);
-chanceMean = chanceTrlOvP_OS(:,1,1);
-chanceSEM = chanceTrlOvP_OS(:,1,2)./sqrt(numChancePerms-1);
+chanceMean = chanceTrlOvP_OS(piAlignLog,1,1);
+chanceSEM = chanceTrlOvP_OS(piAlignLog,1,2)./sqrt(numChancePerms-1);
 chanceCI = tinv(0.975, numChancePerms-1).*chanceSEM;
-chncPlot = plot(mlb.obsvTimeVect, chanceMean, 'color', 'k', 'linewidth', 1.5);
+chncPlot = plot(mlb.obsvTimeVect(piAlignLog), chanceMean, 'color', 'k', 'linewidth', 1.5);
 hold on;
-patch('XData', [mlb.obsvTimeVect; flipud(mlb.obsvTimeVect)],...
+patch('XData', [mlb.obsvTimeVect(piAlignLog); flipud(mlb.obsvTimeVect(piAlignLog))],...
     'YData', [(chanceMean+chanceSEM)', flipud(chanceMean-chanceSEM)'],...
     'linestyle', 'none', 'facecolor', 'k', 'facealpha', 0.25);
-patch('XData', [mlb.obsvTimeVect; flipud(mlb.obsvTimeVect)],...
+patch('XData', [mlb.obsvTimeVect(piAlignLog); flipud(mlb.obsvTimeVect(piAlignLog))],...
     'YData', [(chanceMean+chanceCI)', flipud(chanceMean-chanceCI)'],...
     'linestyle', ':', 'linewidth', 1.5, 'edgecolor', 'k', 'facealpha', 0);
 axis tight;
 set(gca, 'ylim', [0 0.75]);
 plot(zeros(1,2), get(gca, 'ylim'), '--k','linewidth', 2);
-plot(repmat(nearestPOtime, [1,2]), get(gca, 'ylim'), '--k','linewidth', 2);
-plot(repmat(nearestRWDtime, [1,2]), get(gca, 'ylim'), ':k','linewidth', 2);
-plot(repmat(alignBoundTime, [1,2]), get(gca, 'ylim'), ':k', 'linewidth', 0.5);
-set(gca, 'xtick', [0, alignBoundTime, nearestPOtime, nearestRWDtime], 'xticklabels', [{'PI'}, {'PI/PO boundary'}, {'PO'}, {'RWD'}]);
-
-preTrlLog = mlb.obsvTimeVect>=0 & mlb.obsvTimeVect<=nearestPOtime;
-patch('XData', [mlb.obsvTimeVect(find(preTrlLog,1,'first')), mlb.obsvTimeVect(find(preTrlLog,1,'last')),mlb.obsvTimeVect(find(preTrlLog,1,'last')),mlb.obsvTimeVect(find(preTrlLog,1,'first'))],...
-    'YData', [0,0,repmat(max(get(gca, 'ylim')),[1,2])],...
-    'linestyle', 'none', 'facecolor', 'k', 'facealpha', 0.1);
-
+title('OutSeq Port-Entry Align');
 legend([posPlot, odrPlot, nxtPosPlot, chncPlot], [{'Position'}, {'Odor'}, {'Next Position'}, {'Chance'}], 'location','northwest');
 
-subplot(2,3,3)
-hold on;
-posPreTrl = mean(groupTrlOvP_OS(preTrlLog,1,:));
-posPreTrlMean = mean(posPreTrl);
-posPreTrlSEM = mlb.SEMcalc(posPreTrl,0,3);
-posPreTrlCI = tinv(0.975, size(posPreTrl,3)-1).*posPreTrlSEM;
-bar(1, posPreTrlMean, 'b');
-errorbar(1,posPreTrlMean, posPreTrlSEM, posPreTrlSEM, 'color', 'k', 'capsize', 0);
-scatter(normrnd(0,0.1, [numel(posPreTrl),1])+1, posPreTrl(:), 'ok', 'filled', 'markerfacecolor', 'b', 'markeredgecolor', 'k', 'markerfacealpha', 0.2);
+sp(2) = subplot(2,4,3:4);
+mlb.PlotMeanVarLine(mlb.obsvTimeVect(poAlignLog)-nearestPOtime, groupTrlOvP_OS(poAlignLog,1,:), 3, 0.05, 'b');
+mlb.PlotMeanVarLine(mlb.obsvTimeVect(poAlignLog)-nearestPOtime, groupTrlOvP_OS(poAlignLog,2,:), 3, 0.05, 'r');
+mlb.PlotMeanVarLine(mlb.obsvTimeVect(poAlignLog)-nearestPOtime, groupTrlOvP_OS(poAlignLog,3,:), 3, 0.05, 'g');
 
-odrPreTrl = mean(groupTrlOvP_OS(preTrlLog,2,:));
-odrPreTrlMean = mean(odrPreTrl);
-odrPreTrlSEM = mlb.SEMcalc(odrPreTrl,0,3);
-odrPreTrlCI = tinv(0.975, size(odrPreTrl,3)-1).*odrPreTrlSEM;
-bar(2, odrPreTrlMean, 'r');
-errorbar(2,odrPreTrlMean, odrPreTrlSEM, odrPreTrlSEM, 'color', 'k', 'capsize', 0);
-scatter(normrnd(0,0.1, [numel(odrPreTrl),1])+2, odrPreTrl(:), 'ok', 'filled', 'markerfacecolor', 'r', 'markeredgecolor', 'k', 'markerfacealpha', 0.2);
-
-nxtPosPreTrl = mean(groupTrlOvP_OS(preTrlLog,3,:));
-nxtPosPreTrlMean = mean(nxtPosPreTrl, 'omitnan');
-nxtPosPreTrlSEM = mlb.SEMcalc(nxtPosPreTrl,0,3);
-nxtPosPreTrlCI = tinv(0.975, size(nxtPosPreTrl,3)-1).*nxtPosPreTrlSEM;
-bar(3, nxtPosPreTrlMean, 'g');
-errorbar(3,nxtPosPreTrlMean, nxtPosPreTrlSEM, nxtPosPreTrlSEM, 'color', 'k', 'capsize', 0);
-scatter(normrnd(0,0.1, [numel(nxtPosPreTrl),1])+3, nxtPosPreTrl(:), 'ok', 'filled', 'markerfacecolor', 'g', 'markeredgecolor', 'k', 'markerfacealpha', 0.2);
-
-[pOS,tblOS,statsOS] = anova1([posPreTrl(:);odrPreTrl(:);nxtPosPreTrl(:)], [ones(numel(posPreTrl),1); ones(numel(odrPreTrl),1)*2; ones(numel(nxtPosPreTrl),1)*3],'off');
-[h,p,ci,stats] = ttest(posPreTrl, odrPreTrl);
-% bar
-
-
-%%%%%%%%%%%%% TAO
-subplot(2,3,4:5)
-groupTrlOvP_TAO = cell2mat(groupPostOvP_TAO);
-posMean = mean(groupTrlOvP_TAO(:,1,:), 3, 'omitnan');
-posSEM = mlb.SEMcalc(groupTrlOvP_TAO(:,1,:),0,3);
-posCI = tinv(0.975, size(groupTrlOvP_TAO,3)-1).*posSEM;
-posPlot = plot(mlb.obsvTimeVect, posMean, 'color', 'b', 'linewidth', 1.5);
-hold on;
-patch('XData', [mlb.obsvTimeVect; flipud(mlb.obsvTimeVect)],...
-    'YData', [(posMean+posSEM)', flipud(posMean-posSEM)'],...
-    'linestyle', 'none', 'facecolor', 'b', 'facealpha', 0.25);
-patch('XData', [mlb.obsvTimeVect; flipud(mlb.obsvTimeVect)],...
-    'YData', [(posMean+posCI)', flipud(posMean-posCI)'],...
-    'linestyle', ':', 'linewidth', 1.5, 'edgecolor', 'b', 'facealpha', 0);
-
-odrMean = mean(groupTrlOvP_TAO(:,2,:),3, 'omitnan');
-odrSEM = mlb.SEMcalc(groupTrlOvP_TAO(:,2,:),0,3);
-odrCI = tinv(0.975, size(groupTrlOvP_TAO,3)-1).*odrSEM;
-odrPlot = plot(mlb.obsvTimeVect, odrMean, 'color', 'r', 'linewidth', 1.5);
-hold on;
-patch('XData', [mlb.obsvTimeVect; flipud(mlb.obsvTimeVect)],...
-    'YData', [(odrMean+odrSEM)', flipud(odrMean-odrSEM)'],...
-    'linestyle', 'none', 'facecolor', 'r', 'facealpha', 0.25);
-patch('XData', [mlb.obsvTimeVect; flipud(mlb.obsvTimeVect)],...
-    'YData', [(odrMean+odrCI)', flipud(odrMean-odrCI)'],...
-    'linestyle', ':', 'linewidth', 1.5, 'edgecolor', 'r', 'facealpha', 0);
-
-nxtPosMean = mean(groupTrlOvP_TAO(:,3,:),3, 'omitnan');
-nxtPosSEM = mlb.SEMcalc(groupTrlOvP_TAO(:,3,:),0,3);
-nxtPosCI = tinv(0.975, size(groupTrlOvP_TAO,3)-1).*nxtPosSEM;
-nxtPosPlot = plot(mlb.obsvTimeVect, nxtPosMean, 'color', 'g', 'linewidth', 1.5);
-hold on;
-patch('XData', [mlb.obsvTimeVect; flipud(mlb.obsvTimeVect)],...
-    'YData', [(nxtPosMean+nxtPosSEM)', flipud(nxtPosMean-nxtPosSEM)'],...
-    'linestyle', 'none', 'facecolor', 'g', 'facealpha', 0.25);
-patch('XData', [mlb.obsvTimeVect; flipud(mlb.obsvTimeVect)],...
-    'YData', [(nxtPosMean+nxtPosCI)', flipud(nxtPosMean-nxtPosCI)'],...
-    'linestyle', ':', 'linewidth', 1.5, 'edgecolor', 'g', 'facealpha', 0);
-
-chanceTrlOvP_TAO = cell2mat(chancePostOvP_TAO);
-chanceMean = chanceTrlOvP_TAO(:,1,1);
-chanceSEM = chanceTrlOvP_TAO(:,1,2)./sqrt(numChancePerms-1);
+chanceTrlOvP_OS = cell2mat(chancePostOvP_OutSeq);
+chanceMean = chanceTrlOvP_OS(poAlignLog,1,1);
+chanceSEM = chanceTrlOvP_OS(poAlignLog,1,2)./sqrt(numChancePerms-1);
 chanceCI = tinv(0.975, numChancePerms-1).*chanceSEM;
-chncPlot = plot(mlb.obsvTimeVect, chanceMean, 'color', 'k', 'linewidth', 1.5);
+plot(mlb.obsvTimeVect(poAlignLog)-nearestPOtime, chanceMean, 'color', 'k', 'linewidth', 1.5);
 hold on;
-patch('XData', [mlb.obsvTimeVect; flipud(mlb.obsvTimeVect)],...
+patch('XData', [mlb.obsvTimeVect(poAlignLog)-nearestPOtime; flipud(mlb.obsvTimeVect(poAlignLog)-nearestPOtime)],...
     'YData', [(chanceMean+chanceSEM)', flipud(chanceMean-chanceSEM)'],...
     'linestyle', 'none', 'facecolor', 'k', 'facealpha', 0.25);
-patch('XData', [mlb.obsvTimeVect; flipud(mlb.obsvTimeVect)],...
+patch('XData', [mlb.obsvTimeVect(poAlignLog)-nearestPOtime; flipud(mlb.obsvTimeVect(poAlignLog)-nearestPOtime)],...
     'YData', [(chanceMean+chanceCI)', flipud(chanceMean-chanceCI)'],...
     'linestyle', ':', 'linewidth', 1.5, 'edgecolor', 'k', 'facealpha', 0);
 axis tight;
 set(gca, 'ylim', [0 0.75]);
 plot(zeros(1,2), get(gca, 'ylim'), '--k','linewidth', 2);
-plot(repmat(nearestPOtime, [1,2]), get(gca, 'ylim'), '--k','linewidth', 2);
-plot(repmat(nearestRWDtime, [1,2]), get(gca, 'ylim'), ':k','linewidth', 2);
-plot(repmat(alignBoundTime, [1,2]), get(gca, 'ylim'), ':k', 'linewidth', 0.5);
-set(gca, 'xtick', [0, alignBoundTime, nearestPOtime, nearestRWDtime], 'xticklabels', [{'PI'}, {'PI/PO boundary'}, {'PO'}, {'RWD'}]);
+plot(repmat(nearestRWDtime-nearestPOtime, [1,2]), get(gca, 'ylim'), ':k','linewidth', 2);
+title('OutSeq Port-Exit Align');
 
+sp(3) = subplot(2,4,5);
+posTrlMeanPRE = squeeze(mean(groupTrlOvP_OS(prePIalignLog,1,:)));
+odrTrlMeanPRE = squeeze(mean(groupTrlOvP_OS(prePIalignLog,2,:)));
+nxtPosTrlMeanPRE = squeeze(mean(groupTrlOvP_OS(prePIalignLog,3,:)));
+mlb.PlotMeanVarSwarmBar(1,posTrlMeanPRE,1,0.05,'b');
+mlb.PlotMeanVarSwarmBar(2,odrTrlMeanPRE,1,0.05,'r');
+mlb.PlotMeanVarSwarmBar(3,nxtPosTrlMeanPRE,1,0.05,'g');
+title('Pre-Trial Period');
 
-preTrlLog = mlb.obsvTimeVect<=0;
-patch('XData', [mlb.obsvTimeVect(find(preTrlLog,1,'first')), mlb.obsvTimeVect(find(preTrlLog,1,'last')),mlb.obsvTimeVect(find(preTrlLog,1,'last')),mlb.obsvTimeVect(find(preTrlLog,1,'first'))],...
-    'YData', [0,0,repmat(max(get(gca, 'ylim')),[1,2])],...
-    'linestyle', 'none', 'facecolor', 'k', 'facealpha', 0.1);
+sp(4) = subplot(2,4,6);
+posTrlMeanRLY = squeeze(mean(groupTrlOvP_OS(rlyTrlLog,1,:)));
+odrTrlMeanRLY = squeeze(mean(groupTrlOvP_OS(rlyTrlLog,2,:)));
+nxtPosTrlMeanRLY = squeeze(mean(groupTrlOvP_OS(rlyTrlLog,3,:)));
+mlb.PlotMeanVarSwarmBar(1,posTrlMeanRLY,1,0.05,'b');
+mlb.PlotMeanVarSwarmBar(2,odrTrlMeanRLY,1,0.05,'r');
+mlb.PlotMeanVarSwarmBar(3,nxtPosTrlMeanRLY,1,0.05,'g');
+title('Early-Trial Period');
+
+sp(5) = subplot(2,4,7);
+posTrlMeanLAT = squeeze(mean(groupTrlOvP_OS(latTrlLog,1,:)));
+odrTrlMeanLAT = squeeze(mean(groupTrlOvP_OS(latTrlLog,2,:)));
+nxtPosTrlMeanLAT = squeeze(mean(groupTrlOvP_OS(latTrlLog,3,:)));
+mlb.PlotMeanVarSwarmBar(1,posTrlMeanLAT,1,0.05,'b');
+mlb.PlotMeanVarSwarmBar(2,odrTrlMeanLAT,1,0.05,'r');
+mlb.PlotMeanVarSwarmBar(3,nxtPosTrlMeanLAT,1,0.05,'g');
+title('Late-Trial Period');
+
+sp(6) = subplot(2,4,8);
+posTrlMeanPST = squeeze(mean(groupTrlOvP_OS(pstPOalignLog,1,:)));
+odrTrlMeanPST = squeeze(mean(groupTrlOvP_OS(pstPOalignLog,2,:)));
+nxtPosTrlMeanPST = squeeze(mean(groupTrlOvP_OS(pstPOalignLog,3,:)));
+mlb.PlotMeanVarSwarmBar(1,posTrlMeanPST,1,0.05,'b');
+mlb.PlotMeanVarSwarmBar(2,odrTrlMeanPST,1,0.05,'r');
+mlb.PlotMeanVarSwarmBar(3,nxtPosTrlMeanPST,1,0.05,'g');
+title('Post-Trial Period');
+linkaxes(sp,'y');
+
+%%%%%% WITH NEXT-TRIAL INFO
+figure;
+timeLog = [ones(length(posTrlMeanPRE)*3,1);ones(length(posTrlMeanRLY)*3,1)+1;ones(length(posTrlMeanLAT)*3,1)+2; ones(length(posTrlMeanPST)*3,1)+3];
+grpLog = repmat([ones(size(posTrlMeanPRE));ones(size(odrTrlMeanPRE))+1;ones(size(nxtPosTrlMeanPRE))+2], [4,1]);
+anovaData = [posTrlMeanPRE;odrTrlMeanPRE;nxtPosTrlMeanPRE;posTrlMeanRLY;odrTrlMeanRLY;nxtPosTrlMeanRLY;posTrlMeanLAT;odrTrlMeanLAT;nxtPosTrlMeanLAT;posTrlMeanPST;odrTrlMeanPST;nxtPosTrlMeanPST];
+[p,tbl,stats] = anovan(anovaData,{timeLog, grpLog}, 'model', 'interaction', 'varnames', {'Time', 'Group'});
+multcompare(stats, 'Dimension', 2);
+figure;
+multcompare(stats, 'Dimension', [1,2]);
+
+%%%%%% WITHOUT NEXT-TRIAL INFO
+figure;
+timeLog = [ones(length(posTrlMeanPRE)*2,1);ones(length(posTrlMeanRLY)*2,1)+1;ones(length(posTrlMeanLAT)*2,1)+2; ones(length(posTrlMeanPST)*2,1)+3];
+grpLog = repmat([ones(size(posTrlMeanPRE));ones(size(odrTrlMeanPRE))+1], [4,1]);
+anovaData = [posTrlMeanPRE;odrTrlMeanPRE;posTrlMeanRLY;odrTrlMeanRLY;posTrlMeanLAT;odrTrlMeanLAT;posTrlMeanPST;odrTrlMeanPST];
+[p,tbl,stats] = anovan(anovaData,{timeLog, grpLog}, 'model', 'interaction', 'varnames', {'Time', 'Group'});
+multcompare(stats, 'Dimension', 2);
+figure;
+multcompare(stats, 'Dimension', [1,2]);
+%% TAO
+
+%%%%%%%%%%%%% TAO
+figure;
+subplot(2,2,1:2)
+groupTrlOvP_TAO = cell2mat(groupPostOvP_TAO);
+posPlot = mlb.PlotMeanVarLine(mlb.obsvTimeVect(piAlignLog), groupTrlOvP_TAO(piAlignLog,1,:), 3, 0.05, 'b');
+odrPlot = mlb.PlotMeanVarLine(mlb.obsvTimeVect(piAlignLog), groupTrlOvP_TAO(piAlignLog,2,:), 3, 0.05, 'r');
+nxtPosPlot = mlb.PlotMeanVarLine(mlb.obsvTimeVect(piAlignLog), groupTrlOvP_TAO(piAlignLog,3,:), 3, 0.05, 'g');
+
+chanceTrlOvP_TAO = cell2mat(chancePostOvP_TAO);
+chanceMean = chanceTrlOvP_TAO(piAlignLog,1,1);
+chanceSEM = chanceTrlOvP_TAO(piAlignLog,1,2)./sqrt(numChancePerms-1);
+chanceCI = tinv(0.975, numChancePerms-1).*chanceSEM;
+chncPlot = plot(mlb.obsvTimeVect(piAlignLog), chanceMean, 'color', 'k', 'linewidth', 1.5);
+hold on;
+patch('XData', [mlb.obsvTimeVect(piAlignLog); flipud(mlb.obsvTimeVect(piAlignLog))],...
+    'YData', [(chanceMean+chanceSEM)', flipud(chanceMean-chanceSEM)'],...
+    'linestyle', 'none', 'facecolor', 'k', 'facealpha', 0.25);
+patch('XData', [mlb.obsvTimeVect(piAlignLog); flipud(mlb.obsvTimeVect(piAlignLog))],...
+    'YData', [(chanceMean+chanceCI)', flipud(chanceMean-chanceCI)'],...
+    'linestyle', ':', 'linewidth', 1.5, 'edgecolor', 'k', 'facealpha', 0);
+axis tight;
+set(gca, 'ylim', [0 0.75]);
+plot(zeros(1,2), get(gca, 'ylim'), '--k','linewidth', 2);
 
 legend([posPlot, odrPlot, nxtPosPlot, chncPlot], [{'Prev-Position'}, {'Prev-Odor'}, {'Current Position'}, {'Chance'}], 'location','northwest');
 
-subplot(2,3,6)
-hold on;
-posPreTrl = mean(groupTrlOvP_TAO(preTrlLog,1,:));
-posPreTrlMean = mean(posPreTrl);
-posPreTrlSEM = mlb.SEMcalc(posPreTrl,0,3);
-posPreTrlCI = tinv(0.975, size(posPreTrl,3)-1).*posPreTrlSEM;
-bar(1, posPreTrlMean, 'b');
-errorbar(1,posPreTrlMean, posPreTrlSEM, posPreTrlSEM, 'color', 'k', 'capsize', 0);
-scatter(normrnd(0,0.1, [numel(posPreTrl),1])+1, posPreTrl(:), 'ok', 'filled', 'markerfacecolor', 'b', 'markeredgecolor', 'k', 'markerfacealpha', 0.2);
+sp(3) = subplot(2,2,3);
+posTrlMeanPRE = squeeze(mean(groupTrlOvP_TAO(prePIalignLog,1,:)));
+odrTrlMeanPRE = squeeze(mean(groupTrlOvP_TAO(prePIalignLog,2,:)));
+nxtPosTrlMeanPRE = squeeze(mean(groupTrlOvP_TAO(prePIalignLog,3,:)));
+mlb.PlotMeanVarSwarmBar(1,posTrlMeanPRE,1,0.05,'b');
+mlb.PlotMeanVarSwarmBar(2,odrTrlMeanPRE,1,0.05,'r');
+mlb.PlotMeanVarSwarmBar(3,nxtPosTrlMeanPRE,1,0.05,'g');
+title('Pre-Trial');
 
-odrPreTrl = mean(groupTrlOvP_TAO(preTrlLog,2,:));
-odrPreTrlMean = mean(odrPreTrl);
-odrPreTrlSEM = mlb.SEMcalc(odrPreTrl,0,3);
-odrPreTrlCI = tinv(0.975, size(odrPreTrl,3)-1).*odrPreTrlSEM;
-bar(2, odrPreTrlMean, 'r');
-errorbar(2,odrPreTrlMean, odrPreTrlSEM, odrPreTrlSEM, 'color', 'k', 'capsize', 0);
-scatter(normrnd(0,0.1, [numel(odrPreTrl),1])+2, odrPreTrl(:), 'ok', 'filled', 'markerfacecolor', 'r', 'markeredgecolor', 'k', 'markerfacealpha', 0.2);
+sp(4) = subplot(2,2,4);
+posTrlMeanRLY = squeeze(mean(groupTrlOvP_TAO(rlyTrlLog,1,:)));
+odrTrlMeanRLY = squeeze(mean(groupTrlOvP_TAO(rlyTrlLog,2,:)));
+nxtPosTrlMeanRLY = squeeze(mean(groupTrlOvP_TAO(rlyTrlLog,3,:)));
+mlb.PlotMeanVarSwarmBar(1,posTrlMeanRLY,1,0.05,'b');
+mlb.PlotMeanVarSwarmBar(2,odrTrlMeanRLY,1,0.05,'r');
+mlb.PlotMeanVarSwarmBar(3,nxtPosTrlMeanRLY,1,0.05,'g');
+title('Early-Trial');
 
-nxtPosPreTrl = mean(groupTrlOvP_TAO(preTrlLog,3,:));
-nxtPosPreTrlMean = mean(nxtPosPreTrl, 'omitnan');
-nxtPosPreTrlSEM = mlb.SEMcalc(nxtPosPreTrl,0,3);
-nxtPosPreTrlCI = tinv(0.975, size(nxtPosPreTrl,3)-1).*nxtPosPreTrlSEM;
-bar(3, nxtPosPreTrlMean, 'g');
-errorbar(3,nxtPosPreTrlMean, nxtPosPreTrlSEM, nxtPosPreTrlSEM, 'color', 'k', 'capsize', 0);
-scatter(normrnd(0,0.1, [numel(nxtPosPreTrl),1])+3, nxtPosPreTrl(:), 'ok', 'filled', 'markerfacecolor', 'g', 'markeredgecolor', 'k', 'markerfacealpha', 0.2);
-[pTAO,tblTAO,statsTAO] = anova1([posPreTrl(:);odrPreTrl(:);nxtPosPreTrl(:)], [ones(numel(posPreTrl),1); ones(numel(odrPreTrl),1)*2; ones(numel(nxtPosPreTrl),1)*3], 'off');
+linkaxes(sp, 'y');
 
+%%%%%% WITH ODOR INFO
+figure;
+timeLog = [ones(length(posTrlMeanPRE)*3,1);ones(length(posTrlMeanRLY)*3,1)+1];
+grpLog = repmat([ones(size(posTrlMeanPRE));ones(size(odrTrlMeanPRE))+1;ones(size(nxtPosTrlMeanPRE))+2], [2,1]);
+anovaData = [posTrlMeanPRE;odrTrlMeanPRE;nxtPosTrlMeanPRE;posTrlMeanRLY;odrTrlMeanRLY;nxtPosTrlMeanRLY];
+[p,tbl,stats] = anovan(anovaData,{timeLog, grpLog}, 'model', 'interaction', 'varnames', {'Time', 'Group'});
+multcompare(stats, 'Dimension', 2);
+figure;
+multcompare(stats, 'Dimension', [1,2]);
+
+%%%%%% WITHOUT ODOR INFO
+figure;
+timeLog = [ones(length(posTrlMeanPRE)*2,1);ones(length(posTrlMeanRLY)*2,1)+1];
+grpLog = repmat([ones(size(posTrlMeanPRE));ones(size(nxtPosTrlMeanPRE))+1], [2,1]);
+anovaData = [posTrlMeanPRE;nxtPosTrlMeanPRE;posTrlMeanRLY;nxtPosTrlMeanRLY];
+[p,tbl,stats] = anovan(anovaData,{timeLog, grpLog}, 'model', 'interaction', 'varnames', {'Time', 'Group'});
+multcompare(stats, 'Dimension', 2);
+figure;
+multcompare(stats, 'Dimension', [1,2]);
 %%
-clear chancePost_TransMat chancePost_TAO
-save('PFC_OsTAOs_PosChance.mat', '-v7.3');
+% clear chancePost_TransMat chancePost_TAO
+% save('PFC_OsTAOs_PosChance.mat', '-v7.3');
 % save('PFC_WT_OsTAOs_Group_Posts.mat', 'groupPost_TransMat', 'groupPost_TAO', 'groupChancePost_TransMat', 'groupChancePost_TAO', 'mlb', '-v7.3');

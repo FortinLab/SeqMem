@@ -632,6 +632,81 @@ classdef MLB_SM < SeqMem
             end
         end
     end
+    methods % Visualizations
+        %% Trial-wise probability density matrix
+        function PlotTrialPDM(obj, realTrialMtx, varargin)
+            if sum(strcmp(varargin, 'x') | strcmp(varargin, 'X'))>=1
+                x = varargin{find(strcmp(varargin, 'x') | strcmp(varargin, 'X'))+1};
+            else
+                x = 1:size(realTrialMtx,2);
+            end
+            if sum(strcmp(varargin, 'y') | strcmp(varargin, 'Y'))>=1
+                y = varargin{find(strcmp(varargin, 'y') | strcmp(varargin, 'Y'))+1};
+            else
+                y = 1:size(realTrialMtx,1);
+            end
+            realMean = mean(realTrialMtx,3,'omitnan');
+            if sum(strcmp(varargin, 'rotate') | strcmp(varargin, 'Rotate'))>=1
+                imagesc(x, y, realMean');
+            else
+                imagesc(x, y, realMean);
+            end
+            if sum(strcmp(varargin, 'xlabel') | strcmp(varargin, 'xLabel') | strcmp(varargin, 'Xlabel') | strcmp(varargin, 'XLabel'))>=1
+                xlabel(varargin{find(strcmp(varargin, 'xlabel') | strcmp(varargin, 'xLabel') | strcmp(varargin, 'Xlabel') | strcmp(varargin, 'XLabel'))+1});
+            end
+            if sum(strcmp(varargin, 'ylabel') | strcmp(varargin, 'yLabel') | strcmp(varargin, 'Ylabel') | strcmp(varargin, 'YLabel'))>=1
+                ylabel(varargin{find(strcmp(varargin, 'ylabel') | strcmp(varargin, 'yLabel') | strcmp(varargin, 'Ylabel') | strcmp(varargin, 'YLabel'))+1});
+            end
+            colorbar
+            set(gca, 'ydir', 'normal');
+            hold on;
+            if sum(strcmp(varargin, 'clim') | strcmp(varargin, 'cLim'))
+                if ~ischar(varargin{find(strcmp(varargin, 'clim') | strcmp(varargin, 'cLim'))+1})
+                    set(gca, 'clim', varargin{find(strcmp(varargin, 'clim') | strcmp(varargin, 'cLim'))+1});
+                elseif strcmp(varargin{find(strcmp(varargin, 'clim') | strcmp(varargin, 'cLim'))+1}, 'Min')
+                    if min(get(gca, 'clim'))<0
+                        set(gca, 'clim', [min(get(gca, 'clim')), min(get(gca, 'clim'))*-1]);
+                    else
+                        set(gca, 'clim', [max(abs(get(gca, 'clim')))*-1, max(abs(get(gca, 'clim')))]);
+                    end                        
+                elseif strcmp(varargin{find(strcmp(varargin, 'clim') | strcmp(varargin, 'cLim'))+1}, 'Max')
+                    if max(get(gca, 'clim'))>0
+                        set(gca, 'clim', [max(get(gca, 'clim'))*-1, max(get(gca, 'clim'))]);
+                    else                        
+                        set(gca, 'clim', [max(abs(get(gca, 'clim')))*-1, max(abs(get(gca, 'clim')))]);
+                    end
+                elseif strcmp(varargin{find(strcmp(varargin, 'clim') | strcmp(varargin, 'cLim'))+1}, 'Abs')
+                    set(gca, 'clim', [max(abs(get(gca, 'clim')))*-1, max(abs(get(gca, 'clim')))]);
+                end
+            end
+                    
+            if sum(strcmp(varargin, 'thresh') | strcmp(varargin, 'Thresh'))>=1
+                thresh = varargin{find(strcmp(varargin, 'thresh') | strcmp(varargin, 'Thresh'))+1};
+            else
+                thresh = 0.975;
+            end
+            if sum(strcmp(varargin, 'chance') | strcmp(varargin, 'Chance'))>=1
+                chanceTrialMtx = varargin{find(strcmp(varargin, 'chance') | strcmp(varargin, 'Chance'))+1};
+                realSEM = obj.SEMcalc(realTrialMtx,0,3);
+                realCI = tinv(thresh, size(realTrialMtx,3)-1).*realSEM;
+                tempDthresh = chanceTrialMtx(:,:,1)+(tinv(thresh, numChancePerms-1).*(chanceTrialMtx(:,:,2)./sqrt(numChancePerms-1)));
+                abvThresh = (realMean-realCI)>tempDthresh;
+                bounds = bwBoundaries(abvThresh);
+                for b = 1:length(bounds)
+                    if numel(bounds{b})>4
+                        plot(obj.obsvTimeVect(bounds{b}(:,1)), mlb.obsvTimeVect(bounds{b}(:,2)), 'k', 'linewidth', 2);
+                    end
+                end                        
+            end
+        end            
+        %% Sequence-wise probability density matrix
+        function PlotSequencePDM(obj)
+        end
+        %% Line Plots w/Chance
+        function PlotLinesWithChance(obj)
+        end
+    end
+        %% 
     methods % "Analyses"
         %% Unsure if will need later... no use for right now
 %         function [ssnDovT, trlDovT] = CalcDprmVectFromPosts(obj, decodeMtx, trlIDvect)
