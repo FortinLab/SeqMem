@@ -200,7 +200,7 @@ classdef SeqMem < handle
                     seq = seq+1;
                 end
                 % Identify temporal context feature
-                if curTrlPos == 1
+                if curTrlPos == 1 || trl==1
                     trialItmItmDist{trl} = 1;
                 else
                     trialItmItmDist{trl} = curTrlOdor-trialOdor{trl-1};
@@ -232,7 +232,11 @@ classdef SeqMem < handle
                 if isempty(curErrSigNdx) || trl==numTrials || curErrSigNdx<trialIndices(trl+1)
                     trialErrorNdx{trl} = curErrSigNdx;
                     if isempty(curErrSigNdx)
-                        trialErrorNdx{trl} = nan;
+                        if ~curTrlPerf
+                            trialErrorNdx{trl} = curPokeOut;
+                        else
+                            trialErrorNdx{trl} = nan;
+                        end
                     end
                 else
                     trialErrorNdx{trl} = nan;
