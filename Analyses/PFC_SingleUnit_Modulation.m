@@ -41,7 +41,17 @@ cMap = flipud(cMap);
 su = cell(1,length(fileDirs));
 for ani = 1:length(fileDirs)
     su{ani} = SingleUnit_SM(fileDirs{ani});
-    %     su{ani}.PlotUnitSummary;
+end
+
+%% Plot Single Unit Summaries
+for ani = 1:length(fileDirs)
+    su{ani}.gaussWinDur = 200;
+    su{ani}.binSize = 200;
+    su{ani}.dsRate = 10;
+    su{ani}.savePlots = true;
+    su{ani}.PlotUnitSummary;
+    su{ani}.savePlots = false;
+    close all
 end
 
 %% Evaluate Position Info coding w/in ensemble
@@ -53,11 +63,11 @@ for ani = 1:length(fileDirs)
     [posInfo{ani}, tsVect] = su{ani}.QuantPosInfo([-800 2000], 'PokeIn', 'pos', 'corr');
     posInfoSANSA{ani} = su{ani}.QuantPosInfo([-800 2000], 'PokeIn', 'pos', 'corrSANSA');
 end
-
+%
 ensmblPosInfo = cell2mat(posInfo);
 ensmblPosInfoSANSA = cell2mat(posInfoSANSA);
 normPI = nan(size(ensmblPosInfo));
-normPIsansa = nan(size(ensemblePosInfo));
+normPIsansa = nan(size(ensmblPosInfo));
 for u = 1:size(ensmblPosInfo,2)
     normPI(:,u) = ensmblPosInfo(:,u)./max(ensmblPosInfo(:,u));
     normPIsansa(:,u) = ensmblPosInfoSANSA(:,u)./max(ensmblPosInfoSANSA(:,u));
@@ -90,7 +100,7 @@ subplot(2,2,3);
 imagesc(tsVect, 1:size(altSortNormPIsansa,1), altSortNormPIsansa);
 title('SANSA (sort by all)');
 subplot(2,2,4);
-imagesc(tsVect, 1,size(sortNormPIsansa,1), sortNormPI);
+imagesc(tsVect, 1:size(sortNormPIsansa,1), sortNormPI);
 title('SANSA (sort by SANSA)');
 colormap(cMap);
 
@@ -103,7 +113,7 @@ for ani = 1:length(fileDirs)
 %     windowEnd = floor((mean(iscPokeDur))*100)/100;
     su{ani}.dsRate = 10;
     su{ani}.binSize = 200;
-    [aniPosSpkCorr{ani}, posInfo, varSpks, tsVect] = su{ani}.QuantPosSpkCorr([-1200 windowEnd*1000],'PokeIn','pos');
+    [aniPosSpkCorr{ani}, posInfo, varSpks, tsVect] = su{ani}.QuantPosSpkCorr([-1200 windowEnd*1000],'PokeIn','pos','corrSANSA');
     posSpkNdxs = nan(2,size(varSpks,2));
     for u = 1:size(varSpks,2)
         posSpkNdxs(1,u) = tsVect(find(posInfo(:,u)==max(posInfo(:,u)),1,'first'));
@@ -114,16 +124,16 @@ end
 
 corrVals = cell2mat(aniPosSpkCorr);
 peakNdxs = cell2mat(aniUniPrd);
-%%
+%
 figure; 
 subplot(1,2,1)
-su{ani}.PlotMeanVarSwarmBar(1,corrVals(peakNdxs(1,:)<0,5),1,0.05,'k');
-su{ani}.PlotMeanVarSwarmBar(2,corrVals(peakNdxs(1,:)>=0,5),1,0.05,'r');
+su{ani}.PlotMeanVarSwarmBar(1,corrVals(peakNdxs(1,:)<0,end),1,0.05,'k');
+su{ani}.PlotMeanVarSwarmBar(2,corrVals(peakNdxs(1,:)>=0,end),1,0.05,'r');
 subplot(1,2,2)
-su{ani}.PlotMeanVarSwarmBar(1,corrVals(peakNdxs(2,:)<0,5),1,0.05,'k');
-su{ani}.PlotMeanVarSwarmBar(2,corrVals(peakNdxs(2,:)>=0,5),1,0.05,'r');
+su{ani}.PlotMeanVarSwarmBar(1,corrVals(peakNdxs(2,:)<0,end),1,0.05,'k');
+su{ani}.PlotMeanVarSwarmBar(2,corrVals(peakNdxs(2,:)>=0,end),1,0.05,'r');
 
-[h,p,ci,stats] = ttest2(corrVals(peakNdxs(2,:)<0,5), corrVals(peakNdxs(2,:)>0,5))
+[h,p,ci,stats] = ttest2(corrVals(peakNdxs(2,:)<0,end), corrVals(peakNdxs(2,:)>0,end))
 
 figure;
 for p = 1:size(corrVals,2)
@@ -134,27 +144,27 @@ end
         
 
 %%
-trlTAB = cell(1,length(fileDirs));
-errTAB = cell(1,length(fileDirs));
-rwdTAB = cell(1,length(fileDirs));
-trlSTATS = cell(1,length(fileDirs));
-errSTATS = cell(1,length(fileDirs));
-rwdSTATS = cell(1,length(fileDirs));
-trlDATA = cell(1,length(fileDirs));
-errDATA = cell(1,length(fileDirs));
-rwdDATA = cell(1,length(fileDirs));
-trlIDS = cell(1,length(fileDirs));
-errIDS = cell(1,length(fileDirs));
-rwdIDS = cell(1,length(fileDirs));
-errT = cell(1,length(fileDirs));
-errTABseq = cell(1,length(fileDirs));
-errSTATSseq = cell(1,length(fileDirs));
-for ani = 1:length(fileDirs)   
-    [trlTAB{ani}, trlSTATS{ani}, trlDATA{ani}, trlIDS{ani}] = su{ani}.TrialPeriodSpiking;
-    [errTAB{ani}, errSTATS{ani}, errDATA{ani}, errIDS{ani}] = su{ani}.ErrorSpiking;
-    [rwdTAB{ani}, rwdSTATS{ani}, rwdDATA{ani}, rwdIDS{ani}] = su{ani}.RewardSpiking;
-    [errT{ani}, errTABseq{ani}, errSTATSseq{ani}] = su{ani}.ErrorSpikingSequential;
-end
+% trlTAB = cell(1,length(fileDirs));
+% errTAB = cell(1,length(fileDirs));
+% rwdTAB = cell(1,length(fileDirs));
+% trlSTATS = cell(1,length(fileDirs));
+% errSTATS = cell(1,length(fileDirs));
+% rwdSTATS = cell(1,length(fileDirs));
+% trlDATA = cell(1,length(fileDirs));
+% errDATA = cell(1,length(fileDirs));
+% rwdDATA = cell(1,length(fileDirs));
+% trlIDS = cell(1,length(fileDirs));
+% errIDS = cell(1,length(fileDirs));
+% rwdIDS = cell(1,length(fileDirs));
+% errT = cell(1,length(fileDirs));
+% errTABseq = cell(1,length(fileDirs));
+% errSTATSseq = cell(1,length(fileDirs));
+% for ani = 1:length(fileDirs)   
+%     [trlTAB{ani}, trlSTATS{ani}, trlDATA{ani}, trlIDS{ani}] = su{ani}.TrialPeriodSpiking;
+%     [errTAB{ani}, errSTATS{ani}, errDATA{ani}, errIDS{ani}] = su{ani}.ErrorSpiking;
+%     [rwdTAB{ani}, rwdSTATS{ani}, rwdDATA{ani}, rwdIDS{ani}] = su{ani}.RewardSpiking;
+%     [errT{ani}, errTABseq{ani}, errSTATSseq{ani}] = su{ani}.ErrorSpikingSequential;
+% end
 %%
 % trlPvals = cell2mat(cellfun(@(a){squeeze(cell2mat(a(2:4,end,:)))},trlTAB));
 % errPvals = cell2mat(cellfun(@(a){squeeze(cell2mat(a(2:4,end,:)))},errTAB));

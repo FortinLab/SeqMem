@@ -5,6 +5,7 @@ classdef SingleUnit_SM < SeqMem
         numChancePerms = 100
         binSize = 200
         dsRate = 5
+        savePlots = false
     end
     %% Creation Method
     methods
@@ -274,6 +275,9 @@ classdef SingleUnit_SM < SeqMem
                 varID = trlIDs(3,:);
             end
             vars = unique(varID);
+            if strcmp(trlType,'corrSANSA')
+                vars = vars(2:end);
+            end
             varSpks = nan(size(evtSpks,1), size(evtSpks,2), length(vars)+1);
             posSpkCorr = nan(size(evtSpks,2), length(vars)+1);
             for v = 1:length(vars)
@@ -364,6 +368,12 @@ classdef SingleUnit_SM < SeqMem
                 axis tight;
                 linkaxes(sp, 'x');
                 drawnow;
+                if obj.savePlots                    
+                    orient(gcf, 'tall');
+                    orient(gcf, 'landscape');
+                    print('-painters', gcf, '-dpdf', sprintf('%s_%s_%s',aniSsn{1}, aniSsn{2}, uni{u}));
+%                     saveas(gcf, sprintf('%s_%s_%s.png',aniSsn{1}, aniSsn{2}, uni{u}), 'png');
+                end
             end
         end
         %% Plot Trial Summary
