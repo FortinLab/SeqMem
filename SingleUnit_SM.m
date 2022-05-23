@@ -1,7 +1,10 @@
 classdef SingleUnit_SM < SeqMem
     % Single unit analyses from the Sequence Memory project
     properties % General Variables
-        gaussWinDur = 100
+        gaussWinDur = 200
+        numChancePerms = 100
+        binSize = 200
+        dsRate = 5
     end
     %% Creation Method
     methods
@@ -15,11 +18,6 @@ classdef SingleUnit_SM < SeqMem
     end
     %% General Method
     methods
-        %% Bin trial event spiking
-        function binnedSpikes = BinTrialEventSpikes(obj,window,alignment)
-            trialSpikes = obj.ExtractTrialMatrix(obj.ensembleMatrix, window, alignment);
-            binnedSpikes = sum(trialSpikes,1);
-        end
         %% Extract Trial Types
         function [trlSpikes, trlIDs] = ExtractTrialSpikes(obj, spiking, trlType, varargin)
             trlDim = find(size(spiking)==length(obj.trialInfo));
@@ -82,6 +80,62 @@ classdef SingleUnit_SM < SeqMem
                 end
                 trlIDs = ssnLogs(:,~perfLog);
             end
+        end
+        %% Bin trial event spiking
+        function binnedSpikes = BinTrialEventSpikes(obj,window,alignment)
+            trialSpikes = obj.ExtractTrialMatrix(obj.ensembleMatrix, window, alignment);
+            binnedSpikes = sum(trialSpikes,1);
+        end
+        %% Sliding bin trial event spiking
+        function [binnedSpikes, tsVect] = SlidingBinTrialEventSpikes(obj,window,alignment,binSize,dsRate)
+            trialSpikes = obj.ExtractTrialMatrix(obj.ensembleMatrix,[window(1)-binSize/2 window(2)+binSize/2], alignment);
+            binSpikes = nan(size(trialSpikes));
+            for t = 1:size(trialSpikes,3)
+                for u = 1:size(trialSpikes,2)
+                    binSpikes(:,u,t) = conv(trialSpikes(:,u,t),ones(1,binSize)./(binSize/obj.sampleRate), 'same');
+                end
+            end
+            binnedSpikes = downsample(binSpikes(binSize/2+1:size(binSpikes,1)-(binSize/2),:,:),dsRate);
+            tsVect = window(1):dsRate:window(2);
+        end        
+        %% Sliding window F-Test
+        function [fVals] = SlidingWindowFtest(~,spiking,idVect)
+            % Written assuming spiking is NxMxO N=time; M=unit; O=trial
+            % I'm feeling a little too lazy to bother with matching vect sizes and coding contingencies right now
+            fVals = nan(size(spiking,1),size(spiking,2));
+            for t = 1:size(spiking,1)
+                for u = 1:size(spiking,2)
+                    [~,tab] = anova1(squeeze(spiking(t,u,:)), idVect, 'off');
+                    if ~isempty(tab{2,5})
+                        fVals(t,u) = tab{2,5};
+                    else
+                        fVals(t,u) = 1;
+                    end
+                end
+            end
+        end
+         %% Quantify Modulation with F-vals
+        function [rawF, tsVect] = SlidingWindowModIC(obj, window, alignment, critVar)
+            [binnedSpikes, tsVect] = obj.SlidingBinTrialEventSpikes(window,alignment,obj.binSize,obj.dsRate);
+            [evtSpks, trlIDs] = obj.ExtractTrialSpikes(binnedSpikes, 'corr');
+            if strcmp(critVar, 'pos')
+                varID = trlIDs(2,:);
+            elseif strcmp(critVar, 'odr')
+                varID = trlIDs(3,:);
+            end
+            [rawF] = obj.SlidingWindowFtest(evtSpks,varID);
+            % This code was when I was thinking I needed some permutations to normalize things... not really sure I do anymore.
+%             chanceFvals = nan(size(rawF,1),size(rawF,2),obj.numChancePerms);
+%             for perm = 1:obj.numChancePerms
+%                 chanceShflVect = randperm(length(posIDs));
+%                 chanceFvals(:,:,perm) = obj.SlideWindowFtest(evtSpks,posIDs(chanceShflVect));
+%             end
+%             normF = nan(size(rawF));
+%             for t = 1:size(rawF,1)
+%                 for u = 1:size(rawF,2)
+%                     normF(t,u) = (rawF(t,u)-mean(chanceFvals(t,u,:),3,'omitnan'))/std(chanceFvals(t,u,:),0,3);
+%                 end
+%             end
         end
     end
     %% Specific Analyses
@@ -184,10 +238,86 @@ classdef SingleUnit_SM < SeqMem
                 [~,anovaTable(:,:,uni), anovaStats{uni}] = anovan(tempAnovaData, groupIDs, 'model', 'interaction', 'varnames', {'Time','Position'}, 'display', 'off');
             end
         end
+        %% Quantify Position Information
+        function [posInfo, tsVect] = QuantPosInfo(obj,window,alignment,critVar)
+            [posInfo, tsVect] = obj.SlidingWindowModIC(window,alignment,'pos');
+        end
     end
     %% Visualizations
     methods
         %% Plot Unit Summary
+        function PlotUnitSummary(obj,window,alignment,uni)
+            if nargin == 1
+                uni = obj.ensembleMatrixColIDs;
+                window = [-1200 2000];
+                alignment = 'PokeIn';
+            else
+                uni = {uni};
+            end
+            aniSsn = strsplit(obj.pathDir(regexp(obj.pathDir, '([a-z]*|[A-Z]*[0-9]*)_Session[0-9*]'):end), '_');
+            [posInfo, tsVect] = obj.QuantPosInfo(window,alignment, 'pos');
+            for u = 1:length(uni)
+                curUniInfo = obj.unitInfo(strcmp({obj.unitInfo.UnitName}, uni{u}));
+                wfVect = 1:length(curUniInfo.TemplateMean{1});
+                figure; 
+                annotation(gcf,'textbox', 'Units', 'normalized', 'Position', [0.05 0.9 0.5 0.1],...
+                    'String', sprintf('%s %s %s',uni{u}, aniSsn{1}, aniSsn{2}),...
+                    'FontSize',15, 'FontWeight', 'bold', 'EdgeColor', 'none',...
+                    'horizontalalignment', 'left', 'interpreter', 'none');
+                wfSP(1) = axes(gcf, 'Units', 'Normalized', 'Position', [0.05 0.8 0.08 0.15]);
+                plot(wfVect, curUniInfo.TemplateMean{1}, 'k');
+                hold on;
+                patch('XData', [wfVect(:); flipud(wfVect(:))],...
+                    'YData', [(curUniInfo.TemplateMean{1}+curUniInfo.TemplateStDev{1})'; flipud((curUniInfo.TemplateMean{1}-curUniInfo.TemplateStDev{1})')],...
+                    'linestyle', 'none', 'facecolor', 'k', 'facealpha', 0.25);
+                axis tight;
+                wfSP(2) = axes(gcf, 'Units', 'Normalized', 'Position', [0.15 0.8 0.08 0.15]);
+                plot(wfVect, curUniInfo.TemplateMean{2}, 'k');
+                hold on;
+                patch('XData', [wfVect(:); flipud(wfVect(:))],...
+                    'YData', [(curUniInfo.TemplateMean{2}+curUniInfo.TemplateStDev{2})'; flipud((curUniInfo.TemplateMean{2}-curUniInfo.TemplateStDev{2})')],...
+                    'linestyle', 'none', 'facecolor', 'k', 'facealpha', 0.25);
+                axis tight;
+                wfSP(3) = axes(gcf, 'Units', 'Normalized', 'Position', [0.25 0.8 0.08 0.15]);
+                plot(wfVect, curUniInfo.TemplateMean{3}, 'k');
+                hold on;
+                patch('XData', [wfVect(:); flipud(wfVect(:))],...
+                    'YData', [(curUniInfo.TemplateMean{3}+curUniInfo.TemplateStDev{3})'; flipud((curUniInfo.TemplateMean{3}-curUniInfo.TemplateStDev{3})')],...
+                    'linestyle', 'none', 'facecolor', 'k', 'facealpha', 0.25);
+                axis tight;
+                wfSP(4) = axes(gcf, 'Units', 'Normalized', 'Position', [0.35 0.8 0.08 0.15]);
+                plot(wfVect, curUniInfo.TemplateMean{4}, 'k');
+                hold on;
+                patch('XData', [wfVect(:); flipud(wfVect(:))],...
+                    'YData', [(curUniInfo.TemplateMean{4}+curUniInfo.TemplateStDev{4})'; flipud((curUniInfo.TemplateMean{4}-curUniInfo.TemplateStDev{4})')],...
+                    'linestyle', 'none', 'facecolor', 'k', 'facealpha', 0.25);
+                axis tight;
+                linkaxes(wfSP,'xy');
+                
+                autocorrSP = axes(gcf, 'Units', 'Normalized', 'Position', [0.06 0.5 0.15 0.25]);
+                isi = diff(find(obj.ensembleMatrix(:,strcmp(obj.ensembleMatrixColIDs, uni{u}))==1));
+                histogram([isi;isi*-1],-200:1:200);
+                xlabel('ITI (ms)');
+                
+                %%%%%%%%%%%%%%%%%% Spike phase plots would go in here whenever they get coded up...
+
+                sp(1) = axes(gcf, 'Units', 'Normalized', 'Position', [0.45 0.65 0.5 0.3]);
+                obj.PlotRastersByPos(window,alignment,uni{u},'isc');
+                axis tight;
+                axis off;
+                sp(2) = axes(gcf, 'Units', 'Normalized', 'Position', [0.45 0.5 0.5 0.125]);
+                uniLog = strcmp(obj.ensembleMatrixColIDs, uni{u});
+                plot(tsVect, posInfo(:,uniLog), 'k');
+                set(gca, 'xticklabel', []);
+                axis tight;
+                sp(3) = axes(gcf, 'Units', 'Normalized', 'Position', [0.45 0.05 0.5 0.425]);
+                obj.PlotGaussFireByPos(window,alignment,uni{u},'isc');
+                axis tight;
+                linkaxes(sp, 'x');
+                drawnow;
+            end
+        end
+        %% Plot Trial Summary
         function PlotTrialSummary(obj, uni, window, alignment)
             if nargin==2
                 window = [-1500 2000];
@@ -287,7 +417,7 @@ classdef SingleUnit_SM < SeqMem
         function PlotGaussFireByPos(obj, window, alignment, uni, trlType)
             uniCol = strcmp(obj.ensembleMatrixColIDs, uni);
             eventSpikes = obj.ExtractTrialMatrix(obj.ensembleMatrix(:,uniCol), [window(1)-obj.gaussWinDur/2, window(2)+obj.gaussWinDur/2], alignment);
-            [evtSpks, trlIDs] = ExtractTrialSpikes(obj, eventSpikes, trlType);
+            [evtSpks, trlIDs] = obj.ExtractTrialSpikes(eventSpikes, trlType);
             
             instFRgauss = gausswin(obj.gaussWinDur);
             instFRgauss = instFRgauss/(length(instFRgauss)*mode(diff(obj.tsVect)));
