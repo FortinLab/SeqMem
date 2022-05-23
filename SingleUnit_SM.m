@@ -41,6 +41,17 @@ classdef SingleUnit_SM < SeqMem
                     trlSpikes = spiking(:,:,iscLog);
                 end
                 trlIDs = ssnLogs(:,iscLog);
+            elseif strcmp(trlType,'iscSANSA')
+                iscLog = isLog & perfLog;
+                posLog = posVect~=1;
+                if trlDim == 1
+                    trlSpikes = spiking(iscLog & posLog,:,:);
+                elseif trlDim == 2
+                    trlSpikes = spiking(:,iscLog & posLog,:);
+                elseif trlDim == 3
+                    trlSpikes = spiking(:,:,iscLog & posLog);
+                end
+                trlIDs = ssnLogs(:,iscLog & posLog);
             elseif strcmp(trlType,'osc')
                 oscLog = ~isLog & perfLog;
                 if trlDim == 1
@@ -70,6 +81,16 @@ classdef SingleUnit_SM < SeqMem
                     trlSpikes = spiking(:,:,perfLog);
                 end
                 trlIDs = ssnLogs(:,perfLog);
+            elseif strcmp(trlType, 'corrSANSA')
+                posLog = posVect~=1;
+                if trlDim == 1
+                    trlSpikes = spiking(perfLog & posLog,:,:);
+                elseif trlDim == 2
+                    trlSpikes = spiking(:,perfLog & posLog,:);
+                elseif trlDim == 3
+                    trlSpikes = spiking(:,:,perfLog & posLog);
+                end
+                trlIDs = ssnLogs(:,perfLog & posLog);
             elseif strcmp(trlType, 'incorr')
                 if trlDim == 1
                     trlSpikes = spiking(~perfLog,:,:);
@@ -115,9 +136,9 @@ classdef SingleUnit_SM < SeqMem
             end
         end
          %% Quantify Modulation with F-vals
-        function [rawF, tsVect] = SlidingWindowModIC(obj, window, alignment, critVar)
+        function [rawF, tsVect] = SlidingWindowModIC(obj, window, alignment, critVar, trlType)
             [binnedSpikes, tsVect] = obj.SlidingBinTrialEventSpikes(window,alignment,obj.binSize,obj.dsRate);
-            [evtSpks, trlIDs] = obj.ExtractTrialSpikes(binnedSpikes, 'corr');
+            [evtSpks, trlIDs] = obj.ExtractTrialSpikes(binnedSpikes, trlType);
             if strcmp(critVar, 'pos')
                 varID = trlIDs(2,:);
             elseif strcmp(critVar, 'odr')
@@ -239,8 +260,32 @@ classdef SingleUnit_SM < SeqMem
             end
         end
         %% Quantify Position Information
-        function [posInfo, tsVect] = QuantPosInfo(obj,window,alignment,critVar)
-            [posInfo, tsVect] = obj.SlidingWindowModIC(window,alignment,'pos');
+        function [posInfo, tsVect] = QuantPosInfo(obj,window,alignment,critVar, trlType)
+            [posInfo, tsVect] = obj.SlidingWindowModIC(window,alignment,critVar,trlType);
+        end
+        %% Quantify Position Info & Spike Rates
+        function [posSpkCorr, posInfo, varSpks, tsVect] = QuantPosSpkCorr(obj,window,alignment,critVar,trlType)
+            [posInfo,tsVect] = obj.SlidingWindowModIC(window,alignment,critVar,trlType);
+            [binnedSpikes, ~] = obj.SlidingBinTrialEventSpikes(window,alignment,obj.binSize,obj.dsRate);
+            [evtSpks, trlIDs] = obj.ExtractTrialSpikes(binnedSpikes, 'isc');
+            if strcmp(critVar, 'pos')
+                varID = trlIDs(2,:);
+            elseif strcmp(critVar, 'odr')
+                varID = trlIDs(3,:);
+            end
+            vars = unique(varID);
+            varSpks = nan(size(evtSpks,1), size(evtSpks,2), length(vars)+1);
+            posSpkCorr = nan(size(evtSpks,2), length(vars)+1);
+            for v = 1:length(vars)
+                varSpks(:,:,v) = mean(evtSpks(:,:,varID==vars(v)),3);
+                for u = 1:size(evtSpks,2)
+                    posSpkCorr(u,v) = pdist([posInfo(:,u), varSpks(:,u,v)]', 'cosine');
+                end
+            end
+            varSpks(:,:,length(vars)+1) = mean(evtSpks,3);
+            for u = 1:size(evtSpks,2)
+                posSpkCorr(u,length(vars)+1) = pdist([posInfo(:,u), varSpks(:,u,length(vars)+1)]', 'cosine');
+            end
         end
     end
     %% Visualizations
@@ -255,7 +300,8 @@ classdef SingleUnit_SM < SeqMem
                 uni = {uni};
             end
             aniSsn = strsplit(obj.pathDir(regexp(obj.pathDir, '([a-z]*|[A-Z]*[0-9]*)_Session[0-9*]'):end), '_');
-            [posInfo, tsVect] = obj.QuantPosInfo(window,alignment, 'pos');
+            [posInfo, tsVect] = obj.QuantPosInfo(window,alignment,'pos','corr');
+            posInfoSANSA = obj.QuantPosInfo(window,alignment,'pos','corrSANSA');
             for u = 1:length(uni)
                 curUniInfo = obj.unitInfo(strcmp({obj.unitInfo.UnitName}, uni{u}));
                 wfVect = 1:length(curUniInfo.TemplateMean{1});
@@ -307,7 +353,10 @@ classdef SingleUnit_SM < SeqMem
                 axis off;
                 sp(2) = axes(gcf, 'Units', 'Normalized', 'Position', [0.45 0.5 0.5 0.125]);
                 uniLog = strcmp(obj.ensembleMatrixColIDs, uni{u});
+                yyaxis(sp(2),'left');
                 plot(tsVect, posInfo(:,uniLog), 'k');
+                yyaxis(sp(2),'right');
+                plot(tsVect, posInfoSANSA(:,uniLog), 'r');
                 set(gca, 'xticklabel', []);
                 axis tight;
                 sp(3) = axes(gcf, 'Units', 'Normalized', 'Position', [0.45 0.05 0.5 0.425]);
