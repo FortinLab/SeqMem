@@ -1,11 +1,11 @@
 % PFC_XTD_TrialWindows_Group_PosChance
 
 %%
-% fileDirs = [{'D:\WorkBigDataFiles\PFC\Files To Process\GE11\GE11_Session132'},...
-%     {'D:\WorkBigDataFiles\PFC\Files To Process\GE13\GE13_Session083'},...
-%     {'D:\WorkBigDataFiles\PFC\Files To Process\GE14\GE14_Session123'},...
-%     {'D:\WorkBigDataFiles\PFC\Files To Process\GE17\GE17_Session095'},...
-%     {'D:\WorkBigDataFiles\PFC\Files To Process\GE24\Session096'}];
+fileDirs = [{'D:\WorkBigDataFiles\PFC\Files To Process\GE11\GE11_Session132'},...
+    {'D:\WorkBigDataFiles\PFC\Files To Process\GE13\GE13_Session083'},...
+    {'D:\WorkBigDataFiles\PFC\Files To Process\GE14\GE14_Session123'},...
+    {'D:\WorkBigDataFiles\PFC\Files To Process\GE17\GE17_Session095'},...
+    {'D:\WorkBigDataFiles\PFC\Files To Process\GE24\GE24_Session096'}];
 
 % % CA1 Data
 % fileDirs = [{'D:\WorkBigDataFiles\CA1 Data\1. WellTrained session\SuperChris'},...
@@ -16,11 +16,11 @@
 % tets = [1,22,17,18,17]; % Lateral/Distal
 % % tets = [7,3,1,5,5]; % Medial/Proximal
 
-fileDirs = [{'D:\WorkBigDataFiles\PFC\GE11_Session132'},...
-    {'D:\WorkBigDataFiles\PFC\GE13_Session083'},...
-    {'D:\WorkBigDataFiles\PFC\GE14_Session123'},...
-    {'D:\WorkBigDataFiles\PFC\GE17_Session095'},...
-    {'D:\WorkBigDataFiles\PFC\GE24_Session096'}];
+% fileDirs = [{'D:\WorkBigDataFiles\PFC\GE11_Session132'},...
+%     {'D:\WorkBigDataFiles\PFC\GE13_Session083'},...
+%     {'D:\WorkBigDataFiles\PFC\GE14_Session123'},...
+%     {'D:\WorkBigDataFiles\PFC\GE17_Session095'},...
+%     {'D:\WorkBigDataFiles\PFC\GE24_Session096'}];
 
 % fileDirs = [
 %     {'D:\WorkBigDataFiles\PFC\GE13_Session083'},...
@@ -30,11 +30,13 @@ binSize = 200;
 dsRate = 50;
 bayesType = 1; %1 = Poisson: use with raw spike counts; 2 = Bernoulli: use with binarized spike counts; 3 = Gaussian: Use with z-scored spike counts
 
-alignments = [{'PokeIn'}, {'PokeOut'}];
-trlWindows = [{[-1500 2000]}, {[-2000 1500]}];
+% alignments = [{'PokeIn'}, {'PokeOut'}];
+% trlWindows = [{[-1500 2000]}, {[-2000 2000]}];
+alignments = {'PokeIn'};
+trlWindows = {[-1200 2500]};
     
 lfpWindow = [16 32];
-numChancePerms = 1; %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Chance Perm Nums
+numChancePerms = 0; %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Chance Perm Nums
 
 mlb = cell(size(fileDirs));
 %%
@@ -51,24 +53,31 @@ for ani = 1:length(fileDirs)
         poRwdLat = cell(length(fileDirs),1);
         nxtTrlLat = cell(length(fileDirs),1);
         % Posteriors
-        trlD = cell(mlb{ani}.seqLength, mlb{ani}.seqLength, length(fileDirs), 2);
-        window_TrPr_TsTr = cell(mlb{ani}.seqLength, mlb{ani}.seqLength, length(fileDirs), 2);
-        window_TrTr_TsPr = cell(mlb{ani}.seqLength, mlb{ani}.seqLength, length(fileDirs), 2);
-        window_TrPr = cell(mlb{ani}.seqLength, mlb{ani}.seqLength, length(fileDirs), 2);
-        window_TrTr_TsPo = cell(mlb{ani}.seqLength, mlb{ani}.seqLength, length(fileDirs), 2);
-        window_TrPo_TsTr = cell(mlb{ani}.seqLength, mlb{ani}.seqLength, length(fileDirs), 2);
-        window_TrPo = cell(mlb{ani}.seqLength, mlb{ani}.seqLength, length(fileDirs), 2);
-        window_TrPo_TsPr = cell(mlb{ani}.seqLength, mlb{ani}.seqLength, length(fileDirs), 2);
-        window_TrPr_TsPo = cell(mlb{ani}.seqLength, mlb{ani}.seqLength, length(fileDirs), 2);
-        window_PoPr = cell(mlb{ani}.seqLength, mlb{ani}.seqLength, length(fileDirs), 2);
-        trlPersFit = cell(mlb{ani}.seqLength, mlb{ani}.seqLength, length(fileDirs), 2);
-        itiPersFit = cell(mlb{ani}.seqLength, mlb{ani}.seqLength, length(fileDirs), 2);
+        trlD = cell(mlb{ani}.seqLength, mlb{ani}.seqLength, length(fileDirs), length(alignments));
+        window_TrPr_TsTr = cell(mlb{ani}.seqLength, mlb{ani}.seqLength, length(fileDirs), length(alignments));
+        window_TrTr_TsPr = cell(mlb{ani}.seqLength, mlb{ani}.seqLength, length(fileDirs), length(alignments));
+        window_TrPr = cell(mlb{ani}.seqLength, mlb{ani}.seqLength, length(fileDirs), length(alignments));
+        window_TrTr_TsPo = cell(mlb{ani}.seqLength, mlb{ani}.seqLength, length(fileDirs), length(alignments));
+        window_TrPo_TsTr = cell(mlb{ani}.seqLength, mlb{ani}.seqLength, length(fileDirs), length(alignments));
+        window_TrPo = cell(mlb{ani}.seqLength, mlb{ani}.seqLength, length(fileDirs), length(alignments));
+        window_TrPo_TsPr = cell(mlb{ani}.seqLength, mlb{ani}.seqLength, length(fileDirs), length(alignments));
+        window_TrPr_TsPo = cell(mlb{ani}.seqLength, mlb{ani}.seqLength, length(fileDirs), length(alignments));
+        window_PoPr = cell(mlb{ani}.seqLength, mlb{ani}.seqLength, length(fileDirs), length(alignments));
+        window_TrTr_TsTr = cell(mlb{ani}.seqLength, mlb{ani}.seqLength, length(fileDirs), length(alignments));
+        window_TrTr_TsTr_Diag = cell(mlb{ani}.seqLength, mlb{ani}.seqLength, length(fileDirs), length(alignments));
+        window_TrTr_TsTr_OffDiag = cell(mlb{ani}.seqLength, mlb{ani}.seqLength, length(fileDirs), length(alignments));
+        trlPersFit = cell(mlb{ani}.seqLength, mlb{ani}.seqLength, length(fileDirs), length(alignments));
+        window_TrITD_TsITD = cell(mlb{ani}.seqLength, mlb{ani}.seqLength, length(fileDirs), length(alignments));
+        window_TrITD_TsITD_Diag = cell(mlb{ani}.seqLength, mlb{ani}.seqLength, length(fileDirs), length(alignments));
+        window_TrITD_TsITD_OffDiag = cell(mlb{ani}.seqLength, mlb{ani}.seqLength, length(fileDirs), length(alignments));
+        window_TrlAltITD_TsAltITD = cell(mlb{ani}.seqLength, mlb{ani}.seqLength, length(fileDirs), length(alignments));
+        itiPersFit = cell(mlb{ani}.seqLength, mlb{ani}.seqLength, length(fileDirs), length(alignments));
         obsvTimeVect = cell(1,length(alignments));
         % LFP
-        betaPower = cell(mlb{ani}.seqLength, 2, length(fileDirs));
-        thetaPower = cell(mlb{ani}.seqLength, 2, length(fileDirs));
-        trlMeanBeta = cell(mlb{ani}.seqLength, 2, length(fileDirs));
-        trlMeanTheta = cell(mlb{ani}.seqLength, 2, length(fileDirs));
+        betaPower = cell(mlb{ani}.seqLength, length(alignments), length(fileDirs));
+        thetaPower = cell(mlb{ani}.seqLength, length(alignments), length(fileDirs));
+        trlMeanBeta = cell(mlb{ani}.seqLength, length(alignments), length(fileDirs));
+        trlMeanTheta = cell(mlb{ani}.seqLength, length(alignments), length(fileDirs));
     end
     mlb{ani}.binSize = binSize;
     mlb{ani}.dsRate = dsRate;
@@ -123,6 +132,9 @@ for ani = 1:length(fileDirs)
             elseif strcmp(mlb{ani}.alignments{1}, 'PokeOut')
                 nearestPIval = cell2mat(arrayfun(@(a){mlb{ani}.obsvTimeVect(find(a>mlb{ani}.obsvTimeVect,1,'last'))}, curTrlPokeDurs))*-1;
                 nearestPOval = zeros(size(curTrlPokeDurs));
+%                 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% +0.5 is a test!!!!
+%                 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Don't leave this here!!!
+%                 nearestPOval = zeros(size(curTrlPokeDurs))+0.5;
             end
             % Now calculate decodability plots
             for p = 1:mlb{ani}.seqLength
@@ -141,6 +153,13 @@ for ani = 1:length(fileDirs)
                 tempWindow_TrPo_TsPr = nan(size(hits,3),1);                     % Train Post-Trial & Test Pre-Trial Window
                 tempWindow_TrPr_TsPo = nan(size(hits,3),1);                     % Train Pre-Trial & Test Post-Trial Window
                 tempWindow_PoPr = nan(size(hits,3),1);                          % Post-Trial vs Pre-Trial Windows
+                tempWindow_TrTr_TsTr = nan(size(hits,3),1);                     % Train & Test Trial Window
+                tempWindow_TrTr_TsTr_Diag = nan(size(hits,3),1);                % Diagonal of the Train & Test Trial Window
+                tempWindow_TrTr_TsTr_OffDiag = nan(size(hits,3),1);             % Off Diagonal of the Train & Test Trial Window
+                tempWindow_TrITD_TsITD = nan(size(hits,3),1);                   % Train & Test ITD Window
+                tempWindow_TrITD_TsITD_Diag = nan(size(hits,3),1);              % Diagonal of the ITD Window
+                tempWindow_TrITD_TsITD_OffDiag = nan(size(hits,3),1);           % Off Diagonal of the Train & Test ITD Window
+                tempWindow_TrAltITD_TsAltITD = nan(size(hits,3),1);            % Train & Test on the Post-Trial Window
                 tempTrialFit = nan(size(hits,3), length(mlb{ani}.obsvTimeVect));     % Persistence model fit Trial period
                 tempITIfit = nan(size(hits,3), length(mlb{ani}.obsvTimeVect));       % Persistence model fit ITI period
                 if p == pos
@@ -161,10 +180,12 @@ for ani = 1:length(fileDirs)
                     pstTrialLog = mlb{ani}.obsvTimeVect>=nearestPOval(trl);
                     if strcmp(mlb{ani}.alignments{1}, 'PokeIn')
                         itiLog = preTrialLog;
+                        altITIlog = pstTrialLog;
                     elseif strcmp(mlb{ani}.alignments{1}, 'PokeOut')
                         itiLog = pstTrialLog;
+                        altITIlog = preTrialLog;
                     end
-                    
+                                        
                     %% Quantify mean windows
                     % IMPORTANT NOTE: The organization of the posterior data is dim1/y-axis/rows = testing time, dim2/x-axis/columns = training time
                     % The organization of most presentations is reversed, i.e. train=rows; test=columns;
@@ -201,7 +222,32 @@ for ani = 1:length(fileDirs)
                     tempWindow_TrPr_TsPo(trl) = mean(curTrlD(prpoWindow));
                     % Post-Trial vs Pre-Trial
                     poprprpoWindow = poprWindow | prpoWindow;
-                    tempWindow_PoPr(trl) = mean(curTrlD(poprprpoWindow));           
+                    tempWindow_PoPr(trl) = mean(curTrlD(poprprpoWindow));      
+                    
+                    % Trial Window
+                    trlWindow = blankMask;
+                    trlWindow(trialLog, trialLog) = true;
+                    tempWindow_TrTr_TsTr(trl) = mean(curTrlD(trlWindow));
+                    
+                    trlEpoch = curTrlD(trialLog, trialLog);
+                    diagTrlEpoch = triu(ones(size(trlEpoch)), (binSize/2)/dsRate*-1) & tril(ones(size(trlEpoch)), (binSize/2)/dsRate);
+                    tempWindow_TrTr_TsTr_Diag(trl) = mean(trlEpoch(diagTrlEpoch));
+                    tempWindow_TrTr_TsTr_OffDiag(trl) = mean(trlEpoch(~diagTrlEpoch));
+                    
+                    % ITD Window
+                    itdWindow = blankMask;
+                    itdWindow(itiLog, itiLog) = true;
+                    tempWindow_TrITD_TsITD(trl) = mean(curTrlD(itdWindow));
+                    
+                    % Alternate ITD Window
+                    altITDwindow = blankMask;
+                    altITDwindow(altITIlog, altITIlog) = true;
+                    tempWindow_TrAltITD_TsAltITD(trl) = mean(curTrlD(altITDwindow));
+                    
+                    itdEpoch = curTrlD(itiLog, itiLog);
+                    diagITDepoch = triu(ones(size(itdEpoch)), (binSize/2)/dsRate*-1) & tril(ones(size(itdEpoch)), (binSize/2)/dsRate);
+                    tempWindow_TrITD_TsITD_Diag(trl) = mean(itdEpoch(diagITDepoch));
+                    tempWindow_TrITD_TsITD_OffDiag(trl) = mean(itdEpoch(~diagITDepoch));
                     
                     %% Fit the Trial & ITI periods to dynamic coding "models"
                     trialDynCap = sum(trialLog)-1;
@@ -233,6 +279,13 @@ for ani = 1:length(fileDirs)
                 window_TrPo_TsPr{pos,p,ani,al} = tempWindow_TrPo_TsPr;
                 window_TrPr_TsPo{pos,p,ani,al} = tempWindow_TrPr_TsPo;
                 window_PoPr{pos,p,ani,al} = tempWindow_PoPr;
+                window_TrTr_TsTr{pos,p,ani,al} = tempWindow_TrTr_TsTr;
+                window_TrTr_TsTr_Diag{pos,p,ani,al} = tempWindow_TrTr_TsTr_Diag;
+                window_TrTr_TsTr_OffDiag{pos,p,ani,al} = tempWindow_TrTr_TsTr_OffDiag;
+                window_TrITD_TsITD{pos,p,ani,al} = tempWindow_TrITD_TsITD;
+                window_TrITD_TsITD_Diag{pos,p,ani,al} = tempWindow_TrITD_TsITD_Diag;
+                window_TrITD_TsITD_OffDiag{pos,p,ani,al} = tempWindow_TrITD_TsITD_OffDiag;
+                window_TrlAltITD_TsAltITD{pos,p,ani,al} = tempWindow_TrAltITD_TsAltITD;
                 trlPersFit{pos,p,ani,al} = tempTrialFit;
                 itiPersFit{pos,p,ani,al} = tempITIfit;
                 if p==pos
@@ -255,6 +308,13 @@ trial_Window_TrPo = cell(size(window_TrPo,1), size(window_TrPo,2), size(window_T
 trial_Window_TrPo_TsPr = cell(size(window_TrPo_TsPr,1), size(window_TrPo_TsPr,2), size(window_TrPo_TsPr,4));
 trial_Window_TrPr_TsPo = cell(size(window_TrPr_TsPo,1), size(window_TrPr_TsPo,2), size(window_TrPr_TsPo,4));
 trial_Window_PoPr = cell(size(window_PoPr,1), size(window_PoPr,2), size(window_PoPr,4));
+trial_Window_TrTr_TsTr = cell(size(window_TrTr_TsTr,1), size(window_TrTr_TsTr,2), size(window_TrTr_TsTr,4));
+trial_Window_TrTr_TsTr_Diag = cell(size(window_TrTr_TsTr_Diag,1), size(window_TrTr_TsTr_Diag,2), size(window_TrTr_TsTr_Diag,4));
+trial_Window_TrTr_TsTr_OffDiag = cell(size(window_TrTr_TsTr_OffDiag,1), size(window_TrTr_TsTr_OffDiag,2), size(window_TrTr_TsTr_OffDiag,4));
+trial_Window_TrITD_TsITD = cell(size(window_TrITD_TsITD,1), size(window_TrITD_TsITD,2), size(window_TrITD_TsITD,4));
+trial_Window_TrITD_TsITD_Diag = cell(size(window_TrITD_TsITD_Diag,1), size(window_TrITD_TsITD_Diag,2), size(window_TrITD_TsITD_Diag,4));
+trial_Window_TrITD_TsITD_OffDiag = cell(size(window_TrITD_TsITD_OffDiag,1), size(window_TrITD_TsITD_OffDiag,2), size(window_TrITD_TsITD_OffDiag,4));
+trial_Window_TrAltITD_TsAltITD = cell(size(window_TrlAltITD_TsAltITD,1), size(window_TrlAltITD_TsAltITD,2), size(window_TrlAltITD_TsAltITD,4));
 trial_TrialPersFit = cell(size(trlPersFit,1), size(trlPersFit,2), size(trlPersFit,4));
 trial_ITIpersFit = cell(size(itiPersFit,1), size(itiPersFit,2), size(itiPersFit,4));
 trial_BetaPowerTime = cell(size(betaPower,1), size(betaPower,2));
@@ -280,6 +340,13 @@ for r = 1:mlb{1}.seqLength
             trial_Window_TrPo_TsPr{r,c,al} = cell2mat(permute(window_TrPo_TsPr(r,c,:,al), [3,1,2]));
             trial_Window_TrPr_TsPo{r,c,al} = cell2mat(permute(window_TrPr_TsPo(r,c,:,al), [3,1,2]));
             trial_Window_PoPr{r,c,al} = cell2mat(permute(window_PoPr(r,c,:,al), [3,1,2]));
+            trial_Window_TrTr_TsTr{r,c,al} = cell2mat(permute(window_TrTr_TsTr(r,c,:,al), [3,1,2]));
+            trial_Window_TrTr_TsTr_Diag{r,c,al} = cell2mat(permute(window_TrTr_TsTr_Diag(r,c,:,al), [3,1,2]));
+            trial_Window_TrTr_TsTr_OffDiag{r,c,al} = cell2mat(permute(window_TrTr_TsTr_OffDiag(r,c,:,al), [3,1,2]));
+            trial_Window_TrITD_TsITD{r,c,al} = cell2mat(permute(window_TrITD_TsITD(r,c,:,al), [3,1,2]));
+            trial_Window_TrITD_TsITD_Diag{r,c,al} = cell2mat(permute(window_TrITD_TsITD_Diag(r,c,:,al), [3,1,2]));
+            trial_Window_TrITD_TsITD_OffDiag{r,c,al} = cell2mat(permute(window_TrITD_TsITD_OffDiag(r,c,:,al), [3,1,2]));
+            trial_Window_TrAltITD_TsAltITD{r,c,al} = cell2mat(permute(window_TrlAltITD_TsAltITD(r,c,:,al), [3,1,2]));
             trial_TrialPersFit{r,c,al} = cell2mat(permute(trlPersFit(r,c,:,al), [3,1,2]));
             trial_ITIpersFit{r,c,al} = cell2mat(permute(itiPersFit(r,c,:,al), [3,1,2]));
         end
@@ -288,6 +355,30 @@ end
     
 fprintf('Real data compiled after %.02fmin\n', toc(realTic)/60);
 
+%% Z-Score Everything w/in windows
+trialWiseRawEpochs = cell(mlb{ani}.seqLength, mlb{ani}.seqLength, length(alignments));
+for al = 1:length(alignments)
+    for p = 1:mlb{ani}.seqLength
+        for p2 = 1:mlb{ani}.seqLength
+            tempTrialWindowed = [trial_Window_TrPr_TsTr{p,p2,al}, trial_Window_TrTr_TsPr{p,p2,al},...
+                trial_Window_TrTr_TsPo{p,p2,al}, trial_Window_TrPo_TsTr{p,p2,al},...
+                trial_Window_TrPo_TsPr{p,p2,al}, trial_Window_TrPr_TsPo{p,p2,al},...
+                trial_Window_TrTr_TsTr{p,p2,al}, trial_Window_TrITD_TsITD{p,p2,al},...
+                trial_Window_TrAltITD_TsAltITD{p,p2,al}];
+            trialWiseRawEpochs{p,p2,al} = tempTrialWindowed;
+            tempTrialWindowed = zscore(tempTrialWindowed,0,'all');
+            trial_Window_TrPr_TsTr{p,p2,al} = tempTrialWindowed(:,1);
+            trial_Window_TrTr_TsPr{p,p2,al} = tempTrialWindowed(:,2);
+            trial_Window_TrTr_TsPo{p,p2,al} = tempTrialWindowed(:,3);
+            trial_Window_TrPo_TsTr{p,p2,al} = tempTrialWindowed(:,4);
+            trial_Window_TrPo_TsPr{p,p2,al} = tempTrialWindowed(:,5);
+            trial_Window_TrPr_TsPo{p,p2,al} = tempTrialWindowed(:,6);
+            trial_Window_TrTr_TsTr{p,p2,al} = tempTrialWindowed(:,7);
+            trial_Window_TrITD_TsITD{p,p2,al} = tempTrialWindowed(:,8);
+            trial_Window_TrAltITD_TsAltITD{p,p2,al} = tempTrialWindowed(:,9);
+        end
+    end
+end
 %% Calculate Chance
 % Chance Values
 trialD_Chance = cell(size(trlD,1),size(trlD,2),numChancePerms,size(trlD,4));
@@ -855,735 +946,1101 @@ for al = 1:length(alignments)
         'String', sprintf('Decodability: %s Alignment', alignments{al}),...
         'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left', 'interpreter', 'none');
 end
-%% Plot Specific Window Comparisons
-selType = 0; % Alignment includes all trial positions
-% selType = 1; % Alignment specific trial positions included
-% selType = 2; % Alignment only common trial positions i.e. 2&3
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%% Upcoming Trial Info
-figure;
-subplot(4,3,1)
-tempTMat = trialD(:,:,1);
-if selType == 1
-    tempTMat = tempTMat(2:end,2:end);
-elseif selType == 2
-    tempTMat = tempTMat(2:end-1,2:end-1);
-end
-mlb{end}.PlotTrialPDM(cell2mat(permute(tempTMat(triu(ones(length(tempTMat)),-1) & tril(ones(length(tempTMat)),-1)), [2,3,1])), 'rotate', 'clim', [-1.5 1.5], 'x', obsvTimeVect{strcmp(alignments, 'PokeIn')}, 'y', obsvTimeVect{strcmp(alignments, 'PokeIn')}, 'xlabel', 'Test Time', 'ylabel', 'Train Time');
-hold on;
-plot(get(gca, 'xlim'),zeros(1,2), '--k','linewidth', 2);
-plot(get(gca, 'xlim'),repmat(grpPiPoLat, [1,2]), '--k','linewidth', 2);
-plot(get(gca, 'xlim'),repmat(grpPiRwdLat, [1,2]), ':k','linewidth', 2);
-plot(zeros(1,2),get(gca, 'ylim'), '--k','linewidth', 2);
-plot(repmat(grpPiPoLat, [1,2]),get(gca, 'ylim'), '--k','linewidth', 2);
-plot(repmat(grpPiRwdLat, [1,2]),get(gca, 'ylim'), ':k','linewidth', 2);
-patch('XData', [min(obsvTimeVect{strcmp(alignments, 'PokeIn')}), 0, 0, min(obsvTimeVect{strcmp(alignments, 'PokeIn')})],...
-    'YData', [0, 0, grpPiPoLat, grpPiPoLat],...
-    'facecolor', 'none', 'edgecolor', [191/255, 191/255, 0], 'linestyle', '-', 'linewidth', 5);
-patch('XData', [0, grpPiPoLat, grpPiPoLat, 0],...
-    'YData', [min(obsvTimeVect{strcmp(alignments, 'PokeIn')}), min(obsvTimeVect{strcmp(alignments, 'PokeIn')}),0, 0],...
-    'facecolor', 'none', 'edgecolor', [191/255, 191/255, 0], 'linestyle', '--', 'linewidth', 5);
-patch('XData', [min(obsvTimeVect{strcmp(alignments, 'PokeIn')}), 0, 0, min(obsvTimeVect{strcmp(alignments, 'PokeIn')})],...
-    'YData', [grpPiPoLat, grpPiPoLat, max(obsvTimeVect{strcmp(alignments, 'PokeIn')}), max(obsvTimeVect{strcmp(alignments, 'PokeIn')})],...
-    'facecolor', 'none', 'edgecolor', [191/255, 96/255, 0], 'linestyle', '-', 'linewidth', 5);
-patch('XData', [grpPiPoLat, max(obsvTimeVect{strcmp(alignments, 'PokeIn')}), max(obsvTimeVect{strcmp(alignments, 'PokeIn')}), grpPiPoLat],...
-    'YData', [0, 0, min(obsvTimeVect{strcmp(alignments, 'PokeIn')}),  min(obsvTimeVect{strcmp(alignments, 'PokeIn')})],...
-    'facecolor', 'none', 'edgecolor', [191/255, 96/255, 0], 'linestyle', '--', 'linewidth', 5);
-title('Previous Position Info');
-
-subplot(4,3,2)
-tempTMat = trialD(:,:,2);
-if selType == 1
-    tempTMat = tempTMat(1:end-1,1:end-1);
-elseif selType == 2
-    tempTMat = tempTMat(2:end-1,2:end-1);
-end
-mlb{end}.PlotTrialPDM(cell2mat(permute(tempTMat(triu(ones(length(tempTMat)),-1) & tril(ones(length(tempTMat)),-1)), [2,3,1])), 'rotate', 'clim', [-1.5 1.5], 'x', obsvTimeVect{strcmp(alignments, 'PokeOut')}, 'y', obsvTimeVect{strcmp(alignments, 'PokeOut')}, 'xlabel', 'Test Time', 'ylabel', 'Train Time');
-hold on;
-plot(get(gca, 'xlim'),zeros(1,2), '--k','linewidth', 2);
-plot(get(gca, 'xlim'),repmat(grpPoPiLat, [1,2]), '--k','linewidth', 2);
-plot(get(gca, 'xlim'),repmat(grpPoRwdLat, [1,2]), ':k','linewidth', 2);
-plot(zeros(1,2),get(gca, 'ylim'), '--k','linewidth', 2);
-plot(repmat(grpPoPiLat, [1,2]),get(gca, 'ylim'), '--k','linewidth', 2);
-plot(repmat(grpPoRwdLat, [1,2]),get(gca, 'ylim'), ':k','linewidth', 2);
-patch('XData', [grpPoPiLat, 0, 0, grpPoPiLat],...
-    'YData', [0, 0, max(obsvTimeVect{strcmp(alignments, 'PokeOut')}), max(obsvTimeVect{strcmp(alignments, 'PokeOut')})],...
-    'facecolor', 'none', 'edgecolor', [196/255, 33/255, 255/255], 'linestyle', '-', 'linewidth', 5);
-patch('XData', [0, max(obsvTimeVect{strcmp(alignments, 'PokeOut')}), max(obsvTimeVect{strcmp(alignments, 'PokeOut')}), 0],...
-    'YData', [grpPoPiLat, grpPoPiLat, 0, 0],...
-    'facecolor', 'none', 'edgecolor', [196/255, 33/255, 255/255], 'linestyle', '--', 'linewidth', 5);
-patch('XData', [min(obsvTimeVect{strcmp(alignments, 'PokeOut')}), grpPoPiLat, grpPoPiLat, min(obsvTimeVect{strcmp(alignments, 'PokeOut')})],...
-    'YData', [0, 0, max(obsvTimeVect{strcmp(alignments, 'PokeOut')}), max(obsvTimeVect{strcmp(alignments, 'PokeOut')})],...
-    'facecolor', 'none', 'edgecolor', [191/255, 96/255, 0], 'linestyle', '-', 'linewidth', 5);
-patch('XData', [0, max(obsvTimeVect{strcmp(alignments, 'PokeOut')}), max(obsvTimeVect{strcmp(alignments, 'PokeOut')}), 0],...
-    'YData', [min(obsvTimeVect{strcmp(alignments, 'PokeOut')}), min(obsvTimeVect{strcmp(alignments, 'PokeOut')}), grpPoPiLat, grpPoPiLat],...
-    'facecolor', 'none', 'edgecolor', [191/255, 96/255, 0], 'linestyle', '--', 'linewidth', 5);
-
-    
-subplot(4,3,3)
-tempTrPr = trial_Window_TrPr(:,:,1);
-tempPrTr_Window = trial_Window_TrPr_TsTr(:,:,1);
-tempTrPr_Window = trial_Window_TrTr_TsPr(:,:,1);
-tempTrPo = trial_Window_TrPo(:,:,2);
-tempPoTr_Window = trial_Window_TrPo_TsTr(:,:,2);
-tempTrPo_Window = trial_Window_TrTr_TsPo(:,:,2);
-if selType == 1
-    tempTrPr = tempTrPr(2:end,2:end);
-    tempPrTr_Window = tempPrTr_Window(2:end,2:end);
-    tempTrPr_Window = tempTrPr_Window(2:end,2:end);
-    tempTrPo = tempTrPo(1:end-1,1:end-1);
-    tempPoTr_Window = tempPoTr_Window(1:end-1,1:end-1);
-    tempTrPo_Window = tempTrPo_Window(1:end-1,1:end-1);
-elseif selType == 2
-    tempTrPr = tempTrPr(2:end-1,2:end-1);
-    tempPrTr_Window = tempPrTr_Window(2:end-1,2:end-1);
-    tempTrPr_Window = tempTrPr_Window(2:end-1,2:end-1);
-    tempTrPo = tempTrPo(2:end-1,2:end-1);
-    tempPoTr_Window = tempPoTr_Window(2:end-1,2:end-1);
-    tempTrPo_Window = tempTrPo_Window(2:end-1,2:end-1);
-end
-trPr = cell2mat(tempTrPr(triu(ones(length(tempTMat)),-1) & tril(ones(length(tempTMat)),-1)));
-win_PrTr = cell2mat(tempPrTr_Window(triu(ones(length(tempTMat)),-1) & tril(ones(length(tempTMat)),-1)));
-win_TrPr = cell2mat(tempTrPr_Window(triu(ones(length(tempTMat)),-1) & tril(ones(length(tempTMat)),-1)));
-trPo = cell2mat(tempTrPo(triu(ones(length(tempTMat)),-1) & tril(ones(length(tempTMat)),-1)));
-win_PoTr = cell2mat(tempPoTr_Window(triu(ones(length(tempTMat)),-1) & tril(ones(length(tempTMat)),-1)));
-win_TrPo = cell2mat(tempTrPo_Window(triu(ones(length(tempTMat)),-1) & tril(ones(length(tempTMat)),-1)));
-bar([1,2,3,4,5,6], [mean(trPr), mean(win_PrTr), mean(win_TrPr), mean(trPo), mean(win_PoTr), mean(win_TrPo)], 'k');
-hold on;
-swarmchart(ones(size(trPr)), trPr, 5, 'markerfacecolor', [191/255, 191/255, 0], 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
-swarmchart(ones(size(trPr))+1, win_PrTr, 5, 'markerfacecolor', [191/255, 191/255, 0], 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
-swarmchart(ones(size(trPr))+2, win_TrPr, 5, 'markerfacecolor', [191/255, 191/255, 0], 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
-swarmchart(ones(size(trPo))+3, trPo, 5, 'markerfacecolor', [196/255, 33/255, 255/255], 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
-swarmchart(ones(size(win_TrPo))+4, win_PoTr, 5, 'markerfacecolor', [196/255, 33/255, 255/255], 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
-swarmchart(ones(size(win_TrPo))+5, win_TrPo, 5, 'markerfacecolor', [196/255, 33/255, 255/255], 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
-set(gca, 'xticklabel', [{'TrPr'}, {'Pr->Tr'}, {'Tr->Pr'}, {'TrPo'}, {'Po->Tr'}, {'Tr->Po'}], 'xticklabelrotation', 45);
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%% Current Trial
-subplot(4,3,4)
-tempTMat = trialD(:,:,1);
-if selType == 1
-    tempTMat = tempTMat(2:end,2:end);
-elseif selType == 2
-    tempTMat = tempTMat(2:end-1,2:end-1);
-end
-mlb{end}.PlotTrialPDM(cell2mat(permute(tempTMat(logical(eye(length(tempTMat)))), [2,3,1])), 'rotate', 'clim', [-1.5 1.5], 'x', obsvTimeVect{strcmp(alignments, 'PokeIn')}, 'y', obsvTimeVect{strcmp(alignments, 'PokeIn')}, 'xlabel', 'Test Time', 'ylabel', 'Train Time');
-hold on;
-plot(get(gca, 'xlim'),zeros(1,2), '--k','linewidth', 2);
-plot(get(gca, 'xlim'),repmat(grpPiPoLat, [1,2]), '--k','linewidth', 2);
-plot(get(gca, 'xlim'),repmat(grpPiRwdLat, [1,2]), ':k','linewidth', 2);
-plot(zeros(1,2),get(gca, 'ylim'), '--k','linewidth', 2);
-plot(repmat(grpPiPoLat, [1,2]),get(gca, 'ylim'), '--k','linewidth', 2);
-plot(repmat(grpPiRwdLat, [1,2]),get(gca, 'ylim'), ':k','linewidth', 2);
-patch('XData', [min(obsvTimeVect{strcmp(alignments, 'PokeIn')}), 0, 0, min(obsvTimeVect{strcmp(alignments, 'PokeIn')})],...
-    'YData', [0, 0, grpPiPoLat, grpPiPoLat], 'facecolor', 'none', 'edgecolor', [191/255, 191/255, 0],...
-    'linestyle', '-', 'linewidth', 5);
-patch('XData', [0, grpPiPoLat, grpPiPoLat, 0],...
-    'YData', [min(obsvTimeVect{strcmp(alignments, 'PokeIn')}), min(obsvTimeVect{strcmp(alignments, 'PokeIn')}),0, 0],...
-    'facecolor', 'none', 'edgecolor', [191/255, 191/255, 0], 'linestyle', '--', 'linewidth', 5);
-patch('XData', [min(obsvTimeVect{strcmp(alignments, 'PokeIn')}), 0, 0, min(obsvTimeVect{strcmp(alignments, 'PokeIn')})],...
-    'YData', [grpPiPoLat, grpPiPoLat, max(obsvTimeVect{strcmp(alignments, 'PokeIn')}), max(obsvTimeVect{strcmp(alignments, 'PokeIn')})],...
-    'facecolor', 'none', 'edgecolor', [191/255, 96/255, 0], 'linestyle', '-', 'linewidth', 5);
-patch('XData', [grpPiPoLat, max(obsvTimeVect{strcmp(alignments, 'PokeIn')}), max(obsvTimeVect{strcmp(alignments, 'PokeIn')}), grpPiPoLat],...
-    'YData', [0, 0, min(obsvTimeVect{strcmp(alignments, 'PokeIn')}),  min(obsvTimeVect{strcmp(alignments, 'PokeIn')})],...
-    'facecolor', 'none', 'edgecolor', [191/255, 96/255, 0], 'linestyle', '--', 'linewidth', 5);
-title('Current Position Info');
-
-subplot(4,3,5)
-tempTMat = trialD(:,:,2);
-if selType == 1
-    tempTMat = tempTMat(1:end-1,1:end-1);
-elseif selType == 2
-    tempTMat = tempTMat(2:end-1,2:end-1);
-end
-mlb{end}.PlotTrialPDM(cell2mat(permute(tempTMat(logical(eye(length(tempTMat)))), [2,3,1])), 'rotate', 'clim', [-1.5 1.5], 'x', obsvTimeVect{strcmp(alignments, 'PokeOut')}, 'y', obsvTimeVect{strcmp(alignments, 'PokeOut')}, 'xlabel', 'Test Time', 'ylabel', 'Train Time');
-hold on;
-plot(get(gca, 'xlim'),zeros(1,2), '--k','linewidth', 2);
-plot(get(gca, 'xlim'),repmat(grpPoPiLat, [1,2]), '--k','linewidth', 2);
-plot(get(gca, 'xlim'),repmat(grpPoRwdLat, [1,2]), ':k','linewidth', 2);
-plot(zeros(1,2),get(gca, 'ylim'), '--k','linewidth', 2);
-plot(repmat(grpPoPiLat, [1,2]),get(gca, 'ylim'), '--k','linewidth', 2);
-plot(repmat(grpPoRwdLat, [1,2]),get(gca, 'ylim'), ':k','linewidth', 2);
-patch('XData', [grpPoPiLat, 0, 0, grpPoPiLat],...
-    'YData', [0, 0, max(obsvTimeVect{strcmp(alignments, 'PokeOut')}), max(obsvTimeVect{strcmp(alignments, 'PokeOut')})],...
-    'facecolor', 'none', 'edgecolor', [196/255, 33/255, 255/255], 'linestyle', '-', 'linewidth', 5);
-patch('XData', [0, max(obsvTimeVect{strcmp(alignments, 'PokeOut')}), max(obsvTimeVect{strcmp(alignments, 'PokeOut')}), 0],...
-    'YData', [grpPoPiLat, grpPoPiLat, 0, 0], 'facecolor', 'none', 'edgecolor', [196/255, 33/255, 255/255],...
-    'linestyle', '--', 'linewidth', 5);
-patch('XData', [min(obsvTimeVect{strcmp(alignments, 'PokeOut')}), grpPoPiLat, grpPoPiLat, min(obsvTimeVect{strcmp(alignments, 'PokeOut')})],...
-    'YData', [0, 0, max(obsvTimeVect{strcmp(alignments, 'PokeOut')}), max(obsvTimeVect{strcmp(alignments, 'PokeOut')})],...
-    'facecolor', 'none', 'edgecolor', [191/255, 96/255, 0], 'linestyle', '-', 'linewidth', 5);
-patch('XData', [0, max(obsvTimeVect{strcmp(alignments, 'PokeOut')}), max(obsvTimeVect{strcmp(alignments, 'PokeOut')}), 0],...
-    'YData', [min(obsvTimeVect{strcmp(alignments, 'PokeOut')}), min(obsvTimeVect{strcmp(alignments, 'PokeOut')}), grpPoPiLat, grpPoPiLat],...
-    'facecolor', 'none', 'edgecolor', [191/255, 96/255, 0], 'linestyle', '--', 'linewidth', 5);
-
-subplot(4,3,6)
-tempTrPr = trial_Window_TrPr(:,:,1);
-tempPrTr_Window = trial_Window_TrPr_TsTr(:,:,1);
-tempTrPr_Window = trial_Window_TrTr_TsPr(:,:,1);
-tempTrPo = trial_Window_TrPo(:,:,2);
-tempPoTr_Window = trial_Window_TrPo_TsTr(:,:,2);
-tempTrPo_Window = trial_Window_TrTr_TsPo(:,:,2);
-if selType == 1
-    tempTrPr = tempTrPr(2:end,2:end);
-    tempPrTr_Window = tempPrTr_Window(2:end,2:end);
-    tempTrPr_Window = tempTrPr_Window(2:end,2:end);
-    tempTrPo = tempTrPo(1:end-1,1:end-1);
-    tempPoTr_Window = tempPoTr_Window(1:end-1,1:end-1);
-    tempTrPo_Window = tempTrPo_Window(1:end-1,1:end-1);
-elseif selType == 2
-    tempTrPr = tempTrPr(2:end-1,2:end-1);
-    tempPrTr_Window = tempPrTr_Window(2:end-1,2:end-1);
-    tempTrPr_Window = tempTrPr_Window(2:end-1,2:end-1);
-    tempTrPo = tempTrPo(2:end-1,2:end-1);
-    tempPoTr_Window = tempPoTr_Window(2:end-1,2:end-1);
-    tempTrPo_Window = tempTrPo_Window(2:end-1,2:end-1);
-end
-trPr = cell2mat(tempTrPr(logical(eye(length(tempTrPr)))));
-win_PrTr = cell2mat(tempPrTr_Window(logical(eye(length(tempTrPr)))));
-win_TrPr = cell2mat(tempTrPr_Window(logical(eye(length(tempTrPr)))));
-trPo = cell2mat(tempTrPo(logical(eye(length(tempTrPr)))));
-win_TrPo = cell2mat(tempTrPo_Window(logical(eye(length(tempTrPr)))));
-win_PoTr = cell2mat(tempPoTr_Window(logical(eye(length(tempTrPr)))));
-bar([1,2,3,4,5,6], [mean(trPr), mean(win_PrTr), mean(win_TrPr), mean(trPo), mean(win_PoTr), mean(win_TrPo)], 'k');
-hold on;
-swarmchart(ones(size(trPr)), trPr, 5, 'markerfacecolor', [191/255, 191/255, 0], 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
-swarmchart(ones(size(win_PrTr))+1, win_PrTr, 5, 'markerfacecolor', [191/255, 191/255, 0], 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
-swarmchart(ones(size(win_TrPr))+2, win_TrPr, 5, 'markerfacecolor', [191/255, 191/255, 0], 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
-swarmchart(ones(size(trPo))+3, trPo, 5, 'markerfacecolor', [196/255, 33/255, 255/255], 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
-swarmchart(ones(size(win_TrPo))+4, win_PoTr, 5, 'markerfacecolor', [196/255, 33/255, 255/255], 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
-swarmchart(ones(size(win_TrPo))+5, win_TrPo, 5, 'markerfacecolor', [196/255, 33/255, 255/255], 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
-set(gca, 'xticklabel', [{'TrPr'}, {'Pr->Tr'}, {'Tr->Pr'}, {'TrPo'}, {'Po->Tr'}, {'Tr->Po'}], 'xticklabelrotation', 45);
+% %% Plot Specific Window Comparisons
+% selType = 0; % Alignment includes all trial positions
+% % selType = 1; % Alignment specific trial positions included
+% % selType = 2; % Alignment only common trial positions i.e. 2&3
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% %%%%%%%%%%%%%% Upcoming Trial Info
+% figure;
+% subplot(4,3,1)
+% tempTMat = trialD(:,:,1);
+% if selType == 1
+%     tempTMat = tempTMat(2:end,2:end);
+% elseif selType == 2
+%     tempTMat = tempTMat(2:end-1,2:end-1);
+% end
+% mlb{end}.PlotTrialPDM(cell2mat(permute(tempTMat(triu(ones(length(tempTMat)),-1) & tril(ones(length(tempTMat)),-1)), [2,3,1])), 'rotate', 'clim', [-1.5 1.5], 'x', obsvTimeVect{strcmp(alignments, 'PokeIn')}, 'y', obsvTimeVect{strcmp(alignments, 'PokeIn')}, 'xlabel', 'Test Time', 'ylabel', 'Train Time');
+% hold on;
+% plot(get(gca, 'xlim'),zeros(1,2), '--k','linewidth', 2);
+% plot(get(gca, 'xlim'),repmat(grpPiPoLat, [1,2]), '--k','linewidth', 2);
+% plot(get(gca, 'xlim'),repmat(grpPiRwdLat, [1,2]), ':k','linewidth', 2);
+% plot(zeros(1,2),get(gca, 'ylim'), '--k','linewidth', 2);
+% plot(repmat(grpPiPoLat, [1,2]),get(gca, 'ylim'), '--k','linewidth', 2);
+% plot(repmat(grpPiRwdLat, [1,2]),get(gca, 'ylim'), ':k','linewidth', 2);
+% patch('XData', [min(obsvTimeVect{strcmp(alignments, 'PokeIn')}), 0, 0, min(obsvTimeVect{strcmp(alignments, 'PokeIn')})],...
+%     'YData', [0, 0, grpPiPoLat, grpPiPoLat],...
+%     'facecolor', 'none', 'edgecolor', [191/255, 191/255, 0], 'linestyle', '-', 'linewidth', 5);
+% patch('XData', [0, grpPiPoLat, grpPiPoLat, 0],...
+%     'YData', [min(obsvTimeVect{strcmp(alignments, 'PokeIn')}), min(obsvTimeVect{strcmp(alignments, 'PokeIn')}),0, 0],...
+%     'facecolor', 'none', 'edgecolor', [191/255, 191/255, 0], 'linestyle', '--', 'linewidth', 5);
+% patch('XData', [min(obsvTimeVect{strcmp(alignments, 'PokeIn')}), 0, 0, min(obsvTimeVect{strcmp(alignments, 'PokeIn')})],...
+%     'YData', [grpPiPoLat, grpPiPoLat, max(obsvTimeVect{strcmp(alignments, 'PokeIn')}), max(obsvTimeVect{strcmp(alignments, 'PokeIn')})],...
+%     'facecolor', 'none', 'edgecolor', [191/255, 96/255, 0], 'linestyle', '-', 'linewidth', 5);
+% patch('XData', [grpPiPoLat, max(obsvTimeVect{strcmp(alignments, 'PokeIn')}), max(obsvTimeVect{strcmp(alignments, 'PokeIn')}), grpPiPoLat],...
+%     'YData', [0, 0, min(obsvTimeVect{strcmp(alignments, 'PokeIn')}),  min(obsvTimeVect{strcmp(alignments, 'PokeIn')})],...
+%     'facecolor', 'none', 'edgecolor', [191/255, 96/255, 0], 'linestyle', '--', 'linewidth', 5);
+% title('Previous Position Info');
 % 
-% [h,p,ci,stats] = ttest(trPr, trPo);
-% [p,tbl,stats] = anova1([win_PrTr,win_TrPr,win_PoTr,win_TrPo]);
+% subplot(4,3,2)
+% tempTMat = trialD(:,:,2);
+% if selType == 1
+%     tempTMat = tempTMat(1:end-1,1:end-1);
+% elseif selType == 2
+%     tempTMat = tempTMat(2:end-1,2:end-1);
+% end
+% mlb{end}.PlotTrialPDM(cell2mat(permute(tempTMat(triu(ones(length(tempTMat)),-1) & tril(ones(length(tempTMat)),-1)), [2,3,1])), 'rotate', 'clim', [-1.5 1.5], 'x', obsvTimeVect{strcmp(alignments, 'PokeOut')}, 'y', obsvTimeVect{strcmp(alignments, 'PokeOut')}, 'xlabel', 'Test Time', 'ylabel', 'Train Time');
+% hold on;
+% plot(get(gca, 'xlim'),zeros(1,2), '--k','linewidth', 2);
+% plot(get(gca, 'xlim'),repmat(grpPoPiLat, [1,2]), '--k','linewidth', 2);
+% plot(get(gca, 'xlim'),repmat(grpPoRwdLat, [1,2]), ':k','linewidth', 2);
+% plot(zeros(1,2),get(gca, 'ylim'), '--k','linewidth', 2);
+% plot(repmat(grpPoPiLat, [1,2]),get(gca, 'ylim'), '--k','linewidth', 2);
+% plot(repmat(grpPoRwdLat, [1,2]),get(gca, 'ylim'), ':k','linewidth', 2);
+% patch('XData', [grpPoPiLat, 0, 0, grpPoPiLat],...
+%     'YData', [0, 0, max(obsvTimeVect{strcmp(alignments, 'PokeOut')}), max(obsvTimeVect{strcmp(alignments, 'PokeOut')})],...
+%     'facecolor', 'none', 'edgecolor', [196/255, 33/255, 255/255], 'linestyle', '-', 'linewidth', 5);
+% patch('XData', [0, max(obsvTimeVect{strcmp(alignments, 'PokeOut')}), max(obsvTimeVect{strcmp(alignments, 'PokeOut')}), 0],...
+%     'YData', [grpPoPiLat, grpPoPiLat, 0, 0],...
+%     'facecolor', 'none', 'edgecolor', [196/255, 33/255, 255/255], 'linestyle', '--', 'linewidth', 5);
+% patch('XData', [min(obsvTimeVect{strcmp(alignments, 'PokeOut')}), grpPoPiLat, grpPoPiLat, min(obsvTimeVect{strcmp(alignments, 'PokeOut')})],...
+%     'YData', [0, 0, max(obsvTimeVect{strcmp(alignments, 'PokeOut')}), max(obsvTimeVect{strcmp(alignments, 'PokeOut')})],...
+%     'facecolor', 'none', 'edgecolor', [191/255, 96/255, 0], 'linestyle', '-', 'linewidth', 5);
+% patch('XData', [0, max(obsvTimeVect{strcmp(alignments, 'PokeOut')}), max(obsvTimeVect{strcmp(alignments, 'PokeOut')}), 0],...
+%     'YData', [min(obsvTimeVect{strcmp(alignments, 'PokeOut')}), min(obsvTimeVect{strcmp(alignments, 'PokeOut')}), grpPoPiLat, grpPoPiLat],...
+%     'facecolor', 'none', 'edgecolor', [191/255, 96/255, 0], 'linestyle', '--', 'linewidth', 5);
+% 
+%     
+% subplot(4,3,3)
+% tempTrPr = trial_Window_TrPr(:,:,1);
+% tempPrTr_Window = trial_Window_TrPr_TsTr(:,:,1);
+% tempTrPr_Window = trial_Window_TrTr_TsPr(:,:,1);
+% tempTrPo = trial_Window_TrPo(:,:,2);
+% tempPoTr_Window = trial_Window_TrPo_TsTr(:,:,2);
+% tempTrPo_Window = trial_Window_TrTr_TsPo(:,:,2);
+% if selType == 1
+%     tempTrPr = tempTrPr(2:end,2:end);
+%     tempPrTr_Window = tempPrTr_Window(2:end,2:end);
+%     tempTrPr_Window = tempTrPr_Window(2:end,2:end);
+%     tempTrPo = tempTrPo(1:end-1,1:end-1);
+%     tempPoTr_Window = tempPoTr_Window(1:end-1,1:end-1);
+%     tempTrPo_Window = tempTrPo_Window(1:end-1,1:end-1);
+% elseif selType == 2
+%     tempTrPr = tempTrPr(2:end-1,2:end-1);
+%     tempPrTr_Window = tempPrTr_Window(2:end-1,2:end-1);
+%     tempTrPr_Window = tempTrPr_Window(2:end-1,2:end-1);
+%     tempTrPo = tempTrPo(2:end-1,2:end-1);
+%     tempPoTr_Window = tempPoTr_Window(2:end-1,2:end-1);
+%     tempTrPo_Window = tempTrPo_Window(2:end-1,2:end-1);
+% end
+% trPr = cell2mat(tempTrPr(triu(ones(length(tempTMat)),-1) & tril(ones(length(tempTMat)),-1)));
+% win_PrTr = cell2mat(tempPrTr_Window(triu(ones(length(tempTMat)),-1) & tril(ones(length(tempTMat)),-1)));
+% win_TrPr = cell2mat(tempTrPr_Window(triu(ones(length(tempTMat)),-1) & tril(ones(length(tempTMat)),-1)));
+% trPo = cell2mat(tempTrPo(triu(ones(length(tempTMat)),-1) & tril(ones(length(tempTMat)),-1)));
+% win_PoTr = cell2mat(tempPoTr_Window(triu(ones(length(tempTMat)),-1) & tril(ones(length(tempTMat)),-1)));
+% win_TrPo = cell2mat(tempTrPo_Window(triu(ones(length(tempTMat)),-1) & tril(ones(length(tempTMat)),-1)));
+% bar([1,2,3,4,5,6], [mean(trPr), mean(win_PrTr), mean(win_TrPr), mean(trPo), mean(win_PoTr), mean(win_TrPo)], 'k');
+% hold on;
+% swarmchart(ones(size(trPr)), trPr, 5, 'markerfacecolor', [191/255, 191/255, 0], 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
+% swarmchart(ones(size(trPr))+1, win_PrTr, 5, 'markerfacecolor', [191/255, 191/255, 0], 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
+% swarmchart(ones(size(trPr))+2, win_TrPr, 5, 'markerfacecolor', [191/255, 191/255, 0], 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
+% swarmchart(ones(size(trPo))+3, trPo, 5, 'markerfacecolor', [196/255, 33/255, 255/255], 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
+% swarmchart(ones(size(win_TrPo))+4, win_PoTr, 5, 'markerfacecolor', [196/255, 33/255, 255/255], 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
+% swarmchart(ones(size(win_TrPo))+5, win_TrPo, 5, 'markerfacecolor', [196/255, 33/255, 255/255], 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
+% set(gca, 'xticklabel', [{'TrPr'}, {'Pr->Tr'}, {'Tr->Pr'}, {'TrPo'}, {'Po->Tr'}, {'Tr->Po'}], 'xticklabelrotation', 45);
+% 
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% %%%%%%%%%%%%%% Current Trial
+% subplot(4,3,4)
+% tempTMat = trialD(:,:,1);
+% if selType == 1
+%     tempTMat = tempTMat(2:end,2:end);
+% elseif selType == 2
+%     tempTMat = tempTMat(2:end-1,2:end-1);
+% end
+% mlb{end}.PlotTrialPDM(cell2mat(permute(tempTMat(logical(eye(length(tempTMat)))), [2,3,1])), 'rotate', 'clim', [-1.5 1.5], 'x', obsvTimeVect{strcmp(alignments, 'PokeIn')}, 'y', obsvTimeVect{strcmp(alignments, 'PokeIn')}, 'xlabel', 'Test Time', 'ylabel', 'Train Time');
+% hold on;
+% plot(get(gca, 'xlim'),zeros(1,2), '--k','linewidth', 2);
+% plot(get(gca, 'xlim'),repmat(grpPiPoLat, [1,2]), '--k','linewidth', 2);
+% plot(get(gca, 'xlim'),repmat(grpPiRwdLat, [1,2]), ':k','linewidth', 2);
+% plot(zeros(1,2),get(gca, 'ylim'), '--k','linewidth', 2);
+% plot(repmat(grpPiPoLat, [1,2]),get(gca, 'ylim'), '--k','linewidth', 2);
+% plot(repmat(grpPiRwdLat, [1,2]),get(gca, 'ylim'), ':k','linewidth', 2);
+% patch('XData', [min(obsvTimeVect{strcmp(alignments, 'PokeIn')}), 0, 0, min(obsvTimeVect{strcmp(alignments, 'PokeIn')})],...
+%     'YData', [0, 0, grpPiPoLat, grpPiPoLat], 'facecolor', 'none', 'edgecolor', [191/255, 191/255, 0],...
+%     'linestyle', '-', 'linewidth', 5);
+% patch('XData', [0, grpPiPoLat, grpPiPoLat, 0],...
+%     'YData', [min(obsvTimeVect{strcmp(alignments, 'PokeIn')}), min(obsvTimeVect{strcmp(alignments, 'PokeIn')}),0, 0],...
+%     'facecolor', 'none', 'edgecolor', [191/255, 191/255, 0], 'linestyle', '--', 'linewidth', 5);
+% patch('XData', [min(obsvTimeVect{strcmp(alignments, 'PokeIn')}), 0, 0, min(obsvTimeVect{strcmp(alignments, 'PokeIn')})],...
+%     'YData', [grpPiPoLat, grpPiPoLat, max(obsvTimeVect{strcmp(alignments, 'PokeIn')}), max(obsvTimeVect{strcmp(alignments, 'PokeIn')})],...
+%     'facecolor', 'none', 'edgecolor', [191/255, 96/255, 0], 'linestyle', '-', 'linewidth', 5);
+% patch('XData', [grpPiPoLat, max(obsvTimeVect{strcmp(alignments, 'PokeIn')}), max(obsvTimeVect{strcmp(alignments, 'PokeIn')}), grpPiPoLat],...
+%     'YData', [0, 0, min(obsvTimeVect{strcmp(alignments, 'PokeIn')}),  min(obsvTimeVect{strcmp(alignments, 'PokeIn')})],...
+%     'facecolor', 'none', 'edgecolor', [191/255, 96/255, 0], 'linestyle', '--', 'linewidth', 5);
+% title('Current Position Info');
+% 
+% subplot(4,3,5)
+% tempTMat = trialD(:,:,2);
+% if selType == 1
+%     tempTMat = tempTMat(1:end-1,1:end-1);
+% elseif selType == 2
+%     tempTMat = tempTMat(2:end-1,2:end-1);
+% end
+% mlb{end}.PlotTrialPDM(cell2mat(permute(tempTMat(logical(eye(length(tempTMat)))), [2,3,1])), 'rotate', 'clim', [-1.5 1.5], 'x', obsvTimeVect{strcmp(alignments, 'PokeOut')}, 'y', obsvTimeVect{strcmp(alignments, 'PokeOut')}, 'xlabel', 'Test Time', 'ylabel', 'Train Time');
+% hold on;
+% plot(get(gca, 'xlim'),zeros(1,2), '--k','linewidth', 2);
+% plot(get(gca, 'xlim'),repmat(grpPoPiLat, [1,2]), '--k','linewidth', 2);
+% plot(get(gca, 'xlim'),repmat(grpPoRwdLat, [1,2]), ':k','linewidth', 2);
+% plot(zeros(1,2),get(gca, 'ylim'), '--k','linewidth', 2);
+% plot(repmat(grpPoPiLat, [1,2]),get(gca, 'ylim'), '--k','linewidth', 2);
+% plot(repmat(grpPoRwdLat, [1,2]),get(gca, 'ylim'), ':k','linewidth', 2);
+% patch('XData', [grpPoPiLat, 0, 0, grpPoPiLat],...
+%     'YData', [0, 0, max(obsvTimeVect{strcmp(alignments, 'PokeOut')}), max(obsvTimeVect{strcmp(alignments, 'PokeOut')})],...
+%     'facecolor', 'none', 'edgecolor', [196/255, 33/255, 255/255], 'linestyle', '-', 'linewidth', 5);
+% patch('XData', [0, max(obsvTimeVect{strcmp(alignments, 'PokeOut')}), max(obsvTimeVect{strcmp(alignments, 'PokeOut')}), 0],...
+%     'YData', [grpPoPiLat, grpPoPiLat, 0, 0], 'facecolor', 'none', 'edgecolor', [196/255, 33/255, 255/255],...
+%     'linestyle', '--', 'linewidth', 5);
+% patch('XData', [min(obsvTimeVect{strcmp(alignments, 'PokeOut')}), grpPoPiLat, grpPoPiLat, min(obsvTimeVect{strcmp(alignments, 'PokeOut')})],...
+%     'YData', [0, 0, max(obsvTimeVect{strcmp(alignments, 'PokeOut')}), max(obsvTimeVect{strcmp(alignments, 'PokeOut')})],...
+%     'facecolor', 'none', 'edgecolor', [191/255, 96/255, 0], 'linestyle', '-', 'linewidth', 5);
+% patch('XData', [0, max(obsvTimeVect{strcmp(alignments, 'PokeOut')}), max(obsvTimeVect{strcmp(alignments, 'PokeOut')}), 0],...
+%     'YData', [min(obsvTimeVect{strcmp(alignments, 'PokeOut')}), min(obsvTimeVect{strcmp(alignments, 'PokeOut')}), grpPoPiLat, grpPoPiLat],...
+%     'facecolor', 'none', 'edgecolor', [191/255, 96/255, 0], 'linestyle', '--', 'linewidth', 5);
+% 
+% subplot(4,3,6)
+% tempTrPr = trial_Window_TrPr(:,:,1);
+% tempPrTr_Window = trial_Window_TrPr_TsTr(:,:,1);
+% tempTrPr_Window = trial_Window_TrTr_TsPr(:,:,1);
+% tempTrPo = trial_Window_TrPo(:,:,2);
+% tempPoTr_Window = trial_Window_TrPo_TsTr(:,:,2);
+% tempTrPo_Window = trial_Window_TrTr_TsPo(:,:,2);
+% if selType == 1
+%     tempTrPr = tempTrPr(2:end,2:end);
+%     tempPrTr_Window = tempPrTr_Window(2:end,2:end);
+%     tempTrPr_Window = tempTrPr_Window(2:end,2:end);
+%     tempTrPo = tempTrPo(1:end-1,1:end-1);
+%     tempPoTr_Window = tempPoTr_Window(1:end-1,1:end-1);
+%     tempTrPo_Window = tempTrPo_Window(1:end-1,1:end-1);
+% elseif selType == 2
+%     tempTrPr = tempTrPr(2:end-1,2:end-1);
+%     tempPrTr_Window = tempPrTr_Window(2:end-1,2:end-1);
+%     tempTrPr_Window = tempTrPr_Window(2:end-1,2:end-1);
+%     tempTrPo = tempTrPo(2:end-1,2:end-1);
+%     tempPoTr_Window = tempPoTr_Window(2:end-1,2:end-1);
+%     tempTrPo_Window = tempTrPo_Window(2:end-1,2:end-1);
+% end
+% trPr = cell2mat(tempTrPr(logical(eye(length(tempTrPr)))));
+% win_PrTr = cell2mat(tempPrTr_Window(logical(eye(length(tempTrPr)))));
+% win_TrPr = cell2mat(tempTrPr_Window(logical(eye(length(tempTrPr)))));
+% trPo = cell2mat(tempTrPo(logical(eye(length(tempTrPr)))));
+% win_TrPo = cell2mat(tempTrPo_Window(logical(eye(length(tempTrPr)))));
+% win_PoTr = cell2mat(tempPoTr_Window(logical(eye(length(tempTrPr)))));
+% bar([1,2,3,4,5,6], [mean(trPr), mean(win_PrTr), mean(win_TrPr), mean(trPo), mean(win_PoTr), mean(win_TrPo)], 'k');
+% hold on;
+% swarmchart(ones(size(trPr)), trPr, 5, 'markerfacecolor', [191/255, 191/255, 0], 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
+% swarmchart(ones(size(win_PrTr))+1, win_PrTr, 5, 'markerfacecolor', [191/255, 191/255, 0], 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
+% swarmchart(ones(size(win_TrPr))+2, win_TrPr, 5, 'markerfacecolor', [191/255, 191/255, 0], 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
+% swarmchart(ones(size(trPo))+3, trPo, 5, 'markerfacecolor', [196/255, 33/255, 255/255], 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
+% swarmchart(ones(size(win_TrPo))+4, win_PoTr, 5, 'markerfacecolor', [196/255, 33/255, 255/255], 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
+% swarmchart(ones(size(win_TrPo))+5, win_TrPo, 5, 'markerfacecolor', [196/255, 33/255, 255/255], 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
+% set(gca, 'xticklabel', [{'TrPr'}, {'Pr->Tr'}, {'Tr->Pr'}, {'TrPo'}, {'Po->Tr'}, {'Tr->Po'}], 'xticklabelrotation', 45);
+% % 
+% % [h,p,ci,stats] = ttest(trPr, trPo);
+% % [p,tbl,stats] = anova1([win_PrTr,win_TrPr,win_PoTr,win_TrPo]);
+% % 
+% % figure;
+% % multcompare(stats, 'CType', 'bonferroni');
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% %%%%%%%%%%%%%% Next Trial
+% subplot(4,3,7)
+% tempTMat = trialD(:,:,1);
+% if selType == 1
+%     tempTMat = tempTMat(2:end,2:end);
+% elseif selType == 2
+%     tempTMat = tempTMat(2:end-1,2:end-1);
+% end
+% mlb{end}.PlotTrialPDM(cell2mat(permute(tempTMat(triu(ones(length(tempTMat)),1) & tril(ones(length(tempTMat)),1)), [2,3,1])), 'rotate', 'clim', [-1.5 1.5], 'x', obsvTimeVect{strcmp(alignments, 'PokeIn')}, 'y', obsvTimeVect{strcmp(alignments, 'PokeIn')}, 'xlabel', 'Test Time', 'ylabel', 'Train Time');
+% hold on;
+% plot(get(gca, 'xlim'),zeros(1,2), '--k','linewidth', 2);
+% plot(get(gca, 'xlim'),repmat(grpPiPoLat, [1,2]), '--k','linewidth', 2);
+% plot(get(gca, 'xlim'),repmat(grpPiRwdLat, [1,2]), ':k','linewidth', 2);
+% plot(zeros(1,2),get(gca, 'ylim'), '--k','linewidth', 2);
+% plot(repmat(grpPiPoLat, [1,2]),get(gca, 'ylim'), '--k','linewidth', 2);
+% plot(repmat(grpPiRwdLat, [1,2]),get(gca, 'ylim'), ':k','linewidth', 2);
+% patch('XData', [min(obsvTimeVect{strcmp(alignments, 'PokeIn')}), 0, 0, min(obsvTimeVect{strcmp(alignments, 'PokeIn')})],...
+%     'YData', [0, 0, grpPiPoLat, grpPiPoLat],...
+%     'facecolor', 'none', 'edgecolor', [191/255, 191/255, 0], 'linestyle', '-', 'linewidth', 5);
+% patch('XData', [0, grpPiPoLat, grpPiPoLat, 0],...
+%     'YData', [min(obsvTimeVect{strcmp(alignments, 'PokeIn')}), min(obsvTimeVect{strcmp(alignments, 'PokeIn')}),0, 0],...
+%     'facecolor', 'none', 'edgecolor', [191/255, 191/255, 0], 'linestyle', '--', 'linewidth', 5);
+% patch('XData', [min(obsvTimeVect{strcmp(alignments, 'PokeIn')}), 0, 0, min(obsvTimeVect{strcmp(alignments, 'PokeIn')})],...
+%     'YData', [grpPiPoLat, grpPiPoLat, max(obsvTimeVect{strcmp(alignments, 'PokeIn')}), max(obsvTimeVect{strcmp(alignments, 'PokeIn')})],...
+%     'facecolor', 'none', 'edgecolor', [191/255, 96/255, 0], 'linestyle', '-', 'linewidth', 5);
+% patch('XData', [grpPiPoLat, max(obsvTimeVect{strcmp(alignments, 'PokeIn')}), max(obsvTimeVect{strcmp(alignments, 'PokeIn')}), grpPiPoLat],...
+%     'YData', [0, 0, min(obsvTimeVect{strcmp(alignments, 'PokeIn')}),  min(obsvTimeVect{strcmp(alignments, 'PokeIn')})],...
+%     'facecolor', 'none', 'edgecolor', [191/255, 96/255, 0], 'linestyle', '--', 'linewidth', 5);
+% title('Next Position Info');
+% 
+% subplot(4,3,8)
+% tempTMat = trialD(:,:,2);
+% if selType == 1
+%     tempTMat = tempTMat(1:end-1,1:end-1);
+% elseif selType == 2
+%     tempTMat = tempTMat(2:end-1,2:end-1);
+% end
+% mlb{end}.PlotTrialPDM(cell2mat(permute(tempTMat(triu(ones(length(tempTMat)),1) & tril(ones(length(tempTMat)),1)), [2,3,1])), 'rotate', 'clim', [-1.5 1.5], 'x', obsvTimeVect{strcmp(alignments, 'PokeOut')}, 'y', obsvTimeVect{strcmp(alignments, 'PokeOut')}, 'xlabel', 'Test Time', 'ylabel', 'Train Time');
+% hold on;
+% plot(get(gca, 'xlim'),zeros(1,2), '--k','linewidth', 2);
+% plot(get(gca, 'xlim'),repmat(grpPoPiLat, [1,2]), '--k','linewidth', 2);
+% plot(get(gca, 'xlim'),repmat(grpPoRwdLat, [1,2]), ':k','linewidth', 2);
+% plot(zeros(1,2),get(gca, 'ylim'), '--k','linewidth', 2);
+% plot(repmat(grpPoPiLat, [1,2]),get(gca, 'ylim'), '--k','linewidth', 2);
+% plot(repmat(grpPoRwdLat, [1,2]),get(gca, 'ylim'), ':k','linewidth', 2);
+% patch('XData', [grpPoPiLat, 0, 0, grpPoPiLat],...
+%     'YData', [0, 0, max(obsvTimeVect{strcmp(alignments, 'PokeOut')}), max(obsvTimeVect{strcmp(alignments, 'PokeOut')})],...
+%     'facecolor', 'none', 'edgecolor', [196/255, 33/255, 255/255], 'linestyle', '-', 'linewidth', 5);
+% patch('XData', [0, max(obsvTimeVect{strcmp(alignments, 'PokeOut')}), max(obsvTimeVect{strcmp(alignments, 'PokeOut')}), 0],...
+%     'YData', [grpPoPiLat, grpPoPiLat, 0, 0],...
+%     'facecolor', 'none', 'edgecolor', [196/255, 33/255, 255/255], 'linestyle', '--', 'linewidth', 5);
+% patch('XData', [min(obsvTimeVect{strcmp(alignments, 'PokeOut')}), grpPoPiLat, grpPoPiLat, min(obsvTimeVect{strcmp(alignments, 'PokeOut')})],...
+%     'YData', [0, 0, max(obsvTimeVect{strcmp(alignments, 'PokeOut')}), max(obsvTimeVect{strcmp(alignments, 'PokeOut')})],...
+%     'facecolor', 'none', 'edgecolor', [191/255, 96/255, 0], 'linestyle', '-', 'linewidth', 5);
+% patch('XData', [0, max(obsvTimeVect{strcmp(alignments, 'PokeOut')}), max(obsvTimeVect{strcmp(alignments, 'PokeOut')}), 0],...
+%     'YData', [min(obsvTimeVect{strcmp(alignments, 'PokeOut')}), min(obsvTimeVect{strcmp(alignments, 'PokeOut')}), grpPoPiLat, grpPoPiLat],...
+%     'facecolor', 'none', 'edgecolor', [191/255, 96/255, 0], 'linestyle', '--', 'linewidth', 5);
+% 
+% subplot(4,3,9)
+% tempTrPr = trial_Window_TrPr(:,:,1);
+% tempPrTr_Window = trial_Window_TrPr_TsTr(:,:,1);
+% tempTrPr_Window = trial_Window_TrTr_TsPr(:,:,1);
+% tempTrPo = trial_Window_TrPo(:,:,2);
+% tempPoTr_Window = trial_Window_TrPo_TsTr(:,:,2);
+% tempTrPo_Window = trial_Window_TrTr_TsPo(:,:,2);
+% if selType == 1
+%     tempTrPr = tempTrPr(2:end,2:end);
+%     tempPrTr_Window = tempPrTr_Window(2:end,2:end);
+%     tempTrPr_Window = tempTrPr_Window(2:end,2:end);
+%     tempTrPo = tempTrPo(1:end-1,1:end-1);
+%     tempPoTr_Window = tempPoTr_Window(1:end-1,1:end-1);
+%     tempTrPo_Window = tempTrPo_Window(1:end-1,1:end-1);
+% elseif selType == 2
+%     tempTrPr = tempTrPr(2:end-1,2:end-1);
+%     tempPrTr_Window = tempPrTr_Window(2:end-1,2:end-1);
+%     tempTrPr_Window = tempTrPr_Window(2:end-1,2:end-1);
+%     tempTrPo = tempTrPo(2:end-1,2:end-1);
+%     tempPoTr_Window = tempPoTr_Window(2:end-1,2:end-1);
+%     tempTrPo_Window = tempTrPo_Window(2:end-1,2:end-1);
+% end
+% 
+% trPr = cell2mat(tempTrPr(triu(ones(length(tempTrPr)),1) & tril(ones(length(tempTrPr)),1)));
+% win_PrTr = cell2mat(tempPrTr_Window(triu(ones(length(tempPrTr_Window)),1) & tril(ones(length(tempPrTr_Window)),1)));
+% win_TrPr = cell2mat(tempTrPr_Window(triu(ones(length(tempTrPr_Window)),1) & tril(ones(length(tempTrPr_Window)),1)));
+% trPo = cell2mat(tempTrPo(triu(ones(length(tempTrPo)),1) & tril(ones(length(tempTrPo)),1)));
+% win_PoTr = cell2mat(tempPoTr_Window(triu(ones(length(tempPoTr_Window)),1) & tril(ones(length(tempPoTr_Window)),1)));
+% win_TrPo = cell2mat(tempTrPo_Window(triu(ones(length(tempTrPo_Window)),1) & tril(ones(length(tempTrPo_Window)),1)));
+% bar([1,2,3,4,5,6], [mean(trPr), mean(win_PrTr), mean(win_TrPr), mean(trPo), mean(win_PoTr), mean(win_TrPo)], 'k');
+% hold on;
+% swarmchart(ones(size(trPr)), trPr, 5, 'markerfacecolor', [191/255, 191/255, 0], 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
+% swarmchart(ones(size(trPr))+1, win_PrTr, 5, 'markerfacecolor', [191/255, 191/255, 0], 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
+% swarmchart(ones(size(trPr))+2, win_TrPr, 5, 'markerfacecolor', [191/255, 191/255, 0], 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
+% swarmchart(ones(size(trPo))+3, trPo, 5, 'markerfacecolor', [196/255, 33/255, 255/255], 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
+% swarmchart(ones(size(win_TrPo))+4, win_PoTr, 5, 'markerfacecolor', [196/255, 33/255, 255/255], 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
+% swarmchart(ones(size(win_TrPo))+5, win_TrPo, 5, 'markerfacecolor', [196/255, 33/255, 255/255], 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
+% set(gca, 'xticklabel', [{'TrPr'}, {'Pr->Tr'}, {'Tr->Pr'}, {'TrPo'}, {'Po->Tr'}, {'Tr->Po'}], 'xticklabelrotation', 45);
+% 
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% %%%%%%%%%%%%%% ITI Generalization Indices
+% tempPoPr_Window = trial_Window_TrPo_TsPr(:,:,1);
+% tempPrPo_Window = trial_Window_TrPr_TsPo(:,:,1);
+% if selType == 1
+%     tempPoPr_Window = tempPoPr_Window(2:end,2:end);
+%     tempPrPo_Window = tempPrPo_Window(2:end,2:end);
+% elseif selType == 2
+%     tempPoPr_Window = tempPoPr_Window(2:end-1,2:end-1);
+%     tempPrPo_Window = tempPrPo_Window(2:end-1,2:end-1);
+% end
+% popr_Prev = cell2mat(tempPoPr_Window(triu(ones(length(tempPoPr_Window)),-1) & tril(ones(length(tempPoPr_Window)),-1)));
+% popr_Curr = cell2mat(tempPoPr_Window(logical(eye(length(tempPoPr_Window)))));
+% popr_Next = cell2mat(tempPoPr_Window(triu(ones(length(tempPoPr_Window)),1) & tril(ones(length(tempPoPr_Window)),1)));
+% prpo_Prev = cell2mat(tempPrPo_Window(triu(ones(length(tempPrPo_Window)),-1) & tril(ones(length(tempPrPo_Window)),-1)));
+% prpo_Curr = cell2mat(tempPrPo_Window(logical(eye(length(tempPrPo_Window)))));
+% prpo_Next = cell2mat(tempPrPo_Window(triu(ones(length(tempPrPo_Window)),1) & tril(ones(length(tempPrPo_Window)),1)));
+% subplot(4,3,10)
+% bar([1,2,3, 5,6,7], [mean(popr_Prev), mean(popr_Curr), mean(popr_Next), mean(prpo_Prev), mean(prpo_Curr), mean(prpo_Next)], 'k');
+% hold on;
+% swarmchart(ones(size(popr_Prev)), popr_Prev, 5, 'markerfacecolor', [191/255, 96/255, 0], 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
+% swarmchart(ones(size(popr_Curr))+1, popr_Curr, 5, 'markerfacecolor', [191/255, 96/255, 0], 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
+% swarmchart(ones(size(popr_Next))+2, popr_Next, 5, 'markerfacecolor', [191/255, 96/255, 0], 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
+% swarmchart(ones(size(prpo_Prev))+4, prpo_Prev, 5, 'markerfacecolor', [191/255, 96/255, 0], 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
+% swarmchart(ones(size(prpo_Curr))+5, prpo_Curr, 5, 'markerfacecolor', [191/255, 96/255, 0], 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
+% swarmchart(ones(size(prpo_Next))+6, prpo_Next, 5, 'markerfacecolor', [191/255, 96/255, 0], 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
+% set(gca, 'xtick', [1:3,5:7], 'xticklabel', [{'Po->Pr:Prev'}, {'Po->Pr:Curr'}, {'Po->Pr:Next'}, {'Pr->Po:Prev'}, {'Pr->Po:Curr'}, {'Pr->Po:Next'}], 'xticklabelrotation', 45);
+% 
+% tempPoPr_Window = trial_Window_TrPo_TsPr(:,:,2);
+% tempPrPo_Window = trial_Window_TrPr_TsPo(:,:,2);
+% if selType == 1
+%     tempPoPr_Window = tempPoPr_Window(1:end-1,1:end-1);
+%     tempPrPo_Window = tempPrPo_Window(1:end-1,1:end-1);
+% elseif selType == 2
+%     tempPoPr_Window = tempPoPr_Window(2:end-1,2:end-1);
+%     tempPrPo_Window = tempPrPo_Window(2:end-1,2:end-1);
+% end
+% popr_Prev = cell2mat(tempPoPr_Window(triu(ones(length(tempPoPr_Window)),-1) & tril(ones(length(tempPoPr_Window)),-1)));
+% popr_Curr = cell2mat(tempPoPr_Window(logical(eye(length(tempPoPr_Window)))));
+% popr_Next = cell2mat(tempPoPr_Window(triu(ones(length(tempPoPr_Window)),1) & tril(ones(length(tempPoPr_Window)),1)));
+% prpo_Prev = cell2mat(tempPrPo_Window(triu(ones(length(tempPrPo_Window)),-1) & tril(ones(length(tempPrPo_Window)),-1)));
+% prpo_Curr = cell2mat(tempPrPo_Window(logical(eye(length(tempPrPo_Window)))));
+% prpo_Next = cell2mat(tempPrPo_Window(triu(ones(length(tempPrPo_Window)),1) & tril(ones(length(tempPrPo_Window)),1)));
+% subplot(4,3,11)
+% bar([1,2,3, 5,6,7], [mean(popr_Prev), mean(popr_Curr), mean(popr_Next), mean(prpo_Prev), mean(prpo_Curr), mean(prpo_Next)], 'k');
+% hold on;
+% swarmchart(ones(size(popr_Prev)), popr_Prev, 5, 'markerfacecolor', [191/255, 96/255, 0], 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
+% swarmchart(ones(size(popr_Curr))+1, popr_Curr, 5, 'markerfacecolor', [191/255, 96/255, 0], 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
+% swarmchart(ones(size(popr_Next))+2, popr_Next, 5, 'markerfacecolor', [191/255, 96/255, 0], 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
+% swarmchart(ones(size(prpo_Prev))+4, prpo_Prev, 5, 'markerfacecolor', [191/255, 96/255, 0], 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
+% swarmchart(ones(size(prpo_Curr))+5, prpo_Curr, 5, 'markerfacecolor', [191/255, 96/255, 0], 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
+% swarmchart(ones(size(prpo_Next))+6, prpo_Next, 5, 'markerfacecolor', [191/255, 96/255, 0], 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
+% set(gca, 'xtick', [1:3,5:7], 'xticklabel', [{'Po->Pr:Prev'}, {'Po->Pr:Curr'}, {'Po->Pr:Next'}, {'Pr->Po:Prev'}, {'Pr->Po:Curr'}, {'Pr->Po:Next'}], 'xticklabelrotation', 45);
+% colormap(cMap)
+% 
+% if selType == 1
+%     annotation(gcf,'textbox', [0.1 0.95 0.9 0.05],...
+%         'String', 'Select Positions Based on Windows',...
+%         'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left', 'interpreter', 'none');
+% elseif selType == 2
+%     annotation(gcf,'textbox', [0.1 0.95 0.9 0.05],...
+%         'String', 'Common Positions Across Alignments (pos 2&3)',...
+%         'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left', 'interpreter', 'none');
+% else
+%     annotation(gcf,'textbox', [0.1 0.95 0.9 0.05],...
+%         'String', 'All Trials',...
+%         'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left', 'interpreter', 'none');
+% end
+% 
+% tempPoPr_PI = trial_Window_PoPr(:,:,1);
+% % tempPoPr_PI = tempPoPr_PI(2:end,2:end);
+% % tempPoPr_PI = tempPoPr_PI(2:end-1,2:end-1);
+% tempPoPr_PO = trial_Window_PoPr(:,:,2);
+% % tempPoPr_PO = tempPoPr_PO(1:end-1,1:end-1);
+% % tempPoPr_PO = tempPoPr_PO(2:end-1,2:end-1);
+% 
+% 
+% 
+% 
+% % trial_Window_TrPo_TsPr
+% % trial_Window_TrPr_TsPo
+% % trial_Window_PoPr
+% %% Plot Fits
+% % Plot poke in aligned D data
+% figure;
+% subplot(2,3,1)
+% tempTMat = trialD(:,:,1);
+% if selType == 1
+%     tempTMat = tempTMat(2:end,2:end);
+% elseif selType == 2
+%     tempTMat = tempTMat(2:end-1,2:end-1);
+% end
+% mlb{end}.PlotTrialPDM(cell2mat(permute(tempTMat(logical(eye(length(tempTMat)))), [2,3,1])), 'rotate', 'clim', [-1.5 1.5], 'x', obsvTimeVect{strcmp(alignments, 'PokeIn')}, 'y', obsvTimeVect{strcmp(alignments, 'PokeIn')}, 'xlabel', 'Test Time', 'ylabel', 'Train Time');
+% hold on;
+% plot(get(gca, 'xlim'),zeros(1,2), '--k','linewidth', 2);
+% plot(get(gca, 'xlim'),repmat(grpPiPoLat, [1,2]), '--k','linewidth', 2);
+% plot(get(gca, 'xlim'),repmat(grpPiRwdLat, [1,2]), ':k','linewidth', 2);
+% plot(zeros(1,2),get(gca, 'ylim'), '--k','linewidth', 2);
+% plot(repmat(grpPiPoLat, [1,2]),get(gca, 'ylim'), '--k','linewidth', 2);
+% plot(repmat(grpPiRwdLat, [1,2]),get(gca, 'ylim'), ':k','linewidth', 2);
+% title('Poke In Aligned');
+% % Plot poke in aligned fits
+% tempTrialFits = trial_TrialPersFit(:,:,1);
+% tempITIfits = trial_ITIpersFit(:,:,1);
+% if selType == 1
+%     tempTrialFits = tempTrialFits(2:end,2:end);
+%     tempITIfits = tempITIfits(2:end,2:end);
+% elseif selType == 2
+%     tempTrialFits = tempTrialFits(2:end-1,2:end-1);
+%     tempITIfits = tempITIfits(2:end-1,2:end-1);
+% end
+% tempTrialFits = cell2mat(tempTrialFits(logical(eye(length(tempTrialFits)))));
+% tempITIfits = cell2mat(tempITIfits(logical(eye(length(tempITIfits)))));
+% [minTrialFit,minTrialLat] = min(tempTrialFits,[],2);
+% minTrialLat = minTrialLat./(1/dsRate);
+% [minITIfit,minITIlat] = min(tempITIfits,[],2);
+% minITIlat = minITIlat./(1/dsRate);
+% subplot(2,3,2)
+% swarmchart(ones(size(minTrialLat)), minTrialLat, 5, 'markerfacecolor', 'r', 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
+% hold on;
+% swarmchart(ones(size(minITIlat))+1, minITIlat, 5, 'markerfacecolor', 'k', 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
+% [~,p,~,stats] = ttest(minTrialLat, minITIlat);
+% if p<0.05
+%     title(sprintf('t(%.00f) = %.02f; p = %.02i', stats.df, stats.tstat, p), 'color','r');
+% else
+%     title(sprintf('t(%.00f) = %.02f; p = %.02i', stats.df, stats.tstat, p));
+% end
+% set(gca, 'xtick', 1:2, 'xticklabel', [{'Trial'}, {'ITI'}]);
+% ylabel('Latency to Best Fit (ms)');
+% subplot(2,3,3)
+% swarmchart(ones(size(minTrialFit)), minTrialFit, 5, 'markerfacecolor', 'r', 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
+% hold on;
+% swarmchart(ones(size(minITIfit))+1, minITIfit, 5, 'markerfacecolor', 'k', 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
+% [~,p,~,stats] = ttest(minTrialFit, minITIfit);
+% if p<0.05
+%     title(sprintf('t(%.00f) = %.02f; p = %.02i', stats.df, stats.tstat, p), 'color','r');
+% else
+%     title(sprintf('t(%.00f) = %.02f; p = %.02i', stats.df, stats.tstat, p));
+% end
+% set(gca, 'xtick', 1:2, 'xticklabel', [{'Trial'}, {'ITI'}]);
+% ylabel('Best Fit (Cos Sim)');
+% 
+% % Plot poke out aligned D data
+% subplot(2,3,4)
+% tempTMat = trialD(:,:,2);
+% if selType == 1
+%     tempTMat = tempTMat(1:end-1,1:end-1);
+% elseif selType == 2
+%     tempTMat = tempTMat(2:end-1,2:end-1);
+% end
+% mlb{end}.PlotTrialPDM(cell2mat(permute(tempTMat(logical(eye(length(tempTMat)))), [2,3,1])), 'rotate', 'clim', [-1.5 1.5], 'x', obsvTimeVect{strcmp(alignments, 'PokeOut')}, 'y', obsvTimeVect{strcmp(alignments, 'PokeOut')}, 'xlabel', 'Test Time', 'ylabel', 'Train Time');
+% hold on;
+% plot(get(gca, 'xlim'),zeros(1,2), '--k','linewidth', 2);
+% plot(get(gca, 'xlim'),repmat(grpPoPiLat, [1,2]), '--k','linewidth', 2);
+% plot(get(gca, 'xlim'),repmat(grpPoRwdLat, [1,2]), ':k','linewidth', 2);
+% plot(zeros(1,2),get(gca, 'ylim'), '--k','linewidth', 2);
+% plot(repmat(grpPoPiLat, [1,2]),get(gca, 'ylim'), '--k','linewidth', 2);
+% plot(repmat(grpPoRwdLat, [1,2]),get(gca, 'ylim'), ':k','linewidth', 2);
+% title('Poke Out Aligned');
+% % Plot poke out aligned fits
+% tempTrialFits = trial_TrialPersFit(:,:,2);
+% tempITIfits = trial_ITIpersFit(:,:,2);
+% if selType == 1
+%     tempTrialFits = tempTrialFits(1:end-1,1:end-1);
+%     tempITIfits = tempITIfits(1:end-1,1:end-1);
+% elseif selType == 2
+%     tempTrialFits = tempTrialFits(2:end-1,2:end-1);
+%     tempITIfits = tempITIfits(2:end-1,2:end-1);
+% end
+% tempTrialFits = cell2mat(tempTrialFits(logical(eye(length(tempTrialFits)))));
+% tempITIfits = cell2mat(tempITIfits(logical(eye(length(tempITIfits)))));
+% [minTrialFit,minTrialLat] = min(tempTrialFits,[],2);
+% minTrialLat = minTrialLat./(1/dsRate);
+% [minITIfit,minITIlat] = min(tempITIfits,[],2);
+% minITIlat = minITIlat./(1/dsRate);
+% subplot(2,3,5)
+% swarmchart(ones(size(minTrialLat)), minTrialLat, 5, 'markerfacecolor', 'r', 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
+% hold on;
+% swarmchart(ones(size(minITIlat))+1, minITIlat, 5, 'markerfacecolor', 'k', 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
+% [~,p,~,stats] = ttest(minTrialLat, minITIlat);
+% if p<0.05
+%     title(sprintf('t(%.00f) = %.02f; p = %.02i', stats.df, stats.tstat, p), 'color','r');
+% else
+%     title(sprintf('t(%.00f) = %.02f; p = %.02i', stats.df, stats.tstat, p));
+% end
+% set(gca, 'xtick', 1:2, 'xticklabel', [{'Trial'}, {'ITI'}]);
+% ylabel('Latency to Best Fit (ms)');
+% subplot(2,3,6)
+% swarmchart(ones(size(minTrialFit)), minTrialFit, 5, 'markerfacecolor', 'r', 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
+% hold on;
+% swarmchart(ones(size(minITIfit))+1, minITIfit, 5, 'markerfacecolor', 'k', 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
+% [~,p,~,stats] = ttest(minTrialFit, minITIfit);
+% if p<0.05
+%     title(sprintf('t(%.00f) = %.02f; p = %.02i', stats.df, stats.tstat, p), 'color','r');
+% else
+%     title(sprintf('t(%.00f) = %.02f; p = %.02i', stats.df, stats.tstat, p));
+% end
+% set(gca, 'xtick', 1:2, 'xticklabel', [{'Trial'}, {'ITI'}]);
+% ylabel('Best Fit (Cos Sim)');
+% 
+% colormap(cMap)
+% 
+% 
+% if selType == 1
+%     annotation(gcf,'textbox', [0.1 0.95 0.9 0.05],...
+%         'String', 'Select Positions Based on Windows',...
+%         'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left', 'interpreter', 'none');
+% elseif selType == 2
+%     annotation(gcf,'textbox', [0.1 0.95 0.9 0.05],...
+%         'String', 'Common Positions Across Alignments (pos 2&3)',...
+%         'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left', 'interpreter', 'none');
+% else
+%     annotation(gcf,'textbox', [0.1 0.95 0.9 0.05],...
+%         'String', 'All Trials',...
+%         'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left', 'interpreter', 'none');
+% end
+% 
+% %% Holy shit we have a beta effect!
+% for al = 1:length(alignments)
+%     figure;    
+%     betaLog = true(1,4);
+%     tempLog = logical(eye(mlb{ani}.seqLength));
+%     decLog = false(mlb{ani}.seqLength, mlb{ani}.seqLength, length(alignments));
+%     if selType == 1
+% %         if al == 1
+% %             tempLog(4,4) = false;
+% %             betaLog(4) = false;
+% %         elseif al == 2
+%             tempLog(1,1) = false;
+%             betaLog(1) = false;
+% %         end
+%     elseif selType == 2        
+%         tempLog(1,1) = false;
+%         tempLog(4,4) = false;
+%         betaLog(1) = false;
+%         betaLog(4) = false;
+%     elseif selType == 3
+%         tempLog((1:mlb{ani}.seqLength)~=pos,(1:mlb{ani}.seqLength)~=pos) = false;
+%         betaLog((1:mlb{ani}.seqLength)~=pos) = false;
+%     end
+%         
+%     decLog(:,:,al) = tempLog;
+%     subplot(4,3,1);
+%     corrScatPlot(cell2mat(trial_MeanBeta(betaLog,al)), cell2mat(trial_Window_TrPr_TsTr(decLog)), 'Beta', 'PrTr', []);
+%     subplot(4,3,2);
+%     corrScatPlot(cell2mat(trial_MeanBeta(betaLog,al)), cell2mat(trial_Window_TrTr_TsPr(decLog)), 'Beta', 'TrPr', []);
+%     subplot(4,3,3);
+%     corrScatPlot(cell2mat(trial_MeanBeta(betaLog,al)), cell2mat(trial_Window_TrPr(decLog)), 'Beta', 'PrTrTrPr', []);
+%     subplot(4,3,4);
+%     corrScatPlot(cell2mat(trial_MeanBeta(betaLog,al)), cell2mat(trial_Window_TrTr_TsPo(decLog)), 'Beta', 'TrPo', []);
+%     subplot(4,3,5);
+%     corrScatPlot(cell2mat(trial_MeanBeta(betaLog,al)), cell2mat(trial_Window_TrPo_TsTr(decLog)), 'Beta', 'PoTr', []);
+%     subplot(4,3,6);
+%     corrScatPlot(cell2mat(trial_MeanBeta(betaLog,al)), cell2mat(trial_Window_TrPo(decLog)), 'Beta', 'TrPoPoTr', []);
+%     subplot(4,3,7);
+%     corrScatPlot(cell2mat(trial_MeanBeta(betaLog,al)), cell2mat(trial_Window_TrPo_TsPr(decLog)), 'Beta', 'PoPr', []);
+%     subplot(4,3,8);
+%     corrScatPlot(cell2mat(trial_MeanBeta(betaLog,al)), cell2mat(trial_Window_TrPr_TsPo(decLog)), 'Beta', 'PrPo', []);
+%     subplot(4,3,9);
+%     corrScatPlot(cell2mat(trial_MeanBeta(betaLog,al)), cell2mat(trial_Window_PoPr(decLog)), 'Beta', 'PoPrPrPo', []);
+%     
+%     tempTrialFits = cell2mat(trial_TrialPersFit(decLog));
+%     [minTrialFit,minTrialLat] = min(tempTrialFits,[],2);
+%     minTrialLat = minTrialLat./(1/dsRate);
+%     tempITIfits = cell2mat(trial_ITIpersFit(decLog));
+%     [minITIfit,minITIlat] = min(tempITIfits,[],2);
+%     minITIlat = minITIlat./(1/dsRate);
+%     subplot(4,3,10);
+%     corrScatPlot(cell2mat(trial_MeanBeta(betaLog,al)), minTrialLat, 'Beta', 'Trial Pers', []);
+%     subplot(4,3,11);
+%     corrScatPlot(cell2mat(trial_MeanBeta(betaLog,al)), minITIlat, 'Beta', 'ITI Pers', []);
+%     
+%     if selType == 1
+%         annotation(gcf,'textbox', [0.1 0.95 0.9 0.05],...
+%             'String', sprintf('%s: Select Positions Based on Windows', alignments{al}),...
+%             'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left', 'interpreter', 'none');
+%     elseif selType == 2
+%         annotation(gcf,'textbox', [0.1 0.95 0.9 0.05],...
+%             'String', sprintf('%s: Common Positions Across Alignments (pos 2&3)', alignments{al}),...
+%             'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left', 'interpreter', 'none');
+%     else
+%         annotation(gcf,'textbox', [0.1 0.95 0.9 0.05],...
+%             'String', sprintf('%s: All Trials', alignments{al}),...
+%             'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left', 'interpreter', 'none');
+%     end
+% end
+% % trial_TrialPersFit = cell(size(trlPersFit,1), size(trlPersFit,2), size(trlPersFit,4));
+% % trial_ITIpersFit = cell(size(itiPersFit,1), size(itiPersFit,2), size(itiPersFit,4));
+% 
+% %% Pre-Trial vs Trial Port Entry Aligned
+% figure; 
+% tempLog = logical(eye(mlb{ani}.seqLength));
+% decLog = false(mlb{ani}.seqLength, mlb{ani}.seqLength, length(alignments));
+% decLog(:,:,1) = tempLog;
+% subplot(4,4,[1:3,5:7,9:11,13:15])
+% corrScatPlot(cell2mat(trial_MeanBeta(:,al)), cell2mat(trial_Window_TrPr(decLog)), 'Beta', 'Cross Epoch Generalization', []);
+% title('All Positions');
+% 
+% subplot(4,4,4);
+% decLog = false(mlb{ani}.seqLength, mlb{ani}.seqLength, length(alignments));
+% decLog(1,1,1) = true;
+% corrScatPlot(cell2mat(trial_MeanBeta(1,al)), cell2mat(trial_Window_TrPr(decLog)), 'Beta', 'Cross Epoch Generalization', []);
+% title('Position 1');
+% 
+% subplot(4,4,8);
+% decLog = false(mlb{ani}.seqLength, mlb{ani}.seqLength, length(alignments));
+% decLog(2,2,1) = true;
+% corrScatPlot(cell2mat(trial_MeanBeta(2,al)), cell2mat(trial_Window_TrPr(decLog)), 'Beta', 'Cross Epoch Generalization', []);
+% title('Position 2');
+% 
+% subplot(4,4,12);
+% decLog = false(mlb{ani}.seqLength, mlb{ani}.seqLength, length(alignments));
+% decLog(3,3,1) = true;
+% corrScatPlot(cell2mat(trial_MeanBeta(3,al)), cell2mat(trial_Window_TrPr(decLog)), 'Beta', 'Cross Epoch Generalization', []);
+% title('Position 3');
+% 
+% subplot(4,4,16);
+% decLog = false(mlb{ani}.seqLength, mlb{ani}.seqLength, length(alignments));
+% decLog(4,4,1) = true;
+% corrScatPlot(cell2mat(trial_MeanBeta(4,al)), cell2mat(trial_Window_TrPr(decLog)), 'Beta', 'Cross Epoch Generalization', []);
+% title('Position 4');
+% 
+% annotation(gcf,'textbox', [0.1 0.95 0.9 0.05],...
+%     'String', 'Port Entry Aligned: Pre-Trial vs. Trial; Current Trial Info',...
+%     'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left', 'interpreter', 'none');
+% 
+% %% Post-Trial vs Trial Port Entry Aligned
+% figure; 
+% tempLog = logical(eye(mlb{ani}.seqLength));
+% decLog = false(mlb{ani}.seqLength, mlb{ani}.seqLength, length(alignments));
+% decLog(:,:,2) = tempLog;
+% subplot(4,4,[1:3,5:7,9:11,13:15])
+% corrScatPlot(cell2mat(trial_MeanBeta(:,al)), cell2mat(trial_Window_TrPo(decLog)), 'Beta', 'Cross Epoch Generalization', []);
+% title('All Positions');
+% 
+% subplot(4,4,4);
+% decLog = false(mlb{ani}.seqLength, mlb{ani}.seqLength, length(alignments));
+% decLog(1,1,2) = true;
+% corrScatPlot(cell2mat(trial_MeanBeta(1,al)), cell2mat(trial_Window_TrPo(decLog)), 'Beta', 'Cross Epoch Generalization', []);
+% title('Position 1');
+% 
+% subplot(4,4,8);
+% decLog = false(mlb{ani}.seqLength, mlb{ani}.seqLength, length(alignments));
+% decLog(2,2,2) = true;
+% corrScatPlot(cell2mat(trial_MeanBeta(2,al)), cell2mat(trial_Window_TrPo(decLog)), 'Beta', 'Cross Epoch Generalization', []);
+% title('Position 2');
+% 
+% subplot(4,4,12);
+% decLog = false(mlb{ani}.seqLength, mlb{ani}.seqLength, length(alignments));
+% decLog(3,3,2) = true;
+% corrScatPlot(cell2mat(trial_MeanBeta(3,al)), cell2mat(trial_Window_TrPo(decLog)), 'Beta', 'Cross Epoch Generalization', []);
+% title('Position 3');
+% 
+% subplot(4,4,16);
+% decLog = false(mlb{ani}.seqLength, mlb{ani}.seqLength, length(alignments));
+% decLog(4,4,2) = true;
+% corrScatPlot(cell2mat(trial_MeanBeta(4,al)), cell2mat(trial_Window_TrPo(decLog)), 'Beta', 'Cross Epoch Generalization', []);
+% title('Position 4');
+% 
+% annotation(gcf,'textbox', [0.1 0.95 0.9 0.05],...
+%     'String', 'Port Exit Aligned: Post-Trial vs. Trial; Current Trial Info',...
+%     'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left', 'interpreter', 'none');
+% 
+% 
+% %% Pre-Trial vs Trial Port Entry Aligned Previous Trial Info
+% figure; 
+% tempLog = triu(ones(length(tempTMat)),-1) & tril(ones(length(tempTMat)),-1);
+% decLog = false(mlb{ani}.seqLength, mlb{ani}.seqLength, length(alignments));
+% decLog(:,:,1) = tempLog;
+% subplot(3,3,[1:2,4:5,7:8])
+% corrScatPlot(cell2mat(trial_MeanBeta(2:end,al)), cell2mat(trial_Window_TrPr(decLog)), 'Beta', 'Cross Epoch Generalization', []);
+% title('All Positions');
+% 
+% subplot(3,3,3);
+% decLog = false(mlb{ani}.seqLength, mlb{ani}.seqLength, length(alignments));
+% decLog(2,1,1) = true;
+% corrScatPlot(cell2mat(trial_MeanBeta(2,al)), cell2mat(trial_Window_TrPr(decLog)), 'Beta', 'Cross Epoch Generalization', []);
+% title('Pos 1 in Pos 2');
+% 
+% subplot(3,3,6);
+% decLog = false(mlb{ani}.seqLength, mlb{ani}.seqLength, length(alignments));
+% decLog(3,2,1) = true;
+% corrScatPlot(cell2mat(trial_MeanBeta(3,al)), cell2mat(trial_Window_TrPr(decLog)), 'Beta', 'Cross Epoch Generalization', []);
+% title('Pos 2 in Pos 3');
+% 
+% subplot(3,3,9);
+% decLog = false(mlb{ani}.seqLength, mlb{ani}.seqLength, length(alignments));
+% decLog(4,3,1) = true;
+% corrScatPlot(cell2mat(trial_MeanBeta(4,al)), cell2mat(trial_Window_TrPr(decLog)), 'Beta', 'Cross Epoch Generalization', []);
+% title('Pos 3 in Pos 4');
+% 
+% annotation(gcf,'textbox', [0.1 0.95 0.9 0.05],...
+%     'String', 'Port Entry Aligned: Pre-Trial vs. Trial; Prev Trial Info',...
+%     'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left', 'interpreter', 'none');
+% 
+% %% Pre-Trial vs Trial Port Entry Aligned Previous Trial Info
+% figure; 
+% tempLog = triu(ones(length(tempTMat)),1) & tril(ones(length(tempTMat)),1);
+% decLog = false(mlb{ani}.seqLength, mlb{ani}.seqLength, length(alignments));
+% decLog(:,:,2) = tempLog;
+% subplot(3,3,[1:2,4:5,7:8])
+% corrScatPlot(cell2mat(trial_MeanBeta(1:end-1,al)), cell2mat(trial_Window_TrPo(decLog)), 'Beta', 'Cross Epoch Generalization', []);
+% title('All Positions');
+% 
+% subplot(3,3,3);
+% decLog = false(mlb{ani}.seqLength, mlb{ani}.seqLength, length(alignments));
+% decLog(1,2,2) = true;
+% corrScatPlot(cell2mat(trial_MeanBeta(1,al)), cell2mat(trial_Window_TrPo(decLog)), 'Beta', 'Cross Epoch Generalization', []);
+% title('Pos 1 in Pos 2');
+% 
+% subplot(3,3,6);
+% decLog = false(mlb{ani}.seqLength, mlb{ani}.seqLength, length(alignments));
+% decLog(2,3,2) = true;
+% corrScatPlot(cell2mat(trial_MeanBeta(2,al)), cell2mat(trial_Window_TrPo(decLog)), 'Beta', 'Cross Epoch Generalization', []);
+% title('Pos 2 in Pos 3');
+% 
+% subplot(3,3,9);
+% decLog = false(mlb{ani}.seqLength, mlb{ani}.seqLength, length(alignments));
+% decLog(3,4,2) = true;
+% corrScatPlot(cell2mat(trial_MeanBeta(3,al)), cell2mat(trial_Window_TrPo(decLog)), 'Beta', 'Cross Epoch Generalization', []);
+% title('Pos 3 in Pos 4');
+% 
+% annotation(gcf,'textbox', [0.1 0.95 0.9 0.05],...
+%     'String', 'Port Entry Aligned: Post-Trial vs. Trial; Next Trial Info',...
+%     'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left', 'interpreter', 'none');
+
+%% NEW FIGURES 08/06/22
+% %%%%%% Variables %%%%%% % 
+% NOTE: Visuals depict plots with training time as rows and testing time as columns. In the actual data, everything's set up to depict
+% testing time as the rows and training time as the columns.
+% %%%%%%%%%%%%%  Cross-Epoch Variables %%%%%%%%%%%%% %
+%       --------------
+%       |    |    |  |
+%       |____|____|__|
+%       |%%%%|    |  |
+%       |%%%%|    |  |
+%       |%%%%|____|__|
+%       |    |%%%%|  |
+%       |    |%%%%|  |
+%       |    |%%%%|  |
+%       --------------
+% trial_Window_TrPr_TsTr
+% trial_Window_TrTr_TsPr
+% trial_Window_TrPr
+%       --------------
+%       |  |%%%%|    |
+%       |  |%%%%|    |
+%       |__|%%%%|____|
+%       |  |    |%%%%|
+%       |  |    |%%%%|
+%       |__|____|%%%%|
+%       |  |    |    |
+%       |  |    |    |
+%       --------------
+% trial_Window_TrTr_TsPo
+% trial_Window_TrPo_TsTr
+% trial_Window_TrPo 
+
+% %%%%%%%%%%%%%  Within-Epoch Variables %%%%%%%%%%%%% %
+%       --------------
+%       |    |    |  |
+%       |____|____|__|
+%       |    |%%%%|  |
+%       |    |%%%%|  |
+%       |    |%%%%|  |
+%       |____|%%%%|__|
+%       |%%%%|    |  |
+%       |%%%%|    |  |
+%       |%%%%|    |  |
+%       |%%%%|    |  |
+%       --------------
+% trial_Window_TrTr_TsTr 
+% trial_Window_TrITD_TsITD 
+%       --------------
+%       |    |    |  |
+%       |____|____|__|
+%       |    |   %|  |
+%       |    |  % |  |
+%       |    | %  |  |
+%       |____|%___|__|
+%       |   %|    |  |
+%       |  % |    |  |
+%       | %  |    |  |
+%       |%   |    |  |
+%       --------------
+% trial_Window_TrTr_TsTr_Diag
+% trial_Window_TrITD_TsITD_Diag 
+%       --------------
+%       |    |    |  |
+%       |____|____|__|
+%       |    |%%% |  |
+%       |    |%% %|  |
+%       |    |% %%|  |
+%       |____|_%%%|__|
+%       |%%% |    |  |
+%       |%% %|    |  |
+%       |% %%|    |  |
+%       | %%%|    |  |
+%       --------------
+% trial_Window_TrTr_TsTr_OffDiag 
+% trial_Window_TrITD_TsITD_OffDiag 
+
+% %%%%%%%%%%%%%  Persistence Fit Values %%%%%%%%%%%%% %
+% trial_TrialPersFit 
+% trial_ITIpersFit 
+
+% %%%%%%%%%%%%%  LFP Variables %%%%%%%%%%%%% %
+% trial_BetaPowerTime 
+% trial_ThetaPowerTime 
+% trial_MeanBeta 
+% trial_MeanTheta 
+
+%% New Fig 1: Within vs across epochs per alignment
+% Port Entry Aligned
+piWIn_Trl = trial_Window_TrTr_TsTr(:,:,1);
+piWIn_ITD = trial_Window_TrITD_TsITD(:,:,1);
+piX_PrTr = trial_Window_TrPr_TsTr(:,:,1);
+piX_TrPr = trial_Window_TrTr_TsPr(:,:,1);
+piWIn_Trl = piWIn_Trl(logical(eye(mlb{ani}.seqLength,mlb{ani}.seqLength)));
+piWIn_ITD = piWIn_ITD(logical(eye(mlb{ani}.seqLength,mlb{ani}.seqLength)));
+piX_PrTr = piX_PrTr(logical(eye(mlb{ani}.seqLength,mlb{ani}.seqLength)));
+piX_TrPr = piX_TrPr(logical(eye(mlb{ani}.seqLength,mlb{ani}.seqLength)));
+
+spIDs = reshape(1:mlb{ani}.seqLength*(mlb{ani}.seqLength+1), [mlb{ani}.seqLength+1, mlb{ani}.seqLength])';
+figure;
+subplot(mlb{ani}.seqLength, mlb{ani}.seqLength+1,reshape(spIDs(:,1:end-1), [1,mlb{ani}.seqLength^2])); 
+mlb{ani}.PlotMeanVarSwarmBar(1,cell2mat(piWIn_Trl),1,0.05,'r');
+hold on;
+mlb{ani}.PlotMeanVarSwarmBar(2,cell2mat(piWIn_ITD),1,0.05,'b');
+mlb{ani}.PlotMeanVarSwarmBar(3,cell2mat(piX_PrTr),1,0.05,[191/255, 191/255, 0]);
+mlb{ani}.PlotMeanVarSwarmBar(4,cell2mat(piX_TrPr),1,0.05,[191/255, 191/255, 0]);
+set(gca, 'xtick', 1:4, 'xticklabel', [{'Trial'}, {'ITD'}, {'Pre->Trial'}, {'Trial->Pre'}], 'xticklabelrotation', 45);
+for sp = 1:mlb{ani}.seqLength
+    subplot(mlb{ani}.seqLength, mlb{ani}.seqLength+1,spIDs(sp,end));
+    mlb{ani}.PlotMeanVarSwarmBar(1,piWIn_Trl{sp},1,0.05,'r');
+    hold on;
+    mlb{ani}.PlotMeanVarSwarmBar(2,piWIn_ITD{sp},1,0.05,'b');
+    mlb{ani}.PlotMeanVarSwarmBar(3,piX_PrTr{sp},1,0.05,[191/255, 191/255, 0]);
+    mlb{ani}.PlotMeanVarSwarmBar(4,piX_TrPr{sp},1,0.05,[191/255, 191/255, 0]);
+    title(sp);
+end
+linkaxes
+annotation(gcf,'textbox', [0.1 0.95 0.9 0.05],...
+        'String', 'Port Entry Aligned',...
+        'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left', 'interpreter', 'none');
+% Port Exit Aligned
+% poWIn_Trl = trial_Window_TrTr_TsTr(:,:,2);
+% poWIn_ITD = trial_Window_TrITD_TsITD(:,:,2);
+% poX_TrPo = trial_Window_TrTr_TsPo(:,:,2);
+% poX_PoTr = trial_Window_TrPo_TsTr(:,:,2);
+% poWIn_Trl = poWIn_Trl(logical(eye(mlb{ani}.seqLength,mlb{ani}.seqLength)));
+% poWIn_ITD = poWIn_ITD(logical(eye(mlb{ani}.seqLength,mlb{ani}.seqLength)));
+% poX_TrPo = poX_TrPo(logical(eye(mlb{ani}.seqLength,mlb{ani}.seqLength)));
+% poX_PoTr = poX_PoTr(logical(eye(mlb{ani}.seqLength,mlb{ani}.seqLength)));
 % 
 % figure;
-% multcompare(stats, 'CType', 'bonferroni');
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%% Next Trial
-subplot(4,3,7)
-tempTMat = trialD(:,:,1);
-if selType == 1
-    tempTMat = tempTMat(2:end,2:end);
-elseif selType == 2
-    tempTMat = tempTMat(2:end-1,2:end-1);
-end
-mlb{end}.PlotTrialPDM(cell2mat(permute(tempTMat(triu(ones(length(tempTMat)),1) & tril(ones(length(tempTMat)),1)), [2,3,1])), 'rotate', 'clim', [-1.5 1.5], 'x', obsvTimeVect{strcmp(alignments, 'PokeIn')}, 'y', obsvTimeVect{strcmp(alignments, 'PokeIn')}, 'xlabel', 'Test Time', 'ylabel', 'Train Time');
-hold on;
-plot(get(gca, 'xlim'),zeros(1,2), '--k','linewidth', 2);
-plot(get(gca, 'xlim'),repmat(grpPiPoLat, [1,2]), '--k','linewidth', 2);
-plot(get(gca, 'xlim'),repmat(grpPiRwdLat, [1,2]), ':k','linewidth', 2);
-plot(zeros(1,2),get(gca, 'ylim'), '--k','linewidth', 2);
-plot(repmat(grpPiPoLat, [1,2]),get(gca, 'ylim'), '--k','linewidth', 2);
-plot(repmat(grpPiRwdLat, [1,2]),get(gca, 'ylim'), ':k','linewidth', 2);
-patch('XData', [min(obsvTimeVect{strcmp(alignments, 'PokeIn')}), 0, 0, min(obsvTimeVect{strcmp(alignments, 'PokeIn')})],...
-    'YData', [0, 0, grpPiPoLat, grpPiPoLat],...
-    'facecolor', 'none', 'edgecolor', [191/255, 191/255, 0], 'linestyle', '-', 'linewidth', 5);
-patch('XData', [0, grpPiPoLat, grpPiPoLat, 0],...
-    'YData', [min(obsvTimeVect{strcmp(alignments, 'PokeIn')}), min(obsvTimeVect{strcmp(alignments, 'PokeIn')}),0, 0],...
-    'facecolor', 'none', 'edgecolor', [191/255, 191/255, 0], 'linestyle', '--', 'linewidth', 5);
-patch('XData', [min(obsvTimeVect{strcmp(alignments, 'PokeIn')}), 0, 0, min(obsvTimeVect{strcmp(alignments, 'PokeIn')})],...
-    'YData', [grpPiPoLat, grpPiPoLat, max(obsvTimeVect{strcmp(alignments, 'PokeIn')}), max(obsvTimeVect{strcmp(alignments, 'PokeIn')})],...
-    'facecolor', 'none', 'edgecolor', [191/255, 96/255, 0], 'linestyle', '-', 'linewidth', 5);
-patch('XData', [grpPiPoLat, max(obsvTimeVect{strcmp(alignments, 'PokeIn')}), max(obsvTimeVect{strcmp(alignments, 'PokeIn')}), grpPiPoLat],...
-    'YData', [0, 0, min(obsvTimeVect{strcmp(alignments, 'PokeIn')}),  min(obsvTimeVect{strcmp(alignments, 'PokeIn')})],...
-    'facecolor', 'none', 'edgecolor', [191/255, 96/255, 0], 'linestyle', '--', 'linewidth', 5);
-title('Next Position Info');
-
-subplot(4,3,8)
-tempTMat = trialD(:,:,2);
-if selType == 1
-    tempTMat = tempTMat(1:end-1,1:end-1);
-elseif selType == 2
-    tempTMat = tempTMat(2:end-1,2:end-1);
-end
-mlb{end}.PlotTrialPDM(cell2mat(permute(tempTMat(triu(ones(length(tempTMat)),1) & tril(ones(length(tempTMat)),1)), [2,3,1])), 'rotate', 'clim', [-1.5 1.5], 'x', obsvTimeVect{strcmp(alignments, 'PokeOut')}, 'y', obsvTimeVect{strcmp(alignments, 'PokeOut')}, 'xlabel', 'Test Time', 'ylabel', 'Train Time');
-hold on;
-plot(get(gca, 'xlim'),zeros(1,2), '--k','linewidth', 2);
-plot(get(gca, 'xlim'),repmat(grpPoPiLat, [1,2]), '--k','linewidth', 2);
-plot(get(gca, 'xlim'),repmat(grpPoRwdLat, [1,2]), ':k','linewidth', 2);
-plot(zeros(1,2),get(gca, 'ylim'), '--k','linewidth', 2);
-plot(repmat(grpPoPiLat, [1,2]),get(gca, 'ylim'), '--k','linewidth', 2);
-plot(repmat(grpPoRwdLat, [1,2]),get(gca, 'ylim'), ':k','linewidth', 2);
-patch('XData', [grpPoPiLat, 0, 0, grpPoPiLat],...
-    'YData', [0, 0, max(obsvTimeVect{strcmp(alignments, 'PokeOut')}), max(obsvTimeVect{strcmp(alignments, 'PokeOut')})],...
-    'facecolor', 'none', 'edgecolor', [196/255, 33/255, 255/255], 'linestyle', '-', 'linewidth', 5);
-patch('XData', [0, max(obsvTimeVect{strcmp(alignments, 'PokeOut')}), max(obsvTimeVect{strcmp(alignments, 'PokeOut')}), 0],...
-    'YData', [grpPoPiLat, grpPoPiLat, 0, 0],...
-    'facecolor', 'none', 'edgecolor', [196/255, 33/255, 255/255], 'linestyle', '--', 'linewidth', 5);
-patch('XData', [min(obsvTimeVect{strcmp(alignments, 'PokeOut')}), grpPoPiLat, grpPoPiLat, min(obsvTimeVect{strcmp(alignments, 'PokeOut')})],...
-    'YData', [0, 0, max(obsvTimeVect{strcmp(alignments, 'PokeOut')}), max(obsvTimeVect{strcmp(alignments, 'PokeOut')})],...
-    'facecolor', 'none', 'edgecolor', [191/255, 96/255, 0], 'linestyle', '-', 'linewidth', 5);
-patch('XData', [0, max(obsvTimeVect{strcmp(alignments, 'PokeOut')}), max(obsvTimeVect{strcmp(alignments, 'PokeOut')}), 0],...
-    'YData', [min(obsvTimeVect{strcmp(alignments, 'PokeOut')}), min(obsvTimeVect{strcmp(alignments, 'PokeOut')}), grpPoPiLat, grpPoPiLat],...
-    'facecolor', 'none', 'edgecolor', [191/255, 96/255, 0], 'linestyle', '--', 'linewidth', 5);
-
-subplot(4,3,9)
-tempTrPr = trial_Window_TrPr(:,:,1);
-tempPrTr_Window = trial_Window_TrPr_TsTr(:,:,1);
-tempTrPr_Window = trial_Window_TrTr_TsPr(:,:,1);
-tempTrPo = trial_Window_TrPo(:,:,2);
-tempPoTr_Window = trial_Window_TrPo_TsTr(:,:,2);
-tempTrPo_Window = trial_Window_TrTr_TsPo(:,:,2);
-if selType == 1
-    tempTrPr = tempTrPr(2:end,2:end);
-    tempPrTr_Window = tempPrTr_Window(2:end,2:end);
-    tempTrPr_Window = tempTrPr_Window(2:end,2:end);
-    tempTrPo = tempTrPo(1:end-1,1:end-1);
-    tempPoTr_Window = tempPoTr_Window(1:end-1,1:end-1);
-    tempTrPo_Window = tempTrPo_Window(1:end-1,1:end-1);
-elseif selType == 2
-    tempTrPr = tempTrPr(2:end-1,2:end-1);
-    tempPrTr_Window = tempPrTr_Window(2:end-1,2:end-1);
-    tempTrPr_Window = tempTrPr_Window(2:end-1,2:end-1);
-    tempTrPo = tempTrPo(2:end-1,2:end-1);
-    tempPoTr_Window = tempPoTr_Window(2:end-1,2:end-1);
-    tempTrPo_Window = tempTrPo_Window(2:end-1,2:end-1);
-end
-
-trPr = cell2mat(tempTrPr(triu(ones(length(tempTrPr)),1) & tril(ones(length(tempTrPr)),1)));
-win_PrTr = cell2mat(tempPrTr_Window(triu(ones(length(tempPrTr_Window)),1) & tril(ones(length(tempPrTr_Window)),1)));
-win_TrPr = cell2mat(tempTrPr_Window(triu(ones(length(tempTrPr_Window)),1) & tril(ones(length(tempTrPr_Window)),1)));
-trPo = cell2mat(tempTrPo(triu(ones(length(tempTrPo)),1) & tril(ones(length(tempTrPo)),1)));
-win_PoTr = cell2mat(tempPoTr_Window(triu(ones(length(tempPoTr_Window)),1) & tril(ones(length(tempPoTr_Window)),1)));
-win_TrPo = cell2mat(tempTrPo_Window(triu(ones(length(tempTrPo_Window)),1) & tril(ones(length(tempTrPo_Window)),1)));
-bar([1,2,3,4,5,6], [mean(trPr), mean(win_PrTr), mean(win_TrPr), mean(trPo), mean(win_PoTr), mean(win_TrPo)], 'k');
-hold on;
-swarmchart(ones(size(trPr)), trPr, 5, 'markerfacecolor', [191/255, 191/255, 0], 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
-swarmchart(ones(size(trPr))+1, win_PrTr, 5, 'markerfacecolor', [191/255, 191/255, 0], 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
-swarmchart(ones(size(trPr))+2, win_TrPr, 5, 'markerfacecolor', [191/255, 191/255, 0], 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
-swarmchart(ones(size(trPo))+3, trPo, 5, 'markerfacecolor', [196/255, 33/255, 255/255], 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
-swarmchart(ones(size(win_TrPo))+4, win_PoTr, 5, 'markerfacecolor', [196/255, 33/255, 255/255], 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
-swarmchart(ones(size(win_TrPo))+5, win_TrPo, 5, 'markerfacecolor', [196/255, 33/255, 255/255], 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
-set(gca, 'xticklabel', [{'TrPr'}, {'Pr->Tr'}, {'Tr->Pr'}, {'TrPo'}, {'Po->Tr'}, {'Tr->Po'}], 'xticklabelrotation', 45);
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%% ITI Generalization Indices
-tempPoPr_Window = trial_Window_TrPo_TsPr(:,:,1);
-tempPrPo_Window = trial_Window_TrPr_TsPo(:,:,1);
-if selType == 1
-    tempPoPr_Window = tempPoPr_Window(2:end,2:end);
-    tempPrPo_Window = tempPrPo_Window(2:end,2:end);
-elseif selType == 2
-    tempPoPr_Window = tempPoPr_Window(2:end-1,2:end-1);
-    tempPrPo_Window = tempPrPo_Window(2:end-1,2:end-1);
-end
-popr_Prev = cell2mat(tempPoPr_Window(triu(ones(length(tempPoPr_Window)),-1) & tril(ones(length(tempPoPr_Window)),-1)));
-popr_Curr = cell2mat(tempPoPr_Window(logical(eye(length(tempPoPr_Window)))));
-popr_Next = cell2mat(tempPoPr_Window(triu(ones(length(tempPoPr_Window)),1) & tril(ones(length(tempPoPr_Window)),1)));
-prpo_Prev = cell2mat(tempPrPo_Window(triu(ones(length(tempPrPo_Window)),-1) & tril(ones(length(tempPrPo_Window)),-1)));
-prpo_Curr = cell2mat(tempPrPo_Window(logical(eye(length(tempPrPo_Window)))));
-prpo_Next = cell2mat(tempPrPo_Window(triu(ones(length(tempPrPo_Window)),1) & tril(ones(length(tempPrPo_Window)),1)));
-subplot(4,3,10)
-bar([1,2,3, 5,6,7], [mean(popr_Prev), mean(popr_Curr), mean(popr_Next), mean(prpo_Prev), mean(prpo_Curr), mean(prpo_Next)], 'k');
-hold on;
-swarmchart(ones(size(popr_Prev)), popr_Prev, 5, 'markerfacecolor', [191/255, 96/255, 0], 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
-swarmchart(ones(size(popr_Curr))+1, popr_Curr, 5, 'markerfacecolor', [191/255, 96/255, 0], 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
-swarmchart(ones(size(popr_Next))+2, popr_Next, 5, 'markerfacecolor', [191/255, 96/255, 0], 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
-swarmchart(ones(size(prpo_Prev))+4, prpo_Prev, 5, 'markerfacecolor', [191/255, 96/255, 0], 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
-swarmchart(ones(size(prpo_Curr))+5, prpo_Curr, 5, 'markerfacecolor', [191/255, 96/255, 0], 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
-swarmchart(ones(size(prpo_Next))+6, prpo_Next, 5, 'markerfacecolor', [191/255, 96/255, 0], 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
-set(gca, 'xtick', [1:3,5:7], 'xticklabel', [{'Po->Pr:Prev'}, {'Po->Pr:Curr'}, {'Po->Pr:Next'}, {'Pr->Po:Prev'}, {'Pr->Po:Curr'}, {'Pr->Po:Next'}], 'xticklabelrotation', 45);
-
-tempPoPr_Window = trial_Window_TrPo_TsPr(:,:,2);
-tempPrPo_Window = trial_Window_TrPr_TsPo(:,:,2);
-if selType == 1
-    tempPoPr_Window = tempPoPr_Window(1:end-1,1:end-1);
-    tempPrPo_Window = tempPrPo_Window(1:end-1,1:end-1);
-elseif selType == 2
-    tempPoPr_Window = tempPoPr_Window(2:end-1,2:end-1);
-    tempPrPo_Window = tempPrPo_Window(2:end-1,2:end-1);
-end
-popr_Prev = cell2mat(tempPoPr_Window(triu(ones(length(tempPoPr_Window)),-1) & tril(ones(length(tempPoPr_Window)),-1)));
-popr_Curr = cell2mat(tempPoPr_Window(logical(eye(length(tempPoPr_Window)))));
-popr_Next = cell2mat(tempPoPr_Window(triu(ones(length(tempPoPr_Window)),1) & tril(ones(length(tempPoPr_Window)),1)));
-prpo_Prev = cell2mat(tempPrPo_Window(triu(ones(length(tempPrPo_Window)),-1) & tril(ones(length(tempPrPo_Window)),-1)));
-prpo_Curr = cell2mat(tempPrPo_Window(logical(eye(length(tempPrPo_Window)))));
-prpo_Next = cell2mat(tempPrPo_Window(triu(ones(length(tempPrPo_Window)),1) & tril(ones(length(tempPrPo_Window)),1)));
-subplot(4,3,11)
-bar([1,2,3, 5,6,7], [mean(popr_Prev), mean(popr_Curr), mean(popr_Next), mean(prpo_Prev), mean(prpo_Curr), mean(prpo_Next)], 'k');
-hold on;
-swarmchart(ones(size(popr_Prev)), popr_Prev, 5, 'markerfacecolor', [191/255, 96/255, 0], 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
-swarmchart(ones(size(popr_Curr))+1, popr_Curr, 5, 'markerfacecolor', [191/255, 96/255, 0], 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
-swarmchart(ones(size(popr_Next))+2, popr_Next, 5, 'markerfacecolor', [191/255, 96/255, 0], 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
-swarmchart(ones(size(prpo_Prev))+4, prpo_Prev, 5, 'markerfacecolor', [191/255, 96/255, 0], 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
-swarmchart(ones(size(prpo_Curr))+5, prpo_Curr, 5, 'markerfacecolor', [191/255, 96/255, 0], 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
-swarmchart(ones(size(prpo_Next))+6, prpo_Next, 5, 'markerfacecolor', [191/255, 96/255, 0], 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
-set(gca, 'xtick', [1:3,5:7], 'xticklabel', [{'Po->Pr:Prev'}, {'Po->Pr:Curr'}, {'Po->Pr:Next'}, {'Pr->Po:Prev'}, {'Pr->Po:Curr'}, {'Pr->Po:Next'}], 'xticklabelrotation', 45);
-colormap(cMap)
-
-if selType == 1
-    annotation(gcf,'textbox', [0.1 0.95 0.9 0.05],...
-        'String', 'Select Positions Based on Windows',...
-        'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left', 'interpreter', 'none');
-elseif selType == 2
-    annotation(gcf,'textbox', [0.1 0.95 0.9 0.05],...
-        'String', 'Common Positions Across Alignments (pos 2&3)',...
-        'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left', 'interpreter', 'none');
-else
-    annotation(gcf,'textbox', [0.1 0.95 0.9 0.05],...
-        'String', 'All Trials',...
-        'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left', 'interpreter', 'none');
-end
-
-tempPoPr_PI = trial_Window_PoPr(:,:,1);
-% tempPoPr_PI = tempPoPr_PI(2:end,2:end);
-% tempPoPr_PI = tempPoPr_PI(2:end-1,2:end-1);
-tempPoPr_PO = trial_Window_PoPr(:,:,2);
-% tempPoPr_PO = tempPoPr_PO(1:end-1,1:end-1);
-% tempPoPr_PO = tempPoPr_PO(2:end-1,2:end-1);
-
-
-
-
-% trial_Window_TrPo_TsPr
-% trial_Window_TrPr_TsPo
-% trial_Window_PoPr
-%% Plot Fits
-% Plot poke in aligned D data
-figure;
-subplot(2,3,1)
-tempTMat = trialD(:,:,1);
-if selType == 1
-    tempTMat = tempTMat(2:end,2:end);
-elseif selType == 2
-    tempTMat = tempTMat(2:end-1,2:end-1);
-end
-mlb{end}.PlotTrialPDM(cell2mat(permute(tempTMat(logical(eye(length(tempTMat)))), [2,3,1])), 'rotate', 'clim', [-1.5 1.5], 'x', obsvTimeVect{strcmp(alignments, 'PokeIn')}, 'y', obsvTimeVect{strcmp(alignments, 'PokeIn')}, 'xlabel', 'Test Time', 'ylabel', 'Train Time');
-hold on;
-plot(get(gca, 'xlim'),zeros(1,2), '--k','linewidth', 2);
-plot(get(gca, 'xlim'),repmat(grpPiPoLat, [1,2]), '--k','linewidth', 2);
-plot(get(gca, 'xlim'),repmat(grpPiRwdLat, [1,2]), ':k','linewidth', 2);
-plot(zeros(1,2),get(gca, 'ylim'), '--k','linewidth', 2);
-plot(repmat(grpPiPoLat, [1,2]),get(gca, 'ylim'), '--k','linewidth', 2);
-plot(repmat(grpPiRwdLat, [1,2]),get(gca, 'ylim'), ':k','linewidth', 2);
-title('Poke In Aligned');
-% Plot poke in aligned fits
-tempTrialFits = trial_TrialPersFit(:,:,1);
-tempITIfits = trial_ITIpersFit(:,:,1);
-if selType == 1
-    tempTrialFits = tempTrialFits(2:end,2:end);
-    tempITIfits = tempITIfits(2:end,2:end);
-elseif selType == 2
-    tempTrialFits = tempTrialFits(2:end-1,2:end-1);
-    tempITIfits = tempITIfits(2:end-1,2:end-1);
-end
-tempTrialFits = cell2mat(tempTrialFits(logical(eye(length(tempTrialFits)))));
-tempITIfits = cell2mat(tempITIfits(logical(eye(length(tempITIfits)))));
-[minTrialFit,minTrialLat] = min(tempTrialFits,[],2);
-minTrialLat = minTrialLat./(1/dsRate);
-[minITIfit,minITIlat] = min(tempITIfits,[],2);
-minITIlat = minITIlat./(1/dsRate);
-subplot(2,3,2)
-swarmchart(ones(size(minTrialLat)), minTrialLat, 5, 'markerfacecolor', 'r', 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
-hold on;
-swarmchart(ones(size(minITIlat))+1, minITIlat, 5, 'markerfacecolor', 'k', 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
-[~,p,~,stats] = ttest(minTrialLat, minITIlat);
-if p<0.05
-    title(sprintf('t(%.00f) = %.02f; p = %.02i', stats.df, stats.tstat, p), 'color','r');
-else
-    title(sprintf('t(%.00f) = %.02f; p = %.02i', stats.df, stats.tstat, p));
-end
-set(gca, 'xtick', 1:2, 'xticklabel', [{'Trial'}, {'ITI'}]);
-ylabel('Latency to Best Fit (ms)');
-subplot(2,3,3)
-swarmchart(ones(size(minTrialFit)), minTrialFit, 5, 'markerfacecolor', 'r', 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
-hold on;
-swarmchart(ones(size(minITIfit))+1, minITIfit, 5, 'markerfacecolor', 'k', 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
-[~,p,~,stats] = ttest(minTrialFit, minITIfit);
-if p<0.05
-    title(sprintf('t(%.00f) = %.02f; p = %.02i', stats.df, stats.tstat, p), 'color','r');
-else
-    title(sprintf('t(%.00f) = %.02f; p = %.02i', stats.df, stats.tstat, p));
-end
-set(gca, 'xtick', 1:2, 'xticklabel', [{'Trial'}, {'ITI'}]);
-ylabel('Best Fit (Cos Sim)');
-
-% Plot poke out aligned D data
-subplot(2,3,4)
-tempTMat = trialD(:,:,2);
-if selType == 1
-    tempTMat = tempTMat(1:end-1,1:end-1);
-elseif selType == 2
-    tempTMat = tempTMat(2:end-1,2:end-1);
-end
-mlb{end}.PlotTrialPDM(cell2mat(permute(tempTMat(logical(eye(length(tempTMat)))), [2,3,1])), 'rotate', 'clim', [-1.5 1.5], 'x', obsvTimeVect{strcmp(alignments, 'PokeOut')}, 'y', obsvTimeVect{strcmp(alignments, 'PokeOut')}, 'xlabel', 'Test Time', 'ylabel', 'Train Time');
-hold on;
-plot(get(gca, 'xlim'),zeros(1,2), '--k','linewidth', 2);
-plot(get(gca, 'xlim'),repmat(grpPoPiLat, [1,2]), '--k','linewidth', 2);
-plot(get(gca, 'xlim'),repmat(grpPoRwdLat, [1,2]), ':k','linewidth', 2);
-plot(zeros(1,2),get(gca, 'ylim'), '--k','linewidth', 2);
-plot(repmat(grpPoPiLat, [1,2]),get(gca, 'ylim'), '--k','linewidth', 2);
-plot(repmat(grpPoRwdLat, [1,2]),get(gca, 'ylim'), ':k','linewidth', 2);
-title('Poke Out Aligned');
-% Plot poke out aligned fits
-tempTrialFits = trial_TrialPersFit(:,:,2);
-tempITIfits = trial_ITIpersFit(:,:,2);
-if selType == 1
-    tempTrialFits = tempTrialFits(1:end-1,1:end-1);
-    tempITIfits = tempITIfits(1:end-1,1:end-1);
-elseif selType == 2
-    tempTrialFits = tempTrialFits(2:end-1,2:end-1);
-    tempITIfits = tempITIfits(2:end-1,2:end-1);
-end
-tempTrialFits = cell2mat(tempTrialFits(logical(eye(length(tempTrialFits)))));
-tempITIfits = cell2mat(tempITIfits(logical(eye(length(tempITIfits)))));
-[minTrialFit,minTrialLat] = min(tempTrialFits,[],2);
-minTrialLat = minTrialLat./(1/dsRate);
-[minITIfit,minITIlat] = min(tempITIfits,[],2);
-minITIlat = minITIlat./(1/dsRate);
-subplot(2,3,5)
-swarmchart(ones(size(minTrialLat)), minTrialLat, 5, 'markerfacecolor', 'r', 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
-hold on;
-swarmchart(ones(size(minITIlat))+1, minITIlat, 5, 'markerfacecolor', 'k', 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
-[~,p,~,stats] = ttest(minTrialLat, minITIlat);
-if p<0.05
-    title(sprintf('t(%.00f) = %.02f; p = %.02i', stats.df, stats.tstat, p), 'color','r');
-else
-    title(sprintf('t(%.00f) = %.02f; p = %.02i', stats.df, stats.tstat, p));
-end
-set(gca, 'xtick', 1:2, 'xticklabel', [{'Trial'}, {'ITI'}]);
-ylabel('Latency to Best Fit (ms)');
-subplot(2,3,6)
-swarmchart(ones(size(minTrialFit)), minTrialFit, 5, 'markerfacecolor', 'r', 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
-hold on;
-swarmchart(ones(size(minITIfit))+1, minITIfit, 5, 'markerfacecolor', 'k', 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
-[~,p,~,stats] = ttest(minTrialFit, minITIfit);
-if p<0.05
-    title(sprintf('t(%.00f) = %.02f; p = %.02i', stats.df, stats.tstat, p), 'color','r');
-else
-    title(sprintf('t(%.00f) = %.02f; p = %.02i', stats.df, stats.tstat, p));
-end
-set(gca, 'xtick', 1:2, 'xticklabel', [{'Trial'}, {'ITI'}]);
-ylabel('Best Fit (Cos Sim)');
-
-colormap(cMap)
-
-
-if selType == 1
-    annotation(gcf,'textbox', [0.1 0.95 0.9 0.05],...
-        'String', 'Select Positions Based on Windows',...
-        'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left', 'interpreter', 'none');
-elseif selType == 2
-    annotation(gcf,'textbox', [0.1 0.95 0.9 0.05],...
-        'String', 'Common Positions Across Alignments (pos 2&3)',...
-        'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left', 'interpreter', 'none');
-else
-    annotation(gcf,'textbox', [0.1 0.95 0.9 0.05],...
-        'String', 'All Trials',...
-        'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left', 'interpreter', 'none');
-end
-
-%% Holy shit we have a beta effect!
+% subplot(mlb{ani}.seqLength, mlb{ani}.seqLength+1,reshape(spIDs(:,1:end-1), [1,mlb{ani}.seqLength^2])); 
+% mlb{ani}.PlotMeanVarSwarmBar(1,cell2mat(poWIn_Trl),1,0.05,'r');
+% hold on;
+% mlb{ani}.PlotMeanVarSwarmBar(2,cell2mat(poWIn_ITD),1,0.05,'b');
+% mlb{ani}.PlotMeanVarSwarmBar(3,cell2mat(poX_PoTr),1,0.05,[191/255, 191/255, 0]);
+% mlb{ani}.PlotMeanVarSwarmBar(4,cell2mat(poX_TrPo),1,0.05,[191/255, 191/255, 0]);
+% set(gca, 'xtick', 1:4, 'xticklabel', [{'Trial'}, {'ITD'}, {'Post->Trial'}, {'Trial->Post'}], 'xticklabelrotation', 45);
+% for sp = 1:mlb{ani}.seqLength
+%     subplot(mlb{ani}.seqLength, mlb{ani}.seqLength+1,spIDs(sp,end));
+%     mlb{ani}.PlotMeanVarSwarmBar(1,poWIn_Trl{sp},1,0.05,'r');
+%     hold on;
+%     mlb{ani}.PlotMeanVarSwarmBar(2,poWIn_ITD{sp},1,0.05,'b');
+%     mlb{ani}.PlotMeanVarSwarmBar(3,poX_PoTr{sp},1,0.05,[191/255, 191/255, 0]);
+%     mlb{ani}.PlotMeanVarSwarmBar(4,poX_TrPo{sp},1,0.05,[191/255, 191/255, 0]);
+%     title(sp);
+% end
+% linkaxes
+% annotation(gcf,'textbox', [0.1 0.95 0.9 0.05],...
+%         'String', 'Port Exit Aligned',...
+%         'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left', 'interpreter', 'none');
+%% New Fig 2: Diagonal vs Off-Diagonal w/in epochs
 for al = 1:length(alignments)
-    figure;    
-    betaLog = true(1,4);
-    tempLog = logical(eye(mlb{ani}.seqLength));
-    decLog = false(mlb{ani}.seqLength, mlb{ani}.seqLength, length(alignments));
-    if selType == 1
-%         if al == 1
-%             tempLog(4,4) = false;
-%             betaLog(4) = false;
-%         elseif al == 2
-            tempLog(1,1) = false;
-            betaLog(1) = false;
-%         end
-    elseif selType == 2        
-        tempLog(1,1) = false;
-        tempLog(4,4) = false;
-        betaLog(1) = false;
-        betaLog(4) = false;
-    elseif selType == 3
-        tempLog((1:mlb{ani}.seqLength)~=pos,(1:mlb{ani}.seqLength)~=pos) = false;
-        betaLog((1:mlb{ani}.seqLength)~=pos) = false;
-    end
-        
-    decLog(:,:,al) = tempLog;
-    subplot(4,3,1);
-    corrScatPlot(cell2mat(trial_MeanBeta(betaLog,al)), cell2mat(trial_Window_TrPr_TsTr(decLog)), 'Beta', 'PrTr', []);
-    subplot(4,3,2);
-    corrScatPlot(cell2mat(trial_MeanBeta(betaLog,al)), cell2mat(trial_Window_TrTr_TsPr(decLog)), 'Beta', 'TrPr', []);
-    subplot(4,3,3);
-    corrScatPlot(cell2mat(trial_MeanBeta(betaLog,al)), cell2mat(trial_Window_TrPr(decLog)), 'Beta', 'PrTrTrPr', []);
-    subplot(4,3,4);
-    corrScatPlot(cell2mat(trial_MeanBeta(betaLog,al)), cell2mat(trial_Window_TrTr_TsPo(decLog)), 'Beta', 'TrPo', []);
-    subplot(4,3,5);
-    corrScatPlot(cell2mat(trial_MeanBeta(betaLog,al)), cell2mat(trial_Window_TrPo_TsTr(decLog)), 'Beta', 'PoTr', []);
-    subplot(4,3,6);
-    corrScatPlot(cell2mat(trial_MeanBeta(betaLog,al)), cell2mat(trial_Window_TrPo(decLog)), 'Beta', 'TrPoPoTr', []);
-    subplot(4,3,7);
-    corrScatPlot(cell2mat(trial_MeanBeta(betaLog,al)), cell2mat(trial_Window_TrPo_TsPr(decLog)), 'Beta', 'PoPr', []);
-    subplot(4,3,8);
-    corrScatPlot(cell2mat(trial_MeanBeta(betaLog,al)), cell2mat(trial_Window_TrPr_TsPo(decLog)), 'Beta', 'PrPo', []);
-    subplot(4,3,9);
-    corrScatPlot(cell2mat(trial_MeanBeta(betaLog,al)), cell2mat(trial_Window_PoPr(decLog)), 'Beta', 'PoPrPrPo', []);
+    tr_Diag = trial_Window_TrTr_TsTr_Diag(:,:,al);
+    tr_OffDiag = trial_Window_TrTr_TsTr_OffDiag(:,:,al);
+    itd_Diag = trial_Window_TrITD_TsITD_Diag(:,:,al);
+    itd_OffDiag = trial_Window_TrITD_TsITD_OffDiag(:,:,al);
+    tr_Diag = tr_Diag(logical(eye(mlb{ani}.seqLength,mlb{ani}.seqLength)));
+    tr_OffDiag = tr_OffDiag(logical(eye(mlb{ani}.seqLength,mlb{ani}.seqLength)));
+    itd_Diag = itd_Diag(logical(eye(mlb{ani}.seqLength,mlb{ani}.seqLength)));
+    itd_OffDiag = itd_OffDiag(logical(eye(mlb{ani}.seqLength,mlb{ani}.seqLength)));
     
-    tempTrialFits = cell2mat(trial_TrialPersFit(decLog));
+    figure;
+    subplot(mlb{ani}.seqLength, mlb{ani}.seqLength+1,reshape(spIDs(:,1:end-1), [1,mlb{ani}.seqLength^2])); 
+    mlb{ani}.PlotMeanVarSwarmBar(1,cell2mat(tr_Diag),1,0.05, 'r');
+    hold on;
+    mlb{ani}.PlotMeanVarSwarmBar(2,cell2mat(tr_OffDiag),1,0.05, 'r');
+    mlb{ani}.PlotMeanVarSwarmBar(4,cell2mat(itd_Diag),1,0.05, 'b');
+    mlb{ani}.PlotMeanVarSwarmBar(5,cell2mat(itd_OffDiag),1,0.05, 'b');
+    set(gca, 'xtick', [1,2,4,5], 'xticklabel', [{'Diag'}, {'OffDiag'}, {'Diag'}, {'OffDiag'}]);
+    title('All Positions')
+    for sp = 1:mlb{ani}.seqLength
+        subplot(mlb{ani}.seqLength, mlb{ani}.seqLength+1,spIDs(sp,end));
+        mlb{ani}.PlotMeanVarSwarmBar(1,tr_Diag{sp},1,0.05, 'r');
+        hold on;
+        mlb{ani}.PlotMeanVarSwarmBar(2,tr_OffDiag{sp},1,0.05, 'r');
+        mlb{ani}.PlotMeanVarSwarmBar(4,itd_Diag{sp},1,0.05, 'b');
+        mlb{ani}.PlotMeanVarSwarmBar(5,itd_OffDiag{sp},1,0.05, 'b');
+        title(sp);
+    end
+    linkaxes    
+    annotation(gcf,'textbox', [0.1 0.95 0.9 0.05],...
+        'String', alignments{al},...
+        'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left', 'interpreter', 'none');
+end
+
+%% New Fig 3: Pre/Post w/in vs cross decode
+for al = 1:length(alignments)
+    win_PrPr = trial_Window_TrITD_TsITD(:,:,al);
+    win_PoPo = trial_Window_TrAltITD_TsAltITD(:,:,al);
+    x_PrPo = trial_Window_TrTr_TsPo(:,:,al);
+    x_PoPr = trial_Window_TrPo_TsPr(:,:,al);    
+    win_PrPr = win_PrPr(logical(eye(mlb{ani}.seqLength,mlb{ani}.seqLength)));
+    win_PoPo = win_PoPo(logical(eye(mlb{ani}.seqLength,mlb{ani}.seqLength)));
+    x_PrPo = x_PrPo(logical(eye(mlb{ani}.seqLength,mlb{ani}.seqLength)));
+    x_PoPr = x_PoPr(logical(eye(mlb{ani}.seqLength,mlb{ani}.seqLength)));
+    
+    spIDs = reshape(1:mlb{ani}.seqLength*(mlb{ani}.seqLength+1), [mlb{ani}.seqLength+1, mlb{ani}.seqLength])';
+    figure;
+    subplot(mlb{ani}.seqLength, mlb{ani}.seqLength+1,reshape(spIDs(:,1:end-1), [1,mlb{ani}.seqLength^2]));
+    mlb{ani}.PlotMeanVarSwarmBar(1,cell2mat(win_PrPr),1,0.05,'r');
+    hold on;
+    mlb{ani}.PlotMeanVarSwarmBar(2,cell2mat(win_PoPo),1,0.05,'b');
+    mlb{ani}.PlotMeanVarSwarmBar(3,cell2mat(x_PrPo),1,0.05,[191/255, 191/255, 0]);
+    mlb{ani}.PlotMeanVarSwarmBar(4,cell2mat(x_PoPr),1,0.05,[191/255, 191/255, 0]);
+    if strcmp(alignments{al}, 'PokeIn')
+        set(gca, 'xtick', 1:4, 'xticklabel', [{'Pre-Trial'}, {'Post-Trial'}, {'Pre->Post'}, {'Post->Pre'}], 'xticklabelrotation', 45);
+    else
+        set(gca, 'xtick', 1:4, 'xticklabel', [{'Post-Trial'}, {'Pre-Trial'}, {'Pre->Post'}, {'Post->Pre'}], 'xticklabelrotation', 45);
+    end
+    for sp = 1:mlb{ani}.seqLength
+        subplot(mlb{ani}.seqLength, mlb{ani}.seqLength+1,spIDs(sp,end));
+        mlb{ani}.PlotMeanVarSwarmBar(1,win_PrPr{sp},1,0.05,'r');
+        hold on;
+        mlb{ani}.PlotMeanVarSwarmBar(2,win_PoPo{sp},1,0.05,'b');
+        mlb{ani}.PlotMeanVarSwarmBar(3,x_PrPo{sp},1,0.05,[191/255, 191/255, 0]);
+        mlb{ani}.PlotMeanVarSwarmBar(4,x_PoPr{sp},1,0.05,[191/255, 191/255, 0]);
+        title(sp);
+    end
+    linkaxes
+    annotation(gcf,'textbox', [0.1 0.95 0.9 0.05],...
+        'String', alignments{al},...
+        'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left', 'interpreter', 'none');
+end
+%% New Fig 4: ITD XTD By Lag
+% NOTE: Set to only take inter-mediate positions that have both previous & upcoming positions
+for al = 1:length(alignments)
+    tempPrPo = trial_Window_TrPr_TsPo(:,:,al);
+    next_PrPo = tempPrPo(triu(true(size(tempPrPo)),1) & tril(true(size(tempPrPo)),1));
+    curr_PrPo = tempPrPo(logical(eye(mlb{ani}.seqLength,mlb{ani}.seqLength)));
+    prev_PrPo = tempPrPo(tril(true(size(tempPrPo)),-1) & triu(true(size(tempPrPo)),-1));
+    tempPoPr = trial_Window_TrPo_TsPr(:,:,al);
+    next_PoPr = tempPoPr(triu(true(size(tempPoPr)),1) & tril(true(size(tempPoPr)),1));
+    curr_PoPr = tempPoPr(logical(eye(mlb{ani}.seqLength,mlb{ani}.seqLength)));
+    prev_PoPr = tempPoPr(tril(true(size(tempPoPr)),-1) & triu(true(size(tempPoPr)),-1));
+    
+    figure;
+    subplot(2,1,1)
+    mlb{ani}.PlotMeanVarSwarmBar(1,cell2mat(prev_PrPo(1:end-1)),1,0.05,'k');
+    hold on;
+    mlb{ani}.PlotMeanVarSwarmBar(2,cell2mat(curr_PrPo(2:3)),1,0.05,'k');
+    mlb{ani}.PlotMeanVarSwarmBar(3,cell2mat(next_PrPo(2:3)),1,0.05,'k');
+    set(gca, 'xtick', 1:3, 'xticklabel', [{'Previous'}, {'Current'}, {'Next'}]);
+    title('Pre->Post');
+    
+    subplot(2,1,2)
+    mlb{ani}.PlotMeanVarSwarmBar(1,cell2mat(prev_PoPr(1:end-1)),1,0.05,'k');
+    hold on;
+    mlb{ani}.PlotMeanVarSwarmBar(2,cell2mat(curr_PoPr(2:3)),1,0.05,'k');
+    mlb{ani}.PlotMeanVarSwarmBar(3,cell2mat(next_PoPr(2:3)),1,0.05,'k');
+    set(gca, 'xtick', 1:3, 'xticklabel', [{'Previous'}, {'Current'}, {'Next'}]);
+    title('Post->Pre');
+end
+
+%% New Fig 5: Persistance Model Fit
+% Plot poke in aligned fits
+for al = 1:length(alignments)
+    tempTrialFits = trial_TrialPersFit(:,:,al);
+    tempITIfits = trial_ITIpersFit(:,:,al);
+    tempTrialFits = cell2mat(tempTrialFits(logical(eye(length(tempTrialFits)))));
+    tempITIfits = cell2mat(tempITIfits(logical(eye(length(tempITIfits)))));
+    itiDur = find(sum(~isnan(tempITIfits),1)./size(tempITIfits,1)==1,1,'last');
+    
     [minTrialFit,minTrialLat] = min(tempTrialFits,[],2);
     minTrialLat = minTrialLat./(1/dsRate);
-    tempITIfits = cell2mat(trial_ITIpersFit(decLog));
     [minITIfit,minITIlat] = min(tempITIfits,[],2);
     minITIlat = minITIlat./(1/dsRate);
-    subplot(4,3,10);
-    corrScatPlot(cell2mat(trial_MeanBeta(betaLog,al)), minTrialLat, 'Beta', 'Trial Pers', []);
-    subplot(4,3,11);
-    corrScatPlot(cell2mat(trial_MeanBeta(betaLog,al)), minITIlat, 'Beta', 'ITI Pers', []);
     
-    if selType == 1
-        annotation(gcf,'textbox', [0.1 0.95 0.9 0.05],...
-            'String', sprintf('%s: Select Positions Based on Windows', alignments{al}),...
-            'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left', 'interpreter', 'none');
-    elseif selType == 2
-        annotation(gcf,'textbox', [0.1 0.95 0.9 0.05],...
-            'String', sprintf('%s: Common Positions Across Alignments (pos 2&3)', alignments{al}),...
-            'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left', 'interpreter', 'none');
-    else
-        annotation(gcf,'textbox', [0.1 0.95 0.9 0.05],...
-            'String', sprintf('%s: All Trials', alignments{al}),...
-            'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left', 'interpreter', 'none');
-    end
+    spIDs = reshape(1:4^2, [4, 4])';
+    sp(1) = subplot(4,4,reshape(spIDs(1:end-1,:), [numel(spIDs(:,2:end)),1]));
+    trlPlot = mlb{ani}.PlotMeanVarLine((1:itiDur)./(1/dsRate), tempTrialFits(:,1:itiDur),1,0.05,'r');
+    hold on;
+    itiPlot = mlb{ani}.PlotMeanVarLine((1:itiDur)./(1/dsRate), tempITIfits(:,1:itiDur),1,0.05,'k');
+%     scatter(minTrialLat, minTrialFit, 'or', 'filled', 'markerfacealpha', 0.2); 
+%     scatter(minITIlat, minITIfit, 'ok', 'filled', 'markerfacealpha', 0.2);
+    set(gca, 'xlim', [0 itiDur*dsRate]);
+    legend([trlPlot, itiPlot], [{'Trial'}, {'ITD'}])
+%     
+%     sp(2) = subplot(4,4,spIDs(1:end-1,1));
+%     histogram(minTrialFit, 0.3:0.05:1.2, 'FaceColor', 'r', 'orientation', 'horizontal', 'FaceAlpha', 0.5);
+%     hold on;
+%     histogram(minITIfit, 0.3:0.05:1.2, 'FaceColor', 'k', 'orientation', 'horizontal', 'FaceAlpha', 0.5);
+    
+    sp(3) = subplot(4,4,spIDs(end,:));
+    histogram(minTrialLat, 0:dsRate*2:itiDur*dsRate,'FaceColor', 'r', 'FaceAlpha', 0.5);
+    hold on;
+    histogram(minITIlat, 0:dsRate*2:itiDur*dsRate,'FaceColor', 'k', 'FaceAlpha', 0.5);
+    set(gca, 'xlim', [0 itiDur*dsRate]);
+    
+%     linkaxes(sp(1:2), 'y');
+    linkaxes(sp([1,3]),'x');
 end
-% trial_TrialPersFit = cell(size(trlPersFit,1), size(trlPersFit,2), size(trlPersFit,4));
-% trial_ITIpersFit = cell(size(itiPersFit,1), size(itiPersFit,2), size(itiPersFit,4));
-
-%% Pre-Trial vs Trial Port Entry Aligned
-figure; 
-tempLog = logical(eye(mlb{ani}.seqLength));
-decLog = false(mlb{ani}.seqLength, mlb{ani}.seqLength, length(alignments));
-decLog(:,:,1) = tempLog;
-subplot(4,4,[1:3,5:7,9:11,13:15])
-corrScatPlot(cell2mat(trial_MeanBeta(:,al)), cell2mat(trial_Window_TrPr(decLog)), 'Beta', 'Cross Epoch Generalization', []);
-title('All Positions');
-
-subplot(4,4,4);
-decLog = false(mlb{ani}.seqLength, mlb{ani}.seqLength, length(alignments));
-decLog(1,1,1) = true;
-corrScatPlot(cell2mat(trial_MeanBeta(1,al)), cell2mat(trial_Window_TrPr(decLog)), 'Beta', 'Cross Epoch Generalization', []);
-title('Position 1');
-
-subplot(4,4,8);
-decLog = false(mlb{ani}.seqLength, mlb{ani}.seqLength, length(alignments));
-decLog(2,2,1) = true;
-corrScatPlot(cell2mat(trial_MeanBeta(2,al)), cell2mat(trial_Window_TrPr(decLog)), 'Beta', 'Cross Epoch Generalization', []);
-title('Position 2');
-
-subplot(4,4,12);
-decLog = false(mlb{ani}.seqLength, mlb{ani}.seqLength, length(alignments));
-decLog(3,3,1) = true;
-corrScatPlot(cell2mat(trial_MeanBeta(3,al)), cell2mat(trial_Window_TrPr(decLog)), 'Beta', 'Cross Epoch Generalization', []);
-title('Position 3');
-
-subplot(4,4,16);
-decLog = false(mlb{ani}.seqLength, mlb{ani}.seqLength, length(alignments));
-decLog(4,4,1) = true;
-corrScatPlot(cell2mat(trial_MeanBeta(4,al)), cell2mat(trial_Window_TrPr(decLog)), 'Beta', 'Cross Epoch Generalization', []);
-title('Position 4');
-
-annotation(gcf,'textbox', [0.1 0.95 0.9 0.05],...
-    'String', 'Port Entry Aligned: Pre-Trial vs. Trial; Current Trial Info',...
-    'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left', 'interpreter', 'none');
-
-%% Post-Trial vs Trial Port Entry Aligned
-figure; 
-tempLog = logical(eye(mlb{ani}.seqLength));
-decLog = false(mlb{ani}.seqLength, mlb{ani}.seqLength, length(alignments));
-decLog(:,:,2) = tempLog;
-subplot(4,4,[1:3,5:7,9:11,13:15])
-corrScatPlot(cell2mat(trial_MeanBeta(:,al)), cell2mat(trial_Window_TrPo(decLog)), 'Beta', 'Cross Epoch Generalization', []);
-title('All Positions');
-
-subplot(4,4,4);
-decLog = false(mlb{ani}.seqLength, mlb{ani}.seqLength, length(alignments));
-decLog(1,1,2) = true;
-corrScatPlot(cell2mat(trial_MeanBeta(1,al)), cell2mat(trial_Window_TrPo(decLog)), 'Beta', 'Cross Epoch Generalization', []);
-title('Position 1');
-
-subplot(4,4,8);
-decLog = false(mlb{ani}.seqLength, mlb{ani}.seqLength, length(alignments));
-decLog(2,2,2) = true;
-corrScatPlot(cell2mat(trial_MeanBeta(2,al)), cell2mat(trial_Window_TrPo(decLog)), 'Beta', 'Cross Epoch Generalization', []);
-title('Position 2');
-
-subplot(4,4,12);
-decLog = false(mlb{ani}.seqLength, mlb{ani}.seqLength, length(alignments));
-decLog(3,3,2) = true;
-corrScatPlot(cell2mat(trial_MeanBeta(3,al)), cell2mat(trial_Window_TrPo(decLog)), 'Beta', 'Cross Epoch Generalization', []);
-title('Position 3');
-
-subplot(4,4,16);
-decLog = false(mlb{ani}.seqLength, mlb{ani}.seqLength, length(alignments));
-decLog(4,4,2) = true;
-corrScatPlot(cell2mat(trial_MeanBeta(4,al)), cell2mat(trial_Window_TrPo(decLog)), 'Beta', 'Cross Epoch Generalization', []);
-title('Position 4');
-
-annotation(gcf,'textbox', [0.1 0.95 0.9 0.05],...
-    'String', 'Port Exit Aligned: Post-Trial vs. Trial; Current Trial Info',...
-    'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left', 'interpreter', 'none');
-
-
-%% Pre-Trial vs Trial Port Entry Aligned Previous Trial Info
-figure; 
-tempLog = triu(ones(length(tempTMat)),-1) & tril(ones(length(tempTMat)),-1);
-decLog = false(mlb{ani}.seqLength, mlb{ani}.seqLength, length(alignments));
-decLog(:,:,1) = tempLog;
-subplot(3,3,[1:2,4:5,7:8])
-corrScatPlot(cell2mat(trial_MeanBeta(2:end,al)), cell2mat(trial_Window_TrPr(decLog)), 'Beta', 'Cross Epoch Generalization', []);
-title('All Positions');
-
-subplot(3,3,3);
-decLog = false(mlb{ani}.seqLength, mlb{ani}.seqLength, length(alignments));
-decLog(2,1,1) = true;
-corrScatPlot(cell2mat(trial_MeanBeta(2,al)), cell2mat(trial_Window_TrPr(decLog)), 'Beta', 'Cross Epoch Generalization', []);
-title('Pos 1 in Pos 2');
-
-subplot(3,3,6);
-decLog = false(mlb{ani}.seqLength, mlb{ani}.seqLength, length(alignments));
-decLog(3,2,1) = true;
-corrScatPlot(cell2mat(trial_MeanBeta(3,al)), cell2mat(trial_Window_TrPr(decLog)), 'Beta', 'Cross Epoch Generalization', []);
-title('Pos 2 in Pos 3');
-
-subplot(3,3,9);
-decLog = false(mlb{ani}.seqLength, mlb{ani}.seqLength, length(alignments));
-decLog(4,3,1) = true;
-corrScatPlot(cell2mat(trial_MeanBeta(4,al)), cell2mat(trial_Window_TrPr(decLog)), 'Beta', 'Cross Epoch Generalization', []);
-title('Pos 3 in Pos 4');
-
-annotation(gcf,'textbox', [0.1 0.95 0.9 0.05],...
-    'String', 'Port Entry Aligned: Pre-Trial vs. Trial; Prev Trial Info',...
-    'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left', 'interpreter', 'none');
-
-%% Pre-Trial vs Trial Port Entry Aligned Previous Trial Info
-figure; 
-tempLog = triu(ones(length(tempTMat)),1) & tril(ones(length(tempTMat)),1);
-decLog = false(mlb{ani}.seqLength, mlb{ani}.seqLength, length(alignments));
-decLog(:,:,2) = tempLog;
-subplot(3,3,[1:2,4:5,7:8])
-corrScatPlot(cell2mat(trial_MeanBeta(1:end-1,al)), cell2mat(trial_Window_TrPo(decLog)), 'Beta', 'Cross Epoch Generalization', []);
-title('All Positions');
-
-subplot(3,3,3);
-decLog = false(mlb{ani}.seqLength, mlb{ani}.seqLength, length(alignments));
-decLog(1,2,2) = true;
-corrScatPlot(cell2mat(trial_MeanBeta(1,al)), cell2mat(trial_Window_TrPo(decLog)), 'Beta', 'Cross Epoch Generalization', []);
-title('Pos 1 in Pos 2');
-
-subplot(3,3,6);
-decLog = false(mlb{ani}.seqLength, mlb{ani}.seqLength, length(alignments));
-decLog(2,3,2) = true;
-corrScatPlot(cell2mat(trial_MeanBeta(2,al)), cell2mat(trial_Window_TrPo(decLog)), 'Beta', 'Cross Epoch Generalization', []);
-title('Pos 2 in Pos 3');
-
-subplot(3,3,9);
-decLog = false(mlb{ani}.seqLength, mlb{ani}.seqLength, length(alignments));
-decLog(3,4,2) = true;
-corrScatPlot(cell2mat(trial_MeanBeta(3,al)), cell2mat(trial_Window_TrPo(decLog)), 'Beta', 'Cross Epoch Generalization', []);
-title('Pos 3 in Pos 4');
-
-annotation(gcf,'textbox', [0.1 0.95 0.9 0.05],...
-    'String', 'Port Entry Aligned: Post-Trial vs. Trial; Next Trial Info',...
-    'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left', 'interpreter', 'none');
-
-
+%% Plot Lag Values
+for al = 1:length(alignments)
+    figure;
+    tempTMat = trialD(:,:,al);
+    
+    subplot(1,3,1)
+    nextPosD = tempTMat(triu(ones(length(tempTMat)),1) & tril(ones(length(tempTMat)),1));
+    mlb{end}.PlotTrialPDM(cell2mat(permute(nextPosD(2:end), [2,3,1])), 'rotate', 'clim', 'Max', 'x', obsvTimeVect{al}, 'y', obsvTimeVect{al}, 'xlabel', 'Test Time', 'ylabel', 'Train Time');
+    hold on;
+    if strcmp(alignments{al} , 'PokeIn')
+        plot(get(gca, 'xlim'),zeros(1,2), '--k','linewidth', 2);
+        plot(get(gca, 'xlim'),repmat(grpPiPoLat, [1,2]), '--k','linewidth', 2);
+        plot(get(gca, 'xlim'),repmat(grpPiRwdLat, [1,2]), ':k','linewidth', 2);
+        
+        plot(zeros(1,2),get(gca, 'ylim'), '--k','linewidth', 2);
+        plot(repmat(grpPiPoLat, [1,2]),get(gca, 'ylim'), '--k','linewidth', 2);
+        plot(repmat(grpPiRwdLat, [1,2]),get(gca, 'ylim'), ':k','linewidth', 2);
+    elseif strcmp(alignments{al}, 'PokeOut')
+        plot(get(gca, 'xlim'),zeros(1,2), '--k','linewidth', 2);
+        plot(get(gca, 'xlim'),repmat(grpPoPiLat, [1,2]), '--k','linewidth', 2);
+        plot(get(gca, 'xlim'),repmat(grpPoRwdLat, [1,2]), ':k','linewidth', 2);
+        
+        plot(zeros(1,2),get(gca, 'ylim'), '--k','linewidth', 2);
+        plot(repmat(grpPoPiLat, [1,2]),get(gca, 'ylim'), '--k','linewidth', 2);
+        plot(repmat(grpPoRwdLat, [1,2]),get(gca, 'ylim'), ':k','linewidth', 2);
+    end
+    title('Next Position');
+    subplot(1,3,2)
+    currPosD = tempTMat(logical(eye(length(tempTMat))));
+    mlb{end}.PlotTrialPDM(cell2mat(permute(currPosD(2:end-1), [2,3,1])), 'rotate', 'clim', 'Max', 'x', obsvTimeVect{al}, 'y', obsvTimeVect{al}, 'xlabel', 'Test Time', 'ylabel', 'Train Time');
+    hold on;
+    if strcmp(alignments{al} , 'PokeIn')
+        plot(get(gca, 'xlim'),zeros(1,2), '--k','linewidth', 2);
+        plot(get(gca, 'xlim'),repmat(grpPiPoLat, [1,2]), '--k','linewidth', 2);
+        plot(get(gca, 'xlim'),repmat(grpPiRwdLat, [1,2]), ':k','linewidth', 2);
+        
+        plot(zeros(1,2),get(gca, 'ylim'), '--k','linewidth', 2);
+        plot(repmat(grpPiPoLat, [1,2]),get(gca, 'ylim'), '--k','linewidth', 2);
+        plot(repmat(grpPiRwdLat, [1,2]),get(gca, 'ylim'), ':k','linewidth', 2);
+    elseif strcmp(alignments{al}, 'PokeOut')
+        plot(get(gca, 'xlim'),zeros(1,2), '--k','linewidth', 2);
+        plot(get(gca, 'xlim'),repmat(grpPoPiLat, [1,2]), '--k','linewidth', 2);
+        plot(get(gca, 'xlim'),repmat(grpPoRwdLat, [1,2]), ':k','linewidth', 2);
+        
+        plot(zeros(1,2),get(gca, 'ylim'), '--k','linewidth', 2);
+        plot(repmat(grpPoPiLat, [1,2]),get(gca, 'ylim'), '--k','linewidth', 2);
+        plot(repmat(grpPoRwdLat, [1,2]),get(gca, 'ylim'), ':k','linewidth', 2);
+    end
+    title('Current Position');
+    subplot(1,3,3)
+    prevPosD = tempTMat(triu(ones(length(tempTMat)),-1) & tril(ones(length(tempTMat)),-1));
+    mlb{end}.PlotTrialPDM(cell2mat(permute(prevPosD(1:end-1), [2,3,1])), 'rotate', 'clim', 'Max', 'x', obsvTimeVect{al}, 'y', obsvTimeVect{al}, 'xlabel', 'Test Time', 'ylabel', 'Train Time');
+    hold on;
+    if strcmp(alignments{al} , 'PokeIn')
+        plot(get(gca, 'xlim'),zeros(1,2), '--k','linewidth', 2);
+        plot(get(gca, 'xlim'),repmat(grpPiPoLat, [1,2]), '--k','linewidth', 2);
+        plot(get(gca, 'xlim'),repmat(grpPiRwdLat, [1,2]), ':k','linewidth', 2);
+        
+        plot(zeros(1,2),get(gca, 'ylim'), '--k','linewidth', 2);
+        plot(repmat(grpPiPoLat, [1,2]),get(gca, 'ylim'), '--k','linewidth', 2);
+        plot(repmat(grpPiRwdLat, [1,2]),get(gca, 'ylim'), ':k','linewidth', 2);
+    elseif strcmp(alignments{al}, 'PokeOut')
+        plot(get(gca, 'xlim'),zeros(1,2), '--k','linewidth', 2);
+        plot(get(gca, 'xlim'),repmat(grpPoPiLat, [1,2]), '--k','linewidth', 2);
+        plot(get(gca, 'xlim'),repmat(grpPoRwdLat, [1,2]), ':k','linewidth', 2);
+        
+        plot(zeros(1,2),get(gca, 'ylim'), '--k','linewidth', 2);
+        plot(repmat(grpPoPiLat, [1,2]),get(gca, 'ylim'), '--k','linewidth', 2);
+        plot(repmat(grpPoRwdLat, [1,2]),get(gca, 'ylim'), ':k','linewidth', 2);
+    end
+    title('Previous Position');
+    colormap(cMap)
+    annotation(gcf,'textbox', [0.1 0.95 0.9 0.05],...
+        'String', sprintf('Decodability: %s Alignment', alignments{al}),...
+        'FontSize',10, 'edgecolor', 'none', 'horizontalalignment', 'left', 'interpreter', 'none');
+end
 %% Save output
 save('PFC_XTD_Windows_PosChance.mat', '-v7.3');

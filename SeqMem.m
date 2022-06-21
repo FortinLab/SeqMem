@@ -533,7 +533,9 @@ classdef SeqMem < handle
         %% Line Plot w/Mean, SEM & CI
         function [plt] = PlotMeanVarLine(obj,timeVect,data,repDim,pCrit,color)
             dtaMean = mean(data, repDim, 'omitnan');
+            dtaMean = dtaMean(:);
             dtaSEM = obj.SEMcalc(data,0,repDim);
+            dtaSEM = dtaSEM(:);
             if ~exist('pCrit','var')
                 dtaCI = tinv(0.975, size(data,repDim)-1).*dtaSEM;
             else
@@ -563,8 +565,8 @@ classdef SeqMem < handle
             swarmchart(zeros(numel(data),1)+xVal,data, 20, 'markerfacecolor', color,...
                 'markeredgecolor', 'none', 'markerfacealpha', 0.5);
             hold on;
-            plt = bar(xVal, dtaMean, color, 'facealpha', 0.25);
             errorbar(xVal, dtaMean, dtaSEM, dtaSEM, 'color', 'k', 'capsize', 0);
+            plt = bar(xVal, dtaMean, 'facecolor', color, 'facealpha', 0.25);
         end
     end
     %% Misc

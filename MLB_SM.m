@@ -603,6 +603,40 @@ classdef MLB_SM < SeqMem
                 end
             end
         end
+        %% New Decode MLB
+        function [decode, maxPost] = DecodeBayesPostNew(~,post,decodeDim)
+            if decodeDim==1
+                decode = nan(size(post,2), size(post,3));
+                maxPost = nan(size(post,2), size(post,3));
+                for r = 1:size(post,2)
+                    for c = 1:size(post,3)
+                        decode(r,c) = find(post(:,r,c)==max(post(:,r,c)),1,'first');
+                        maxPost(r,c) = max(post(:,r,c));
+                    end
+                end
+            elseif decodeDim==2
+                decode = nan(size(pos,1), size(post,3));
+                maxPost = nan(size(post,2), size(post,3));
+                for r = 1:size(post,1)
+                    for c = 1:size(post,3)
+                        decode(r,c) = find(post(r,:,c)==max(post(r,:,c)),1,'first');
+                        maxPost(r,c) = max(post(r,:,c));
+                    end
+                end
+            elseif decodeDim==3
+                decode = nan(size(post,1), size(post,2));
+                maxPost = nan(size(post,1), size(post,2));
+                for r = 1:size(post,1)
+                    for c = 1:size(post,2)
+                        if sum(~isnan(post(r,c,:)),3)~=0
+                            decode(r,c) = find(post(r,c,:)==max(post(r,c,:)),1,'first');
+                            maxPost(r,c) = max(post(r,c,:));
+                        end
+                    end
+                end
+            end
+                
+        end
         %% Tabluate MLB
         function decode = TabulateBayesPost(~, post, id)
             idS = unique(id);

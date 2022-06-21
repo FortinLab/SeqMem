@@ -12,10 +12,10 @@ fileDirs = [{'D:\WorkBigDataFiles\PFC\Dual_List\GE11_Session146'},...
 
 binSize = 200;
 dsRate = 50;
-% trlWindow = {[-1000 2000]};
-% alignment = {'PokeIn'};
-trlWindow = {[-1500 2000]};
-alignment = {'PokeOut'};
+trlWindow = {[-1200 2000]};
+alignment = {'PokeIn'};
+% trlWindow = {[-1500 2000]};
+% alignment = {'PokeOut'};
 lfpWindow = [16 32];
 bayesType = 1; %1 = Poisson: use with raw spike counts; 2 = Bernoulli: use with binarized spike counts; 3 = Gaussian: Use with z-scored spike counts
 
@@ -140,6 +140,7 @@ for odr = 1:length(mlb.odrVect)
     tempSeqDiff = nan(length(mlb.obsvTimeVect),mlb.seqLength, size(groupPostOdr_Real{odr},3));
     for pos = 1:mlb.seqLength
         tempSeqDiff(:,pos,:) = diff(groupPostOdr_Real{odr}(:,[pos+mlb.seqLength, pos],:),1,2);
+%         tempSeqDiff(:,pos,:) = diff(groupPostOdr_Real{odr}(:,[pos+mlb.seqLength, pos],:),1,2)./sum(groupPostOdr_Real{odr}(:,[pos+mlb.seqLength, pos],:),2);
     end
     groupPostSeqDiff_Real{odr} = tempSeqDiff;
     %% Chance

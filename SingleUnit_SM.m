@@ -2,6 +2,7 @@ classdef SingleUnit_SM < SeqMem
     % Single unit analyses from the Sequence Memory project
     properties % General Variables
         gaussWinDur = 200
+        gaussWinWidth = 2.5
         numChancePerms = 100
         binSize = 200
         dsRate = 5
@@ -137,7 +138,7 @@ classdef SingleUnit_SM < SeqMem
             end
         end
          %% Quantify Modulation with F-vals
-        function [rawF, tsVect] = SlidingWindowModIC(obj, window, alignment, critVar, trlType)
+        function [rawF, tsVect, evtSpks, trlIDs] = SlidingWindowModIC(obj, window, alignment, critVar, trlType)
             [binnedSpikes, tsVect] = obj.SlidingBinTrialEventSpikes(window,alignment,obj.binSize,obj.dsRate);
             [evtSpks, trlIDs] = obj.ExtractTrialSpikes(binnedSpikes, trlType);
             if strcmp(critVar, 'pos')
@@ -146,18 +147,6 @@ classdef SingleUnit_SM < SeqMem
                 varID = trlIDs(3,:);
             end
             [rawF] = obj.SlidingWindowFtest(evtSpks,varID);
-            % This code was when I was thinking I needed some permutations to normalize things... not really sure I do anymore.
-%             chanceFvals = nan(size(rawF,1),size(rawF,2),obj.numChancePerms);
-%             for perm = 1:obj.numChancePerms
-%                 chanceShflVect = randperm(length(posIDs));
-%                 chanceFvals(:,:,perm) = obj.SlideWindowFtest(evtSpks,posIDs(chanceShflVect));
-%             end
-%             normF = nan(size(rawF));
-%             for t = 1:size(rawF,1)
-%                 for u = 1:size(rawF,2)
-%                     normF(t,u) = (rawF(t,u)-mean(chanceFvals(t,u,:),3,'omitnan'))/std(chanceFvals(t,u,:),0,3);
-%                 end
-%             end
         end
     end
     %% Specific Analyses
@@ -261,14 +250,14 @@ classdef SingleUnit_SM < SeqMem
             end
         end
         %% Quantify Position Information
-        function [posInfo, tsVect] = QuantPosInfo(obj,window,alignment,critVar, trlType)
-            [posInfo, tsVect] = obj.SlidingWindowModIC(window,alignment,critVar,trlType);
+        function [posInfo, tsVect, binnedSpikes, trlIDs] = QuantPosInfo(obj,window,alignment,critVar,trlType)
+            [posInfo, tsVect, binnedSpikes, trlIDs] = obj.SlidingWindowModIC(window,alignment,critVar,trlType);
         end
         %% Quantify Position Info & Spike Rates
         function [posSpkCorr, posInfo, varSpks, tsVect] = QuantPosSpkCorr(obj,window,alignment,critVar,trlType)
             [posInfo,tsVect] = obj.SlidingWindowModIC(window,alignment,critVar,trlType);
             [binnedSpikes, ~] = obj.SlidingBinTrialEventSpikes(window,alignment,obj.binSize,obj.dsRate);
-            [evtSpks, trlIDs] = obj.ExtractTrialSpikes(binnedSpikes, 'isc');
+            [evtSpks, trlIDs] = obj.ExtractTrialSpikes(binnedSpikes, trlType);
             if strcmp(critVar, 'pos')
                 varID = trlIDs(2,:);
             elseif strcmp(critVar, 'odr')
@@ -283,12 +272,134 @@ classdef SingleUnit_SM < SeqMem
             for v = 1:length(vars)
                 varSpks(:,:,v) = mean(evtSpks(:,:,varID==vars(v)),3);
                 for u = 1:size(evtSpks,2)
-                    posSpkCorr(u,v) = pdist([posInfo(:,u), varSpks(:,u,v)]', 'cosine');
+%                     posSpkCorr(u,v) = pdist([posInfo(:,u), varSpks(:,u,v)]', 'cosine');
+                    posSpkCorr(u,v) = pdist([posInfo(:,u), varSpks(:,u,v)]', 'correlation');
                 end
             end
             varSpks(:,:,length(vars)+1) = mean(evtSpks,3);
             for u = 1:size(evtSpks,2)
-                posSpkCorr(u,length(vars)+1) = pdist([posInfo(:,u), varSpks(:,u,length(vars)+1)]', 'cosine');
+%                 posSpkCorr(u,length(vars)+1) = pdist([posInfo(:,u), varSpks(:,u,length(vars)+1)]', 'cosine');
+                posSpkCorr(u,length(vars)+1) = pdist([posInfo(:,u), varSpks(:,u,length(vars)+1)]', 'correlation');
+            end
+        end
+        %% Examine Firing Rate Changes Over Time During the Trial
+        function [meanSpkDiff,tsVect] = SpikeDiffAcrossTime(obj,window,alignment,trlType,winStepSize,horizon)
+            [binnedSpikes, tsVect] = obj.SlidingBinTrialEventSpikes(window,alignment,winStepSize,winStepSize);
+            tempTrlSpks = obj.ExtractTrialSpikes(binnedSpikes,trlType);
+            meanSpkDiff = nan(length(tsVect)-horizon,horizon, size(tempTrlSpks,2));
+            for u = 1:size(tempTrlSpks,2)
+                tempSpkDiff = nan(length(tsVect)-horizon,horizon, size(tempTrlSpks,3));
+                for trl = 1:size(tempTrlSpks,3)
+                    for t = 1:size(tempTrlSpks,1)-horizon
+                        for tt = 1:horizon
+                            tempSpkDiff(t,tt,trl) = tempTrlSpks(t,u,trl)-tempTrlSpks(t+tt,u,trl);
+                        end
+                    end
+                end
+                tempSpkDiff(isinf(tempSpkDiff)) = nan;
+                meanSpkDiff(:,:,u) = mean(tempSpkDiff,3,'omitnan');
+%                 tempMeanSpks = mean(squeeze(tempTrlSpks(:,u,:)),2);
+%                 for t = 1:length(tempMeanSpks)-horizon
+%                     for tt = 1:horizon
+%                         meanSpkDiff(t,tt,u) = (tempMeanSpks(t)-tempMeanSpks(t+tt))/tempMeanSpks(t);
+%                     end
+%                 end
+            end
+        end
+        %% Examine Ensemble Similarity Over Time During the Trial
+        function [meanStateSim, tsVect] = EnsembleStateDiffAcrossTime(obj,window,alignment,trlType,winStepSize,horizon)
+            [binnedSpikes, tsVect] = obj.SlidingBinTrialEventSpikes(window,alignment,winStepSize,winStepSize);
+            tempTrlSpks = obj.ExtractTrialSpikes(binnedSpikes,trlType);
+            tempStateDiff = nan(length(tsVect)-horizon,horizon, size(tempTrlSpks,3));
+            for trl = 1:size(tempTrlSpks,3)
+                for t = 1:size(tempTrlSpks,1)-horizon
+                    for tt = 1:horizon
+                        tempStateDiff(t,tt,trl) = pdist([tempTrlSpks(t,:,trl);tempTrlSpks(t+tt,:,trl)],'euclidean');
+                    end
+                end
+            end
+            meanStateSim = mean(tempStateDiff,3,'omitnan');
+        end
+        %% Examine Firing Rate Changes Relative to Peak Rate
+        function [changeVals,ndxs,maxs,windowTSvect] = SpikeDiffWindowedOnMaxRate(obj,window,alignment,trlType,winStepSize,horizon)
+            binnedSpikes= obj.SlidingBinTrialEventSpikes(window,alignment,winStepSize,winStepSize);
+            tempTrlSpks = obj.ExtractTrialSpikes(binnedSpikes,trlType);
+            changeVals = nan(size(tempTrlSpks,2),horizon*2+1);
+            ndxs = nan(size(tempTrlSpks,2),1);
+            maxs = nan(size(tempTrlSpks,2),1);
+            for u = 1:size(tempTrlSpks,2)
+                tempChangeVals = nan(size(tempTrlSpks,3),horizon*2+1);
+                tempMaxNdxs = nan(size(tempTrlSpks,3),1);
+                tempMaxSpk = nan(size(tempTrlSpks,3),1);
+                for trl = 1:size(tempTrlSpks,3)
+                    tempChangeVals(trl,horizon+1) = 0;
+                    curMaxNdx = find(tempTrlSpks(:,u,trl)==max(tempTrlSpks(:,u,trl)),1,'first');
+                    for t = 1:horizon
+                        if curMaxNdx+t<size(tempTrlSpks,1)
+                            tempChangeVals(trl,horizon+t+1) = tempTrlSpks(curMaxNdx+t,u,trl)-tempTrlSpks(curMaxNdx,u,trl);
+                        end
+                        if curMaxNdx-t>0
+                            tempChangeVals(trl,horizon-t+1) = tempTrlSpks(curMaxNdx-t,u,trl)-tempTrlSpks(curMaxNdx,u,trl);
+                        end
+                    end
+                    tempMaxNdxs(trl) = curMaxNdx;
+                    tempMaxSpk(trl) = tempTrlSpks(curMaxNdx,u,trl);
+                end
+                changeVals(u,:) = mean(tempChangeVals,1,'omitnan');
+                ndxs(u) = mean(tempMaxNdxs);
+                maxs(u) = mean(tempMaxSpk);
+            end
+            windowTSvect = winStepSize*-horizon:winStepSize:winStepSize*horizon;
+        end
+        %% Examine Structure of Ordinal Information at Peak Info
+        function [unitPosInfoPeaksInfo] = InterrogatePeakInfo(obj,window,alignment,critVar,trlType,critF)
+            [posInfo, tsVect, evtSpks, trlIDs] = obj.SlidingWindowModIC(window,alignment,critVar,trlType);
+            if strcmp(critVar, 'pos')
+                varID = trlIDs(2,:);
+            elseif strcmp(critVar, 'odr')
+                varID = trlIDs(3,:);
+            end
+            unqIDs = unique(varID);
+            unitPosInfoPeaksInfo = struct('Unit', obj.ensembleMatrixColIDs,...
+                'Peaks', cell(1,size(posInfo,2)),...
+                'Locations', cell(1,size(posInfo,2)),...
+                'Widths', cell(1,size(posInfo,2)),...
+                'Prominance', cell(1,size(posInfo,2)),...
+                'Means', cell(1,size(posInfo,2)),...
+                'LinearFit', cell(1,size(posInfo,2)),...
+                'PolyRatio', cell(1,size(posInfo,2)));
+            for u = 1:size(posInfo,2)
+%                 [pks,locs,widths,proms] = findpeaks(posInfo(:,u), 'MinPeakProminence', critF, 'MinPeakDistance', obj.binSize/4, 'MinPeakHeight', critF);
+                [pks,locs,widths,proms] = findpeaks(smooth(posInfo(:,u)), 'MinPeakDistance', obj.binSize/4, 'MinPeakHeight', critF);
+%                 [pks,locs,widths,proms] = findpeaks(posInfo(:,u), 'MinPeakProminence', critF, 'MinPeakHeight', critF);                
+%                 [pks,locs,widths,proms] = findpeaks(posInfo(:,u), 'MinPeakHeight', critF);
+                peakRvals = nan(size(pks));
+                tempMeans = nan(length(pks), length(unqIDs));
+                polyErrorRat = nan(size(pks));
+                for p = 1:length(pks)
+                    tempFR = squeeze(evtSpks(locs(p),u,:));
+                    peakRvals(p) = corr(varID', tempFR, 'rows', 'pairwise');
+                    p1 = polyfit(varID',tempFR,1);
+                    x1 = polyval(p1,unqIDs);
+                    p2 = polyfit(varID',tempFR,2);
+                    x2 = polyval(p2,unqIDs);
+                    sse1 = cell(length(unqIDs),1);
+                    sse2 = cell(length(unqIDs),1);
+                    for ui = 1:length(unqIDs)
+                        idFR = tempFR(varID==unqIDs(ui));
+                        tempMeans(p,ui) = mean(idFR,'omitnan');
+                        sse1{ui} = (idFR-x1(ui)).^2;
+                        sse2{ui} = (idFR-x2(ui)).^2;
+                    end
+                    polyErrorRat(p) = sum(cell2mat(sse1))/sum(cell2mat(sse2));
+                end
+                unitPosInfoPeaksInfo(u).Peaks = pks;
+                unitPosInfoPeaksInfo(u).Locations = tsVect(locs);
+                unitPosInfoPeaksInfo(u).Widths = widths;
+                unitPosInfoPeaksInfo(u).Prominance = proms;
+                unitPosInfoPeaksInfo(u).Means = tempMeans;
+                unitPosInfoPeaksInfo(u).LinearFit = peakRvals;
+                unitPosInfoPeaksInfo(u).PolyRatio = polyErrorRat;
             end
         end
     end
@@ -470,6 +581,8 @@ classdef SingleUnit_SM < SeqMem
                     'markeredgecolor', 'none', 'markerfacecolor', obj.PositionColors(pos,:))
                 hold on;
             end
+            plot([0 0], get(gca, 'ylim'), '-k');
+            scatter([obj.trialInfo(trlIDspkDta(:,2)).PokeDuration]*1000, 1:size(trlIDspkDta,1), 20, '|k', 'linewidth', 1);
             set(gca, 'ydir', 'reverse');            
         end        
         %% Plot Gaussian Firing Rate By Position
@@ -478,7 +591,7 @@ classdef SingleUnit_SM < SeqMem
             eventSpikes = obj.ExtractTrialMatrix(obj.ensembleMatrix(:,uniCol), [window(1)-obj.gaussWinDur/2, window(2)+obj.gaussWinDur/2], alignment);
             [evtSpks, trlIDs] = obj.ExtractTrialSpikes(eventSpikes, trlType);
             
-            instFRgauss = gausswin(obj.gaussWinDur);
+            instFRgauss = gausswin(obj.gaussWinDur,obj.gaussWinWidth);
             instFRgauss = instFRgauss/(length(instFRgauss)*mode(diff(obj.tsVect)));
             
             instFR = nan(size(squeeze(evtSpks)));
@@ -490,6 +603,9 @@ classdef SingleUnit_SM < SeqMem
                 curPosTrls = instFR(:,trlIDs(2,:)==pos);
                 obj.PlotMeanVarLine(window(1):window(2),curPosTrls,2,0.05,obj.PositionColors(pos,:));
             end
+            plot([0 0], get(gca, 'ylim'), '-k');
+            plot(repmat(median([obj.trialInfo(trlIDs(1,:)).PokeDuration]), [1,2])*1000, get(gca, 'ylim'), '-k');
+            plot(repmat(median([obj.trialInfo(trlIDs(1,:)).RewardIndex]-[obj.trialInfo(trlIDs(1,:)).PokeInIndex]), [1,2]), get(gca, 'ylim'), '--k');
         end
     end
 end
