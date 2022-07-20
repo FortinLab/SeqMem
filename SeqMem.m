@@ -85,7 +85,7 @@ classdef SeqMem < handle
     %% Object Creation Method
     methods
         function obj = SeqMem(path)
-            fprintf('Compiling StatMatrix Data\n');
+            fprintf('Compiling StatMatrix Data....');
             if nargin == 0
                 path = uigetdir;
             end
@@ -533,6 +533,7 @@ classdef SeqMem < handle
         %% Line Plot w/Mean, SEM & CI
         function [plt] = PlotMeanVarLine(obj,timeVect,data,repDim,pCrit,color)
             dtaMean = mean(data, repDim, 'omitnan');
+%             dtaMean = median(data, repDim, 'omitnan');
             dtaMean = dtaMean(:);
             dtaSEM = obj.SEMcalc(data,0,repDim);
             dtaSEM = dtaSEM(:);
@@ -544,17 +545,17 @@ classdef SeqMem < handle
             if ~exist('color','var')
                 color = 'k';
             end
-            plt = plot(timeVect, dtaMean, 'color', color, 'linewidth', 1.5);
-            hold on;
             patch('XData', [timeVect(:); flipud(timeVect(:))],...
                 'YData', [(dtaMean+dtaSEM)', flipud(dtaMean-dtaSEM)'],...
                 'linestyle', 'none', 'facecolor', color, 'facealpha', 0.25);
+            hold on;
+            plt = plot(timeVect, dtaMean, 'color', color, 'linewidth', 1.5);
             patch('XData', [timeVect(:); flipud(timeVect(:))],...
                 'YData', [(dtaMean+dtaCI)', flipud(dtaMean-dtaCI)'],...
                 'linestyle', ':', 'linewidth', 1.5, 'edgecolor', color, 'facealpha', 0);
         end
         %% Bar & Swarm Plot w/Mean, SEM (and CI if updated)
-        function [plt] = PlotMeanVarSwarmBar(obj,xVal,data,repDim,pCrit,color)
+        function [plt] = PlotMeanVarSwarmBar(obj,xVal,data,repDim,pCrit,color,varargin)
             dtaMean = mean(data, repDim, 'omitnan');
             dtaSEM = obj.SEMcalc(data,0,repDim);
             if ~exist('pCrit','var')
@@ -562,11 +563,51 @@ classdef SeqMem < handle
             else
                 dtaCI = tinv(1-(pCrit/2), size(data,repDim)-1).*dtaSEM;
             end
-            swarmchart(zeros(numel(data),1)+xVal,data, 20, 'markerfacecolor', color,...
-                'markeredgecolor', 'none', 'markerfacealpha', 0.5);
+            plt = bar(xVal, dtaMean, 'facecolor', color, 'facealpha', 0.8);
             hold on;
-            errorbar(xVal, dtaMean, dtaSEM, dtaSEM, 'color', 'k', 'capsize', 0);
-            plt = bar(xVal, dtaMean, 'facecolor', color, 'facealpha', 0.25);
+            swarmchart(zeros(numel(data),1)+xVal,data, 20, 'markerfacecolor', color,...
+                'markeredgecolor', 'none', 'markerfacealpha', 0.1);
+            if sum(strcmp(varargin, 'error'))>=1
+                if strcmp(varargin{find(strcmp(varargin, 'error'))+1}, 'CI')           
+                    errorbar(xVal, dtaMean, dtaCI, dtaCI, 'color', 'k', 'capsize', 0);
+                end
+            else
+                errorbar(xVal, dtaMean, dtaSEM, dtaSEM, 'color', 'k', 'capsize', 0);
+            end
+                            
+        end
+        %% Bar & Distribution plots
+        function [plt] = PlotMeanVarViolin(obj,xVal,data,repDim,pCrit,color,varargin)
+            if sum(strcmp(varargin, 'binNum'))==1
+                numBins = varargin{find(strcmp(varargin, 'binNum'))+1};
+            else
+                numBins = 100;
+            end
+            dtaMean = mean(data, repDim, 'omitnan');
+            dtaSEM = obj.SEMcalc(data,0,repDim);
+             if ~exist('pCrit','var')
+                dtaCI = tinv(0.975, size(data,repDim)-1).*dtaSEM;
+            else
+                dtaCI = tinv(1-(pCrit/2), size(data,repDim)-1).*dtaSEM;
+            end
+            [counts,edges] = histcounts(data, linspace(min(data), max(data),numBins));
+            hist = smooth(smooth(counts,ceil(numBins*.2)),ceil(numBins*.2));
+            hist = hist./max(hist);
+            binCenters = (edges(2:end)-mode(diff(edges))/2)';
+            patch('XData', (([hist; flipud(hist.*-1)]).*0.45)+xVal,...
+                'YData', [binCenters;flipud(binCenters)],...
+                'linestyle','none', 'facecolor', color, 'facealpha', 0.25);
+            hold on;
+            plt = bar(xVal, dtaMean, 'facecolor', color, 'facealpha', 0.8);
+            if sum(strcmp(varargin, 'error'))>=1
+                if strcmp(varargin{find(strcmp(varargin, 'error'))+1}, 'CI')           
+                    errorbar(xVal, dtaMean, dtaCI, dtaCI, 'color', 'k', 'capsize', 0);
+                elseif strcmp(varargin{find(strcmp(varargin, 'error'))+1}, 'SEM')           
+                    errorbar(xVal, dtaMean, dtaSEM, dtaSEM, 'color', 'k', 'capsize', 0);
+                end
+            else
+                errorbar(xVal, dtaMean, dtaSEM, dtaSEM, 'color', 'k', 'capsize', 0);
+            end
         end
     end
     %% Misc

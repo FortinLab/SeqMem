@@ -28,6 +28,7 @@ classdef MLB_SM < SeqMem
                 fileDir = uigetdir;
             end
             obj@SeqMem(fileDir);
+            fprintf('Completed\n');
             obj.PP_IdentifyFISCseqs
         end
     end
@@ -449,7 +450,6 @@ classdef MLB_SM < SeqMem
             end                        
         end
         %% Calculate Iterative MLB Poisson
-        % **** TO CREATE ****
         function post = CalcIterativeBayesPost_Poisson(obj, likely, obsv, depVar, grpVar, prob)
             % Calculate posterior probability using a dependant variable and a grouping variable
             %   The dependant variable (mainly time) is the variable that is iterated across
@@ -679,7 +679,10 @@ classdef MLB_SM < SeqMem
             else
                 y = 1:size(realTrialMtx,1);
             end
+%             realMean = median(realTrialMtx,3,'omitnan');         
             realMean = mean(realTrialMtx,3,'omitnan');
+%             realMean = median(realTrialMtx,3,'omitnan')./std(realTrialMtx,0,3);
+%             realMean = mean(realTrialMtx,3,'omitnan')./std(realTrialMtx,0,3);
             if sum(strcmp(varargin, 'rotate') | strcmp(varargin, 'Rotate'))>=1
                 imagesc(x, y, realMean');
             else
@@ -793,29 +796,31 @@ classdef MLB_SM < SeqMem
             % decodeMtx here is a NxMxP matrix (tensor?) where N = observation time, M = likelihood time and P = trials
             % trlIDvect here is a 1xP matrix containing the trial IDs
 %             trlIDs = sort(obj.odrSeqs(:));
-            trlIDs = 1:obj.seqLength;
+            trlIDs = unique(trlIDvect);
             rndDecodeMtx = nan(size(decodeMtx));
             for trl = 1:size(decodeMtx,3)
                 tempDecode = decodeMtx(:,:,trl);
                 shuffDecode = sortrows([randperm(numel(tempDecode))',tempDecode(:)]);
                 rndDecodeMtx(:,:,trl) = reshape(shuffDecode(:,2), [size(decodeMtx,1),size(decodeMtx,2)]);
             end
-            dOvrTraw = nan(size(decodeMtx,1),size(decodeMtx,2), length(trlIDs));
-            dOvrTchance = nan(size(decodeMtx,1),size(decodeMtx,2), length(trlIDs));
-            for trl = 1:length(trlIDs)
-                tempTrlLogVect = trlIDvect==trlIDs(trl);
-                for to = 1:size(decodeMtx,1)
-                    for tl = 1:size(decodeMtx,2)
-                        decodeCounts(1,1) = sum(decodeMtx(to,tl,tempTrlLogVect)==trlIDs(trl));
-                        decodeCounts(1,2) = sum(decodeMtx(to,tl,tempTrlLogVect)~=trlIDs(trl));
-                        decodeCounts(2,1) = sum(decodeMtx(to,tl,~tempTrlLogVect)==trlIDs(trl));
-                        decodeCounts(2,2) = sum(decodeMtx(to,tl,~tempTrlLogVect)~=trlIDs(trl));
-                        dOvrTraw(to,tl,trl) = obj.CalculateDprime(decodeCounts);
-                        randCounts(1,1) = sum(rndDecodeMtx(to,tl,tempTrlLogVect)==trlIDs(trl));
-                        randCounts(1,2) = sum(rndDecodeMtx(to,tl,tempTrlLogVect)~=trlIDs(trl));
-                        randCounts(2,1) = sum(rndDecodeMtx(to,tl,~tempTrlLogVect)==trlIDs(trl));
-                        randCounts(2,2) = sum(rndDecodeMtx(to,tl,~tempTrlLogVect)~=trlIDs(trl));
-                        dOvrTchance(to,tl,trl) = obj.CalculateDprime(randCounts);
+            dOvrTraw = repmat({nan(size(decodeMtx,1),size(decodeMtx,2))},length(trlIDs),length(trlIDs));
+            dOvrTchance = repmat({nan(size(decodeMtx,1),size(decodeMtx,2))},length(trlIDs),length(trlIDs));
+            for trl1 = 1:length(trlIDs)
+                tempTrlLogVect = trlIDvect==trlIDs(trl1);
+                for trl2 = 1:length(trlIDs)
+                    for to = 1:size(decodeMtx,1)
+                        for tl = 1:size(decodeMtx,2)
+                            decodeCounts(1,1) = sum(decodeMtx(to,tl,tempTrlLogVect)==trlIDs(trl2));
+                            decodeCounts(1,2) = sum(decodeMtx(to,tl,tempTrlLogVect)~=trlIDs(trl2));
+                            decodeCounts(2,1) = sum(decodeMtx(to,tl,~tempTrlLogVect)==trlIDs(trl2));
+                            decodeCounts(2,2) = sum(decodeMtx(to,tl,~tempTrlLogVect)~=trlIDs(trl2));
+                            dOvrTraw{trl1,trl2}(to,tl) = obj.CalculateDprime(decodeCounts);
+                            randCounts(1,1) = sum(rndDecodeMtx(to,tl,tempTrlLogVect)==trlIDs(trl2));
+                            randCounts(1,2) = sum(rndDecodeMtx(to,tl,tempTrlLogVect)~=trlIDs(trl2));
+                            randCounts(2,1) = sum(rndDecodeMtx(to,tl,~tempTrlLogVect)==trlIDs(trl2));
+                            randCounts(2,2) = sum(rndDecodeMtx(to,tl,~tempTrlLogVect)~=trlIDs(trl2));
+                            dOvrTchance{trl1,trl2}(to,tl) = obj.CalculateDprime(randCounts);
+                        end
                     end
                 end
             end
