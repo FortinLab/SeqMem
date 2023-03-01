@@ -38,6 +38,7 @@ classdef SeqMem < handle
         responseMatrixByOdr
         % Raw Accuracy: Trial Type & By Lag
         transMatAcc
+        transMatPerf
         lagAccVect
         lagAccVectSFP
         % Response Latency: Trial Type & By Lag
@@ -366,6 +367,7 @@ classdef SeqMem < handle
             obj.responseMatrixByPos = repmat({zeros(2,2)}, [obj.numSeqs, obj.seqLength]);
             obj.responseMatrixByOdr = repmat({zeros(2,2)}, [obj.numSeqs, obj.seqLength]);
             obj.transMatAcc = nan(length(odrs), length(poss));
+            obj.transMatPerf = nan(length(odrs), length(poss),2);
             obj.lagAccVect = zeros(obj.numSeqs,length(obj.lagVect),2);
             obj.lagAccVectSFP = zeros(obj.numSeqs,length(obj.lagVect),2);
             obj.transMatLatRaw = cell(length(odrs), length(poss), 2);
@@ -415,6 +417,8 @@ classdef SeqMem < handle
                     end
                     
                     obj.transMatAcc(odr,pos) = mean([obj.trialInfo(odrTrlLog & posTrlLog).Performance]);
+                    obj.transMatPerf(odr,pos,1) = sum([obj.trialInfo(odrTrlLog & posTrlLog).Performance]==1);
+                    obj.transMatPerf(odr,pos,2) = sum([obj.trialInfo(odrTrlLog & posTrlLog).Performance]==0);
                     obj.lagAccVect(curSeq,obj.lagVect==(pos-curOdrNdx),1) = obj.lagAccVect(curSeq,obj.lagVect==(pos-curOdrNdx),1) + sum([obj.trialInfo(odrTrlLog & posTrlLog).Performance]==1);
                     obj.lagAccVect(curSeq,obj.lagVect==(pos-curOdrNdx),2) = obj.lagAccVect(curSeq,obj.lagVect==(pos-curOdrNdx),2) + sum([obj.trialInfo(odrTrlLog & posTrlLog).Performance]==0);                  
                     
@@ -563,18 +567,23 @@ classdef SeqMem < handle
             else
                 dtaCI = tinv(1-(pCrit/2), size(data,repDim)-1).*dtaSEM;
             end
-            plt = bar(xVal, dtaMean, 'facecolor', color, 'facealpha', 0.8);
+            if sum(strcmp(varargin, 'filled'))>=1
+                plt = bar(xVal, dtaMean, 'facecolor', color, 'facealpha', 0.4);
+            else
+                plt = bar(xVal, dtaMean, 'facecolor', 'none');
+            end
             hold on;
             swarmchart(zeros(numel(data),1)+xVal,data, 20, 'markerfacecolor', color,...
                 'markeredgecolor', 'none', 'markerfacealpha', 0.1);
             if sum(strcmp(varargin, 'error'))>=1
                 if strcmp(varargin{find(strcmp(varargin, 'error'))+1}, 'CI')           
                     errorbar(xVal, dtaMean, dtaCI, dtaCI, 'color', 'k', 'capsize', 0);
+                elseif strcmp(varargin{find(strcmp(varargin, 'error'))+1}, 'SEM')           
+                    errorbar(xVal, dtaMean, dtaSEM, dtaSEM, 'color', 'k', 'capsize', 0);
                 end
             else
                 errorbar(xVal, dtaMean, dtaSEM, dtaSEM, 'color', 'k', 'capsize', 0);
-            end
-                            
+            end                            
         end
         %% Bar & Distribution plots
         function [plt] = PlotMeanVarViolin(obj,xVal,data,repDim,pCrit,color,varargin)
@@ -590,6 +599,12 @@ classdef SeqMem < handle
             else
                 dtaCI = tinv(1-(pCrit/2), size(data,repDim)-1).*dtaSEM;
             end
+            if sum(strcmp(varargin, 'filled'))>=1
+                plt = bar(xVal, dtaMean, 'facecolor', color, 'facealpha', 0.4);
+            else
+                plt = bar(xVal, dtaMean, 'facecolor', 'none');
+            end
+            hold on;
             [counts,edges] = histcounts(data, linspace(min(data), max(data),numBins));
             hist = smooth(smooth(counts,ceil(numBins*.2)),ceil(numBins*.2));
             hist = hist./max(hist);
@@ -597,8 +612,6 @@ classdef SeqMem < handle
             patch('XData', (([hist; flipud(hist.*-1)]).*0.45)+xVal,...
                 'YData', [binCenters;flipud(binCenters)],...
                 'linestyle','none', 'facecolor', color, 'facealpha', 0.25);
-            hold on;
-            plt = bar(xVal, dtaMean, 'facecolor', color, 'facealpha', 0.8);
             if sum(strcmp(varargin, 'error'))>=1
                 if strcmp(varargin{find(strcmp(varargin, 'error'))+1}, 'CI')           
                     errorbar(xVal, dtaMean, dtaCI, dtaCI, 'color', 'k', 'capsize', 0);
