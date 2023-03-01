@@ -1,10 +1,10 @@
 % PFC_SingleUnit_Modulation
-%%
-fileDirs = [{'D:\WorkBigDataFiles\PFC\Files To Process\GE11\GE11_Session132'},...
-    {'D:\WorkBigDataFiles\PFC\Files To Process\GE13\GE13_Session083'},...
-    {'D:\WorkBigDataFiles\PFC\Files To Process\GE14\GE14_Session123'},...
-    {'D:\WorkBigDataFiles\PFC\Files To Process\GE17\GE17_Session095'},...
-    {'D:\WorkBigDataFiles\PFC\Files To Process\GE24\GE24_Session096'}];
+%
+% fileDirs = [{'D:\WorkBigDataFiles\PFC\Files To Process\GE11\GE11_Session132'},...
+%     {'D:\WorkBigDataFiles\PFC\Files To Process\GE13\GE13_Session083'},...
+%     {'D:\WorkBigDataFiles\PFC\Files To Process\GE14\GE14_Session123'},...
+%     {'D:\WorkBigDataFiles\PFC\Files To Process\GE17\GE17_Session095'},...
+%     {'D:\WorkBigDataFiles\PFC\Files To Process\GE24\GE24_Session096'}];
 
 % fileDirs = [{'D:\WorkBigDataFiles\HC\1. Well-Trained session\SuperChris'},...
 %     {'D:\WorkBigDataFiles\HC\1. Well-Trained session\Stella'},...
@@ -18,11 +18,11 @@ fileDirs = [{'D:\WorkBigDataFiles\PFC\Files To Process\GE11\GE11_Session132'},..
 %     {'D:\WorkBigDataFiles\CA1 Data\1. WellTrained session\Buchanan'},...
 %     {'D:\WorkBigDataFiles\CA1 Data\1. WellTrained session\Barat'}];
 
-% fileDirs = [{'D:\WorkBigDataFiles\PFC\GE11_Session132'},...
-%     {'D:\WorkBigDataFiles\PFC\GE13_Session083'},...
-%     {'D:\WorkBigDataFiles\PFC\GE14_Session123'},...
-%     {'D:\WorkBigDataFiles\PFC\GE17_Session095'},...
-%     {'D:\WorkBigDataFiles\PFC\GE24_Session096'}];
+fileDirs = [{'D:\WorkBigDataFiles\PFC\GE11_Session132'},...
+    {'D:\WorkBigDataFiles\PFC\GE13_Session083'},...
+    {'D:\WorkBigDataFiles\PFC\GE14_Session123'},...
+    {'D:\WorkBigDataFiles\PFC\GE17_Session095'},...
+    {'D:\WorkBigDataFiles\PFC\GE24_Session096'}];
 
 % fileDirs = [
 %     {'D:\WorkBigDataFiles\PFC\GE13_Session083'},...
@@ -273,7 +273,8 @@ polyRatBins = 0.95:0.05:1.5;
 
 peakInfo = [];
 for ani = 1:length(fileDirs)
-    peakInfo = [peakInfo, su{ani}.InterrogatePeakInfo([min(timeBins) max(timeBins)], 'PokeIn', 'pos', 'iscSANSA', 3.3)];  %#ok<AGROW>
+%     peakInfo = [peakInfo, su{ani}.InterrogatePeakInfo([min(timeBins) max(timeBins)], 'PokeIn', 'pos', 'iscSANSA', 3.3)];  %#ok<AGROW>
+    peakInfo = [peakInfo, su{ani}.InterrogatePeakInfo([min(timeBins) max(timeBins)], 'PokeIn', 'pos', 'isc', 3.3)];  %#ok<AGROW>
 end
 locs = cell2mat({peakInfo.Locations})';
 peaks = cell2mat({peakInfo.Peaks}');
@@ -312,8 +313,8 @@ title('Poly Ratio (MSE-poly1/MSE-poly2)');
 %%  Firing Rate Change over time across time
 winStepSize = 50;
 horizon = 10;
-% trlType = 'isc';
-trlType = 'iscSANSA';
+trlType = 'isc';
+% trlType = 'iscSANSA';
 figure;
 spkDiffTime = cell(1,1,length(fileDirs));
 for ani = 1:length(fileDirs)
@@ -337,7 +338,7 @@ colormap(cMap);
 figure;
 imagesc(winStepSize:winStepSize:(winStepSize*horizon),tsVect, mean(abs(grpSpkDiffTime),3), [0 2]);
 set(gca, 'ydir', 'normal');
-colormap(cMap);
+% colormap(cMap);
 
 %% Ensemble similarity over time across time
 winStepSize = 50;
@@ -422,6 +423,19 @@ xlabel('Peak OrdInfo Index');
 grid on;
 linkaxes;
         
+%% Analyses of Session Split for "time cell" plots
+% "Time Cell" Plots
+% - Ensemble Peak Latency Correlations
+%   - By Position 
+%   - Mean Response
+% - Distribution of Individual cell mean SpkR/Time correlations
+%
+% Compare the ensemble and individual cell distributions w/in (session split) vs across positions
+%   ... If temporal structure is a "backbone" then it should be fairly similar... or scale a bit with position
+%   ... Regardless... the w/in position should be higher than across positions (or similar, it shouldn't be worse but
+%   the power loss may kill it)
+
+
 
 %%
 % trlTAB = cell(1,length(fileDirs));

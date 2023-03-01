@@ -48,6 +48,12 @@ trlWindows = {[-700 2000]}; %% Non-Overlapping Pre/Post ITD
 lfpWindow = [16 32];
 numChancePerms = 100; %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Chance Perm Nums
 
+cMap = load('roma.mat'); % flip
+% cMap = load('nuuk.mat');
+% cMap = load('imola.mat');
+% cMap = load('lapaz.mat'); %flip
+cMap = cMap.(cell2mat(fieldnames(cMap)));
+cMap = flipud(cMap);
 %% Create the mlb objects
 realTic = tic;
 mlb = cell(size(fileDirs));
