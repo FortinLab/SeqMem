@@ -1,1 +1,10 @@
 # List of untracked files to ignore
+PFC_XTD_DecodeD.mat
+PFC_Trial_Decodings.mat
+PFC_OsTAOs_PosChance.mat
+PFC_OsTAOs_Decodings.mat
+PFC_DualList_PosChance.mat
+PFC_WellTrained_PosChance.mat
+PFC_XTD_PosChance_-1p5to2_PI.mat
+PFC_XTD_PosChance_-2to1p5_PO.mat
+PFC_XTD_Windows_PosChance.mat
