@@ -15,7 +15,8 @@ classdef SingleUnit_SM < SeqMem
             if nargin == 0
                 fileDir = uigetdir;
             end
-            obj@SeqMem(fileDir);        
+            obj@SeqMem(fileDir);   
+            fprintf('Completed\n');     
         end
     end
     %% General Method
