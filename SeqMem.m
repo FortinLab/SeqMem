@@ -351,7 +351,21 @@ classdef SeqMem < handle
             hilbPhase = atan2(imag(hilbert(filtSig)), filtSig);
             hilbPower = zscore(abs(hilbert(filtSig)));
         end
-        %% LFP Artifact Rejection
+        %% Diagonal Lag Mean Collapse 
+        function [dlmVect, tempLagVect, lagCounts] = DiagonalLagMeanCollapse(~,mtx)
+            dlmVect = nan(size(mtx,3),size(mtx,1)*2-1);
+            lagCounts = dlmVect;
+            tempLagVect = (1-size(mtx,1)):(size(mtx,1)-1);
+            mtxLogMask = true(size(mtx,1),size(mtx,2));
+            for pg = 1:size(mtx,3)
+                tempPage = mtx(:,:,pg);
+                for lag = 1:length(tempLagVect)
+                    dlmVect(pg,lag) = mean(tempPage(triu(mtxLogMask,tempLagVect(lag)) & tril(mtxLogMask,tempLagVect(lag))), 'omitnan');
+                    lagCounts(pg,lag) = sum(sum(triu(mtxLogMask,tempLagVect(lag)) & tril(mtxLogMask,tempLagVect(lag))));
+                end
+            end            
+            lagCounts = lagCounts(1,:);
+        end
     end
     %% Behavioral Analyses
     methods
