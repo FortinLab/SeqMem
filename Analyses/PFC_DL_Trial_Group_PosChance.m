@@ -1,7 +1,7 @@
 % PFC_DL_Trial_Group_PosChance
 clear all; %#ok<CLALL>
 %%
-
+error('DO NOT USE THIS CODE THERE IS AN ERROR IN HERE!!! It''s existence is merely to inform future iterations of the code');
 fileDirs = [{'D:\WorkBigDataFiles\PFC\Dual_List\GE11_Session146'},...
     {'D:\WorkBigDataFiles\PFC\Dual_List\GE13_Session103'},...
     {'D:\WorkBigDataFiles\PFC\Dual_List\GE17_Session110'}];

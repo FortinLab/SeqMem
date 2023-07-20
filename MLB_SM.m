@@ -7,6 +7,7 @@ classdef MLB_SM < SeqMem
         bayesType %1 = Poisson: use with raw spike counts; 2 = Bernoulli: use with binarized spike counts; 3 = Gaussian: Use with z-scored spike counts
         windows
         alignments
+        alignmentOffset = 0
     end
     properties % Data Structures
         fiscTrials        
@@ -279,27 +280,66 @@ classdef MLB_SM < SeqMem
         end
     end
     methods % MLB Processing Methods
+        %% Permute the likelihood spiking data
+        function [permLikes, permLikesTrlIDs] = RandPermLikes(obj, shuffType)
+            tempLikes = obj.likeTrlSpikes;
+            % Permute Trial IDs
+            tempLikesPos = tempLikes;
+            realTrlIDsNdx = find(~isnan(obj.postTrlIDs));
+            permTrlIDsNdx = realTrlIDsNdx(randperm(length(realTrlIDsNdx))');
+            tempLikesPos(realTrlIDsNdx) = tempLikes(permTrlIDsNdx);
+            % Permute Time IDs
+            tempLikesTime = tempLikes;
+            tempLikesFull = tempLikesPos;
+            for trl = 1:numel(tempLikes)
+                chancePerm = randperm(length(obj.obsvTimeVect));
+                tempLikesTime{trl} = tempLikesTime{trl}(chancePerm,:);
+                tempLikesFull{trl} = tempLikesFull{trl}(chancePerm,:);
+            end
+            permLikesTrlIDs = obj.postTrlIDs;
+            if strcmp(shuffType, 'Trial')
+                permLikes = tempLikesPos;
+                permLikesTrlIDs(realTrlIDsNdx) = permLikesTrlIDs(permTrlIDsNdx);
+            elseif strcmp(shuffType, 'Time')
+                permLikes = tempLikesTime;
+            elseif strcmp(shuffType, 'Full')
+                permLikes = tempLikesFull;
+                permLikesTrlIDs(realTrlIDsNdx) = permLikesTrlIDs(permTrlIDsNdx);
+            end
+        end
         %% Process via Leave-1-Out leaving out individual trials during calculation
-        function Process_LikelyL1O(obj)
+        function Process_LikelyL1O(obj, shuffType)
+            if nargin == 1
+                shuffYN = false;
+            elseif nargin == 2
+                shuffYN = true;
+            end
             tempPost = cell(size(obj.likeTrlSpikes));
             obj.postTrlIDs = permute(cellfun(@(a)a(1,end),obj.likeTrlIDs), [1,3,2]);
+            tempObsvs = obj.likeTrlSpikes;
+            if shuffYN
+                [tempLikes, tempTrlIDs] = obj.RandPermLikes(shuffType);
+            else
+                tempLikes = obj.likeTrlSpikes;
+                tempTrlIDs = obj.postTrlIDs;
+            end
             for odr = 1:size(obj.postTrlIDs,1)
                 for seq = 1:size(obj.postTrlIDs,2)
                     if ~isnan(obj.postTrlIDs(odr,seq))
-                        tempObsv = obj.likeTrlSpikes{odr,seq};
-                        tempLike = obj.likeTrlSpikes;
-                        tempLike{odr,:,seq} = nan(size(tempLike{1}));
-                        tempLike = cell2mat(tempLike);
-                        tempProb = sum(~isnan(tempLike(:,1,:)),3)./sum(sum(~isnan(tempLike(:,1,:))));                        
+                        currObsv = tempObsvs{odr,seq};
+                        curLikes = tempLikes;
+                        curLikes{find(tempTrlIDs==obj.postTrlIDs(odr,seq))} = nan(size(currObsv)); %#ok<FNDSB> 
+                        curLikes = cell2mat(curLikes);
+                        tempProb = sum(~isnan(curLikes(:,1,:)),3)./sum(sum(~isnan(curLikes(:,1,:))));
                         if obj.bayesType == 1 || strcmp(obj.bayesType, 'Poisson') || strcmp(obj.bayesType, 'poisson') || strcmp(obj.bayesType, 'P') || strcmp(obj.bayesType, 'p')
-                            tempPost{odr,seq} = obj.CalcStaticBayesPost_Poisson(mean(tempLike,3, 'omitnan'), tempObsv, tempProb);
+                            tempPost{odr,seq} = obj.CalcStaticBayesPost_Poisson(mean(curLikes,3, 'omitnan'), currObsv, tempProb);
                         elseif obj.bayesType == 2 || strcmp(obj.bayesType, 'Bernoulli') || strcmp(obj.bayesType, 'bernoulli') || strcmp(obj.bayesType, 'B') || strcmp(obj.bayesType, 'b')
-                            tempPost{odr,seq} = obj.CalcStaticBayesPost_Bernoulli(mean(tempLike,3, 'omitnan'), tempObsv, tempProb);
+                            tempPost{odr,seq} = obj.CalcStaticBayesPost_Bernoulli(mean(curLikes,3, 'omitnan'), currObsv, tempProb);
                         elseif obj.bayesType == 3 || strcmp(obj.bayesType, 'Gaussian') || strcmp(obj.bayesType, 'gaussian') || strcmp(obj.bayesType, 'G') || strcmp(obj.bayesType, 'g')
-                            tempPost{odr,seq} = obj.CalcStaticBayesPost_Gaussian(mean(tempLike,3, 'omitnan'), std(tempLike,0,3), tempObsv, tempProb);
+                            tempPost{odr,seq} = obj.CalcStaticBayesPost_Gaussian(mean(curLikes,3, 'omitnan'), std(curLikes,0,3), currObsv, tempProb);
                         end
                     else
-                        tempPost{odr,seq} = nan(size(tempObsv,1), size(tempLike,1));
+                        tempPost{odr,seq} = nan(size(currObsv,1), size(curLikes,1));
                     end
                 end
             end
