@@ -340,6 +340,27 @@ classdef SeqMem < handle
             end
             trialMatrix = cell2mat(trialOrgData);
         end
+        %% Organize Matrix
+        function [dataMtx] = OrganizeDataCellMatrix(~, data, repDim, rowIDs, colIDs)
+            rowFacts = unique(rowIDs);
+            colFacts = unique(colIDs);
+            dataMtx = cell(length(rowFacts), length(colFacts));
+            for r = 1:length(rowFacts)
+                rowLog = rowIDs==rowFacts(r);
+                for c = 1:length(colFacts)
+                    colLog = colIDs==colFacts(c);
+                    if repDim == 1
+                        dataMtx{r,c} = data(rowLog & colLog,:,:,:);
+                    elseif repDim == 2
+                        dataMtx{r,c} = data(:,rowLog & colLog,:,:);
+                    elseif repDim == 3
+                        dataMtx{r,c} = data(:,:,rowLog & colLog,:);
+                    elseif repDim == 4
+                        dataMtx{r,c} = data(:,:,:,rowLog & colLog);
+                    end
+                end
+            end
+        end
     end
     %% Data Pre-Processing
     methods
