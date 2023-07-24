@@ -13,6 +13,7 @@ classdef MLB_SM < SeqMem
         fiscTrials        
         trialIDs = [{'Time'}, {'Window'}, {'Position'}, {'Odor'}];
         likeTrlSpikes
+        likeIDvects
         likeTrlIDs
         likeTimeVect
         obsvTrlSpikes
@@ -212,20 +213,26 @@ classdef MLB_SM < SeqMem
             % Set likelihoods & observations using FISC trials where FISC are likelihoods and all other trials are observations
             [ssnSpikes, ssnID] = obj.PP_ConcatTrialData;
             obj.likeTrlSpikes = cell(size(obj.fiscTrials,1),1,size(obj.fiscTrials,2));
-            obj.likeTrlIDs = cell(size(obj.fiscTrials,1),1,size(obj.fiscTrials,2));
+            obj.likeIDvects = cell(size(obj.fiscTrials,1),1,size(obj.fiscTrials,2));
             for pos = 1:size(obj.fiscTrials,1)
                 for seq = 1:size(obj.fiscTrials,2)
                     if ~isnan(obj.fiscTrials(pos,seq))
                         obj.likeTrlSpikes{pos,seq} = ssnSpikes(:,:,obj.fiscTrials(pos,seq));
-                        obj.likeTrlIDs{pos,seq} = ssnID(:,:,obj.fiscTrials(pos,seq));
+                        obj.likeIDvects{pos,seq} = ssnID(:,:,obj.fiscTrials(pos,seq));
                     else
                         obj.likeTrlSpikes{pos,seq} = nan(size(ssnSpikes,1), size(ssnSpikes,2));
-                        obj.likeTrlIDs{pos,seq} = nan(size(ssnID,1), size(ssnID,2));
+                        obj.likeIDvects{pos,seq} = nan(size(ssnID,1), size(ssnID,2));
                     end
                 end
             end
-            obj.likeTimeVect = cell2mat(cellfun(@(a){a(:,1)}, obj.likeTrlIDs(:,:,1)));
-            obj.decodeIDvects = cell2mat(cellfun(@(a){a(:,1:end-1)}, obj.likeTrlIDs(:,:,1)));
+            obj.likeTrlIDs = nan(size(obj.likeIDvects));
+            for ind = 1:numel(obj.likeIDvects)
+                if ~isempty(obj.likeIDvects{ind})
+                    obj.likeTrlIDs(ind) = obj.likeIDvects{ind}(1,end);
+                end
+            end
+            obj.likeTimeVect = cell2mat(cellfun(@(a){a(:,1)}, obj.likeIDvects(:,:,1)));
+            obj.decodeIDvects = cell2mat(cellfun(@(a){a(:,1:end-1)}, obj.likeIDvects(:,:,1)));
             
             fiscTrls = unique(obj.fiscTrials(~isnan(obj.fiscTrials)));
             nonFiscLog = true(1,size(ssnSpikes,3));
@@ -256,20 +263,26 @@ classdef MLB_SM < SeqMem
             iscTrls = cell2mat(iscTrls);
             
             obj.likeTrlSpikes = cell(size(iscTrls,1),1,size(iscTrls,2));
-            obj.likeTrlIDs = cell(size(iscTrls,1),1,size(iscTrls,2));
+            obj.likeIDvects = cell(size(iscTrls,1),1,size(iscTrls,2));
             for pos = 1:size(iscTrls,1)
                 for seq = 1:size(iscTrls,2)
                     if ~isnan(iscTrls(pos,seq))
                         obj.likeTrlSpikes{pos,seq} = ssnSpikes(:,:,iscTrls(pos,seq));
-                        obj.likeTrlIDs{pos,seq} = ssnID(:,:,iscTrls(pos,seq));
+                        obj.likeIDvects{pos,seq} = ssnID(:,:,iscTrls(pos,seq));
                     else
                         obj.likeTrlSpikes{pos,seq} = nan(size(ssnSpikes,1), size(ssnSpikes,2));
-                        obj.likeTrlIDs{pos,seq} = nan(size(ssnID,1), size(ssnID,2));
+                        obj.likeIDvects{pos,seq} = nan(size(ssnID,1), size(ssnID,2));
                     end
                 end
             end
-            obj.likeTimeVect = cell2mat(cellfun(@(a){a(:,1)}, obj.likeTrlIDs(:,:,1)));
-            obj.decodeIDvects = cell2mat(cellfun(@(a){a(:,1:end-1)}, obj.likeTrlIDs(:,:,1)));
+            obj.likeTrlIDs = nan(size(obj.likeIDvects));
+            for ind = 1:numel(obj.likeIDvects)
+                if ~isempty(obj.likeIDvects{ind})
+                    obj.likeTrlIDs(ind) = obj.likeIDvects{ind}(1,end);
+                end
+            end
+            obj.likeTimeVect = cell2mat(cellfun(@(a){a(:,1)}, obj.likeIDvects(:,:,1)));
+            obj.decodeIDvects = cell2mat(cellfun(@(a){a(:,1:end-1)}, obj.likeIDvects(:,:,1)));
             
             iscTrls = unique(iscTrls(~isnan(iscTrls)));
             nonIscLog = true(1,size(ssnSpikes,3));
@@ -315,7 +328,7 @@ classdef MLB_SM < SeqMem
                 shuffYN = true;
             end
             tempPost = cell(size(obj.likeTrlSpikes));
-            obj.postTrlIDs = permute(cellfun(@(a)a(1,end),obj.likeTrlIDs), [1,3,2]);
+            obj.postTrlIDs = permute(cellfun(@(a)a(1,end),obj.likeIDvects), [1,3,2]);
             tempObsvs = obj.likeTrlSpikes;
             if shuffYN
                 [tempLikes, tempTrlIDs] = obj.RandPermLikes(shuffType);
@@ -351,7 +364,7 @@ classdef MLB_SM < SeqMem
         %% Process via Leave-1-Out Iteratively
         function Process_IterativeLikelyL1O(obj)
             obj.post = cell(size(obj.likeTrlSpikes));
-            obj.postTrlIDs = permute(cellfun(@(a)a(1,end),obj.likeTrlIDs), [1,3,2]);
+            obj.postTrlIDs = permute(cellfun(@(a)a(1,end),obj.likeIDvects), [1,3,2]);
             for pos = 1:size(obj.likeTrlSpikes,1)
                 for seq = 1:size(obj.likeTrlSpikes,3)
                     if ~isnan(obj.postTrlIDs(pos,seq))
@@ -372,12 +385,22 @@ classdef MLB_SM < SeqMem
             end
         end
         %% Process all Observations
-        function Process_Observes(obj)
-            if iscell(obj.likeTrlSpikes)
-                tempLike = cell2mat(obj.likeTrlSpikes);
-            else
-                tempLike = obj.likeTrlSpikes;
+        function Process_Observes(obj, shuffType)
+            if nargin == 1
+                shuffYN = false;
+            elseif nargin == 2
+                shuffYN = true;
             end
+            if shuffYN
+                [tempLike, ~] = obj.RandPermLikes(shuffType);
+            else
+                if iscell(obj.likeTrlSpikes)
+                    tempLike = cell2mat(obj.likeTrlSpikes);
+                else
+                    tempLike = obj.likeTrlSpikes;
+                end
+            end
+            
             tempProb = sum(~isnan(tempLike(:,1,:)),3)./sum(sum(~isnan(tempLike(:,1,:))));
             if obj.bayesType == 1 || strcmp(obj.bayesType, 'Poisson') || strcmp(obj.bayesType, 'poisson') || strcmp(obj.bayesType, 'P') || strcmp(obj.bayesType, 'p')
                 obj.post = obj.CalcStaticBayesPost_Poisson(mean(tempLike,3, 'omitnan'), obj.obsvTrlSpikes, tempProb);
@@ -708,7 +731,7 @@ classdef MLB_SM < SeqMem
     end
     methods % Visualizations
         %% Trial-wise probability density matrix
-        function PlotTrialPDM(obj, realTrialMtx, varargin)
+        function PlotTrialPDF(obj, realTrialMtx, varargin)
             if sum(strcmp(varargin, 'x') | strcmp(varargin, 'X'))>=1
                 x = varargin{find(strcmp(varargin, 'x') | strcmp(varargin, 'X'))+1};
             else
@@ -777,7 +800,7 @@ classdef MLB_SM < SeqMem
             end
         end            
         %% Sequence-wise probability density matrix
-        function PlotSequencePDM(obj)
+        function PlotSequencePDF(obj)
         end
         %% Line Plots w/Chance
         function PlotLinesWithChance(obj)
@@ -1010,7 +1033,7 @@ classdef MLB_SM < SeqMem
 %                 [coeff,~,~,~,explained,mu] = pca(testPV);
 %                 dim = find(cumsum(explained)>95,1, 'first');                
 %                 testScores = (cell2mat(trainPV)-mu)*coeff;
-%                 curTrlInfo = obj.trialInfo(obj.likeTrlIDs{perm});
+%                 curTrlInfo = obj.trialInfo(obj.likeIDvects{perm});
                                 
                 perfLog = [curTrlInfo.Performance]==1;
                 isLog = [curTrlInfo.TranspositionDistance]==0;
