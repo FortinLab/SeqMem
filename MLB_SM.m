@@ -298,7 +298,7 @@ classdef MLB_SM < SeqMem
             tempLikes = obj.likeTrlSpikes;
             % Permute Trial IDs
             tempLikesPos = tempLikes;
-            realTrlIDsNdx = find(~isnan(obj.postTrlIDs));
+            realTrlIDsNdx = find(~isnan(obj.likeTrlIDs));
             permTrlIDsNdx = realTrlIDsNdx(randperm(length(realTrlIDsNdx))');
             tempLikesPos(realTrlIDsNdx) = tempLikes(permTrlIDsNdx);
             % Permute Time IDs
@@ -309,7 +309,7 @@ classdef MLB_SM < SeqMem
                 tempLikesTime{trl} = tempLikesTime{trl}(chancePerm,:);
                 tempLikesFull{trl} = tempLikesFull{trl}(chancePerm,:);
             end
-            permLikesTrlIDs = obj.postTrlIDs;
+            permLikesTrlIDs = obj.likeTrlIDs;
             if strcmp(shuffType, 'Trial')
                 permLikes = tempLikesPos;
                 permLikesTrlIDs(realTrlIDsNdx) = permLikesTrlIDs(permTrlIDsNdx);
@@ -394,11 +394,10 @@ classdef MLB_SM < SeqMem
             if shuffYN
                 [tempLike, ~] = obj.RandPermLikes(shuffType);
             else
-                if iscell(obj.likeTrlSpikes)
-                    tempLike = cell2mat(obj.likeTrlSpikes);
-                else
-                    tempLike = obj.likeTrlSpikes;
-                end
+                tempLike = obj.likeTrlSpikes;
+            end
+            if iscell(obj.likeTrlSpikes)
+                tempLike = cell2mat(tempLike);
             end
             
             tempProb = sum(~isnan(tempLike(:,1,:)),3)./sum(sum(~isnan(tempLike(:,1,:))));
