@@ -635,23 +635,25 @@ classdef SeqMem < handle
                 dtaCI = tinv(1-(pCrit/2), size(data,repDim)-1).*dtaSEM;
             end
             if sum(strcmp(varargin, 'filled'))>=1
-                plt = bar(xVal, dtaMean, 'facecolor', color, 'facealpha', 0.4);
+                plt = bar(xVal, dtaMean, 'edgecolor', color, 'facecolor', color, 'facealpha', 0.4);
             else
-                plt = bar(xVal, dtaMean, 'facecolor', 'none');
+                plt = bar(xVal, dtaMean, 'edgecolor', color,  'facecolor', 'none');
             end
             hold on;
-            [counts,edges] = histcounts(data, linspace(min(data), max(data),numBins));
-            hist = smooth(smooth(counts,ceil(numBins*.2)),ceil(numBins*.2));
-            hist = hist./max(hist);
-            binCenters = (edges(2:end)-mode(diff(edges))/2)';
-            patch('XData', (([hist; flipud(hist.*-1)]).*0.45)+xVal,...
-                'YData', [binCenters;flipud(binCenters)],...
-                'linestyle','none', 'facecolor', color, 'facealpha', 0.25);
+            if sum(isnan(data))~=numel(data)
+                [counts,edges] = histcounts(data, linspace(min(data), max(data),numBins));
+                hist = smooth(smooth(counts,ceil(numBins*.2)),ceil(numBins*.2));
+                hist = hist./max(hist);
+                binCenters = (edges(2:end)-mode(diff(edges))/2)';
+                patch('XData', (([hist; flipud(hist.*-1)]).*0.45)+xVal,...
+                    'YData', [binCenters;flipud(binCenters)],...
+                    'linestyle','none', 'facecolor', color, 'facealpha', 0.25);
+            end
             if sum(strcmp(varargin, 'error'))>=1
                 if strcmp(varargin{find(strcmp(varargin, 'error'))+1}, 'CI')           
-                    errorbar(xVal, dtaMean, dtaCI, dtaCI, 'color', 'k', 'capsize', 0);
+                    errorbar(xVal, dtaMean, dtaCI, dtaCI, 'color', color, 'capsize', 0);
                 elseif strcmp(varargin{find(strcmp(varargin, 'error'))+1}, 'SEM')           
-                    errorbar(xVal, dtaMean, dtaSEM, dtaSEM, 'color', 'k', 'capsize', 0);
+                    errorbar(xVal, dtaMean, dtaSEM, dtaSEM, 'color', color, 'capsize', 0);
                 end
             else
                 errorbar(xVal, dtaMean, dtaSEM, dtaSEM, 'color', 'k', 'capsize', 0);
