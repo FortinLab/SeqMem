@@ -917,7 +917,7 @@ end
     norm = figure;
     time = figure; 
     subplot(mlb{ani}.seqLength, mlb{ani}.seqLength, sub2ind([mlb{ani}.seqLength, mlb{ani}.seqLength],posD, posT));
-            mlb{end}.PlotTrialPDM(trlD_tMat{posT,posD,al}, 'rotate', 'clim', [-1 1], 'x', obsvTimeVect{al}, 'y', obsvTimeVect{al}, 'xlabel', 'Test Time', 'ylabel', 'Train Time');
+            mlb{end}.PlotTrialPDF(trlD_tMat{posT,posD,al}, 'rotate', 'clim', [-1 1], 'x', obsvTimeVect{al}, 'y', obsvTimeVect{al}, 'xlabel', 'Test Time', 'ylabel', 'Train Time');
             if strcmp(alignments{al} , 'PokeIn')
                 plot(get(gca, 'xlim'),zeros(1,2), '--w','linewidth', 1);
                 plot(get(gca, 'xlim'),repmat(grpPiPoLat, [1,2]), '--w','linewidth', 1);
@@ -938,7 +938,7 @@ end
             title(sprintf('Pos=%i; Dec=%i',posT,posD));
             figure(time);
             subplot(mlb{ani}.seqLength, mlb{ani}.seqLength, sub2ind([mlb{ani}.seqLength, mlb{ani}.seqLength],posD, posT));
-            mlb{end}.PlotTrialPDM(trlDtime_tMat{posT,posD,al}, 'rotate', 'clim', [-1 1], 'x', obsvTimeVect{al}, 'y', obsvTimeVect{al}, 'xlabel', 'Test Time', 'ylabel', 'Train Time');
+            mlb{end}.PlotTrialPDF(trlDtime_tMat{posT,posD,al}, 'rotate', 'clim', [-1 1], 'x', obsvTimeVect{al}, 'y', obsvTimeVect{al}, 'xlabel', 'Test Time', 'ylabel', 'Train Time');
             if strcmp(alignments{al} , 'PokeIn')
                 plot(get(gca, 'xlim'),zeros(1,2), '--w','linewidth', 1);
                 plot(get(gca, 'xlim'),repmat(grpPiPoLat, [1,2]), '--w','linewidth', 1);
