@@ -576,6 +576,9 @@ classdef SeqMem < handle
             dtaMean = dtaMean(:);
             dtaSEM = obj.SEMcalc(data,0,repDim);
             dtaSEM = dtaSEM(:);
+            mptValLog = isnan(dtaMean) | isnan(dtaSEM);
+            dtaMean(mptValLog) = [];
+            dtaSEM(mptValLog) = [];
             if ~exist('pCrit','var')
                 dtaCI = tinv(0.975, size(data,repDim)-1).*dtaSEM;
             else
@@ -584,14 +587,17 @@ classdef SeqMem < handle
             if ~exist('color','var')
                 color = 'k';
             end
+            timeVect(mptValLog) = [];
             patch('XData', [timeVect(:); flipud(timeVect(:))],...
                 'YData', [(dtaMean+dtaSEM)', flipud(dtaMean-dtaSEM)'],...
                 'linestyle', 'none', 'facecolor', color, 'facealpha', 0.25);
             hold on;
             plt = plot(timeVect, dtaMean, 'color', color, 'linewidth', 1.5);
-            patch('XData', [timeVect(:); flipud(timeVect(:))],...
-                'YData', [(dtaMean+dtaCI)', flipud(dtaMean-dtaCI)'],...
-                'linestyle', ':', 'linewidth', 1.5, 'edgecolor', color, 'facealpha', 0);
+            if pCrit ~= 0 
+                patch('XData', [timeVect(:); flipud(timeVect(:))],...
+                    'YData', [(dtaMean+dtaCI)', flipud(dtaMean-dtaCI)'],...
+                    'linestyle', ':', 'linewidth', 1.5, 'edgecolor', color, 'facealpha', 0);
+            end
         end
         %% Bar & Swarm Plot w/Mean, SEM (and CI if updated)
         function [plt] = PlotMeanVarSwarmBar(obj,xVal,data,repDim,pCrit,color,varargin)
@@ -747,7 +753,7 @@ classdef SeqMem < handle
             
             denom = sum(~isnan(data),dim);
             denom(denom==0) = 1;
-            semVal = nanstd(data,nVal,dim)./sqrt(denom-1);
+            semVal = std(data,nVal,dim, 'omitnan')./sqrt(denom-1);
         end
     end
 end
