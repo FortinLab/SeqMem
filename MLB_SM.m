@@ -534,7 +534,7 @@ classdef MLB_SM < SeqMem
                     tempProb(gv,:) = prob(depVar==lvlsDepVar(dv) & grpVar==lvlsGrpVar(gv),:);
                 end
                 for trl = 1:size(obsv,3)
-                    %                     tic;
+%                                         tic;
                     for t = 1:size(obsv,1)
                         p = nan(size(tempLikely));
                         curPopVect = floor(obsv(t,:,trl)*rateScalar);
@@ -549,7 +549,7 @@ classdef MLB_SM < SeqMem
                         tempTempPost = tempProb.*pp.*ee;
                         post(t,dv,:,trl) = tempTempPost ./ sum(tempTempPost);
                     end
-                    %                     toc
+%                                         toc
                 end
             end
             %             toc
