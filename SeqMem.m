@@ -142,6 +142,9 @@ classdef SeqMem < handle
             trialVect = sum(odorTrlMtx,2);
             trialIndices = find(trialVect);
             numTrials = sum(trialVect);
+            % Pull out port light events
+            portLightVect = obj.behavMatrix(:, cellfun(@(a)~isempty(a), strfind(obj.behavMatrixColIDs, 'PortLight')));
+            portLightNdxs = find(portLightVect);
             % Pull out Poke events and identify pokeIn/Out indices
             pokeVect = obj.behavMatrix(:, cellfun(@(a)~isempty(a), strfind(obj.behavMatrixColIDs, 'PokeEvents')));
             pokeInNdxs = find(pokeVect==1);
@@ -169,6 +172,7 @@ classdef SeqMem < handle
             trialPerf = cell(1,numTrials);
             trialTransDist = cell(1,numTrials);
             trialItmItmDist = cell(1,numTrials);
+            trialPortLightNdx = repmat({nan}, [1, numTrials]);
             trialPokeInNdx = repmat({nan}, [1, numTrials]);
             trialOdorNdx = repmat({nan}, [1, numTrials]);
             trialPokeOutNdx = repmat({nan}, [1, numTrials]);
@@ -216,6 +220,13 @@ classdef SeqMem < handle
                 % Create trial logical vector
                 curPokeIn = pokeInNdxs(find((pokeInNdxs<=trialIndices(trl))==1,1, 'last'));
                 curPokeOut = pokeOutNdxs(find((pokeOutNdxs>trialIndices(trl))==1,1, 'first'));
+
+                curPortLightNdx = portLightNdxs(find((portLightNdxs<trialIndices(trl))==1,1,'last'));
+                if isempty(curPortLightNdx)
+                    trialPortLightNdx{trl} = nan;
+                else
+                    trialPortLightNdx{trl} = curPortLightNdx;
+                end
                 
                 trialPokeInNdx{trl} = curPokeIn;
                 trialOdorNdx{trl} = trialIndices(trl);
@@ -268,7 +279,7 @@ classdef SeqMem < handle
                 obj.trialInfo = struct( 'TrialNum', trialNum, 'SequenceNum', seqNum,...
                     'Odor', trialOdor, 'Position', trialPosition, 'Performance', trialPerf,...
                     'TargetDuration', {obj.plxData.Raw.TargetDuration}, 'PokeDuration', pokeDuration, 'WithdrawLatency', withdrawLat,...
-                    'PokeInIndex', trialPokeInNdx, 'OdorIndex', trialOdorNdx, 'PokeOutIndex', trialPokeOutNdx,...
+                    'PortLightIndex', trialPortLightNdx, 'PokeInIndex', trialPokeInNdx, 'OdorIndex', trialOdorNdx, 'PokeOutIndex', trialPokeOutNdx,...
                     'RewardIndex', trialRewardNdx, 'RewardSignalIndex', trialRwdSigNdx,...
                     'RearRewardIndex', trialRearRwdNdx, 'ErrorIndex', trialErrorNdx,...
                     'TranspositionDistance', trialTransDist, 'ItemItemDistance', trialItmItmDist);
@@ -276,7 +287,7 @@ classdef SeqMem < handle
                 obj.trialInfo = struct( 'TrialNum', trialNum, 'SequenceNum', seqNum,...
                     'Odor', trialOdor, 'Position', trialPosition, 'Performance', trialPerf,...
                     'PokeDuration', pokeDuration, 'WithdrawLatency', withdrawLat,...
-                    'PokeInIndex', trialPokeInNdx, 'OdorIndex', trialOdorNdx, 'PokeOutIndex', trialPokeOutNdx,...
+                    'PortLightIndex', trialPortLightNdx, 'PokeInIndex', trialPokeInNdx, 'OdorIndex', trialOdorNdx, 'PokeOutIndex', trialPokeOutNdx,...
                     'RewardIndex', trialRewardNdx, 'RewardSignalIndex', trialRwdSigNdx,...
                     'RearRewardIndex', trialRearRwdNdx, 'ErrorIndex', trialErrorNdx,...
                     'TranspositionDistance', trialTransDist, 'ItemItemDistance', trialItmItmDist);
