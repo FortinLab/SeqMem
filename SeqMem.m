@@ -381,7 +381,8 @@ classdef SeqMem < handle
             [bFRange, aFRange] = butter(3, Wn_FRange);
             filtSig = filtfilt(bFRange, aFRange, signal);
             hilbPhase = atan2(imag(hilbert(filtSig)), filtSig);
-            hilbPower = zscore(abs(hilbert(filtSig)));
+            hilbPower = abs(hilbert(filtSig));
+%             hilbPower = zscore(abs(hilbert(filtSig)));
         end
         %% Diagonal Lag Mean Collapse 
         function [dlmVect, tempLagVect, lagCounts] = DiagonalLagMeanCollapse(~,mtx)
