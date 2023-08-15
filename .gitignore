@@ -8,3 +8,7 @@ PFC_WellTrained_PosChance.mat
 PFC_XTD_PosChance_-1p5to2_PI.mat
 PFC_XTD_PosChance_-2to1p5_PO.mat
 PFC_XTD_Windows_PosChance.mat
+XTD_All_PI_PO.mat
+XTD_WT_PI_PO.mat
+XTD_WT_PO_PO.mat
+XTD_WT_PI_PO_RawLFP.mat
