@@ -80,9 +80,9 @@ classdef SeqMem < handle
             9/255, 161/255, 74/255;...
             128/255, 66/255, 151/255;...
             241/255, 103/255, 36/255];
-        PPFcolors = [247/255, 227/255, 10/255;...
-            250/255,125/255,8/255;...
-            192/255, 0/255, 16/255];
+        PPFcolors = [255/255, 230/255, 16/255;...
+            255/255, 128/255, 3/255;...
+            195/255, 0/255, 23/255];
         Rosetta = [{'A'},{'B'},{'C'},{'D'},{'E'},{'F'},{'G'},{'H'},{'I'},{'J'},{'K'},{'L'},{'M'},{'N'},{'O'},{'P'},{'Q'},{'R'},{'S'},{'T'},{'U'},{'V'},{'W'},{'X'},{'Y'},{'Z'}];
         RosettaLC = [{'a'},{'b'},{'c'},{'d'},{'e'},{'f'},{'g'},{'h'},{'i'},{'j'},{'k'},{'l'},{'m'},{'n'},{'o'},{'p'},{'q'},{'r'},{'s'},{'t'},{'u'},{'v'},{'w'},{'x'},{'y'},{'z'}];
     end
@@ -194,7 +194,7 @@ classdef SeqMem < handle
                 curTrlOdor = odorVals(odorTrlMtx(trialIndices(trl),:)==1);
                 curTrlPos = find(positionTrlMtx(trialIndices(trl),:)==1);
                 curTrlPerf = trialPerfVect(trialIndices(trl))==1;
-                curTrlInSeqLog = inSeqLog(trialIndices(trl))==1;
+%                 curTrlInSeqLog = inSeqLog(trialIndices(trl))==1;
                 
                 trialOdor{trl} = curTrlOdor;
                 trialPosition{trl} = curTrlPos;
@@ -759,7 +759,7 @@ classdef SeqMem < handle
                 semVal = nan;
                 return
             end
-            if nargin==2
+            if nargin==1
                 nVal = 0;
                 dim = 1;
             elseif nargin==2
