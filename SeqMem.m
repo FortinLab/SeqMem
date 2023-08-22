@@ -587,27 +587,29 @@ classdef SeqMem < handle
         %% Line Plot w/Mean, SEM & CI
         function [plt, mptValLog] = PlotMeanVarLine(obj,timeVect,data,repDim,pCrit,color)
             dtaMean = mean(data, repDim, 'omitnan');
-%             dtaMean = median(data, repDim, 'omitnan');
-            dtaMean = dtaMean(:);
-            dtaSEM = obj.SEMcalc(data,0,repDim);
-            dtaSEM = dtaSEM(:);
-            mptValLog = isnan(dtaMean) | isnan(dtaSEM);
-            dtaMean(mptValLog) = [];
-            dtaSEM(mptValLog) = [];
-            if ~exist('pCrit','var')
-                dtaCI = tinv(0.975, size(data,repDim)-1).*dtaSEM;
-            else
-                dtaCI = tinv(1-(pCrit/2), size(data,repDim)-1).*dtaSEM;
+            if size(data,repDim)>=2
+                %             dtaMean = median(data, repDim, 'omitnan');
+                dtaMean = dtaMean(:);
+                dtaSEM = obj.SEMcalc(data,0,repDim);
+                dtaSEM = dtaSEM(:);
+                mptValLog = isnan(dtaMean) | isnan(dtaSEM);
+                dtaMean(mptValLog) = [];
+                dtaSEM(mptValLog) = [];
+                if ~exist('pCrit','var')
+                    dtaCI = tinv(0.975, size(data,repDim)-1).*dtaSEM;
+                else
+                    dtaCI = tinv(1-(pCrit/2), size(data,repDim)-1).*dtaSEM;
+                end
+                if ~exist('color','var')
+                    color = 'k';
+                end
+                timeVect(mptValLog) = [];
+                patch('XData', [timeVect(:); flipud(timeVect(:))],...
+                    'YData', [(dtaMean+dtaSEM)', flipud(dtaMean-dtaSEM)'],...
+                    'linestyle', 'none', 'facecolor', color, 'facealpha', 0.25);
+                hold on;
             end
-            if ~exist('color','var')
-                color = 'k';
-            end
-            timeVect(mptValLog) = [];
-            patch('XData', [timeVect(:); flipud(timeVect(:))],...
-                'YData', [(dtaMean+dtaSEM)', flipud(dtaMean-dtaSEM)'],...
-                'linestyle', 'none', 'facecolor', color, 'facealpha', 0.25);
-            hold on;
-            plt = plot(timeVect, dtaMean, 'color', color, 'linewidth', 1.5);
+            plt = plot(timeVect, dtaMean, 'color', color, 'linewidth', 1);
             if pCrit ~= 0 
                 patch('XData', [timeVect(:); flipud(timeVect(:))],...
                     'YData', [(dtaMean+dtaCI)', flipud(dtaMean-dtaCI)'],...
