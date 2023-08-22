@@ -417,17 +417,30 @@ classdef MLB_SM < SeqMem
             else
                 tempLike = obj.likeTrlSpikes;
             end
-            tempProb = sum(~isnan(tempLike(:,1,:)),3)./sum(sum(~isnan(tempLike(:,1,:))));
-            if obj.bayesType == 1 || strcmp(obj.bayesType, 'Poisson') || strcmp(obj.bayesType, 'poisson') || strcmp(obj.bayesType, 'P') || strcmp(obj.bayesType, 'p')
-                obj.post = obj.CalcIterativeBayesPost_Poisson(mean(tempLike,3, 'omitnan'), obj.obsvTrlSpikes, obj.decodeIDvects(:,1), obj.decodeIDvects(:,4), tempProb);
-            elseif obj.bayesType == 2 || strcmp(obj.bayesType, 'Bernoulli') || strcmp(obj.bayesType, 'bernoulli') || strcmp(obj.bayesType, 'B') || strcmp(obj.bayesType, 'b')
-                error('Not implemented yet');
-%                     obj.post{perm} = obj.CalcIterativeBayesPost_Bernoulli(mean(obj.likeTrlSpikes{perm},3, 'omitnan'), obj.obsvTrlSpikes{perm});
-            elseif obj.bayesType == 3 || strcmp(obj.bayesType, 'Gaussian') || strcmp(obj.bayesType, 'gaussian') || strcmp(obj.bayesType, 'G') || strcmp(obj.bayesType, 'g')
-                error('Not implemented yet');
-%                     obj.post{perm} = obj.CalcIterativeBayesPost_Gaussian(mean(obj.likeTrlSpikes{perm},3, 'omitnan'), std(obj.likeTrlSpikes{perm},0,3), obj.obsvTrlSpikes{perm});
+            % Pull out Trial IDs
+            trlIDs = squeeze(obj.obsvTrlIDs(1,end,:));
+            trlPosIDs = [obj.trialInfo(trlIDs).Position];
+            % Identify maximum number of sequence trials
+            maxNumSeqs = sum(trlPosIDs==1);
+            obj.post = cell(obj.seqLength, 1, maxNumSeqs);
+            obj.postTrlIDs = nan(obj.seqLength,maxNumSeqs);
+            for pos = 1:obj.seqLength
+                posIDs = trlIDs(trlPosIDs==pos);
+                obj.postTrlIDs(pos,1:length(posIDs)) = posIDs;
+                for trl = 1:length(posIDs)
+                    tempObsv = obj.obsvTrlSpikes(:,:,trlIDs==posIDs(trl));
+                    tempProb = sum(~isnan(tempLike(:,1,:)),3)./sum(sum(~isnan(tempLike(:,1,:))));
+                    if obj.bayesType == 1 || strcmp(obj.bayesType, 'Poisson') || strcmp(obj.bayesType, 'poisson') || strcmp(obj.bayesType, 'P') || strcmp(obj.bayesType, 'p')
+                        obj.post{pos,1,trl} = obj.CalcIterativeBayesPost_Poisson(mean(tempLike,3, 'omitnan'), tempObsv, obj.decodeIDvects(:,1), obj.decodeIDvects(:,4), tempProb);
+                    elseif obj.bayesType == 2 || strcmp(obj.bayesType, 'Bernoulli') || strcmp(obj.bayesType, 'bernoulli') || strcmp(obj.bayesType, 'B') || strcmp(obj.bayesType, 'b')
+                        error('Not implemented yet');
+                        %                     obj.post{perm} = obj.CalcIterativeBayesPost_Bernoulli(mean(obj.likeTrlSpikes{perm},3, 'omitnan'), obj.obsvTrlSpikes{perm});
+                    elseif obj.bayesType == 3 || strcmp(obj.bayesType, 'Gaussian') || strcmp(obj.bayesType, 'gaussian') || strcmp(obj.bayesType, 'G') || strcmp(obj.bayesType, 'g')
+                        error('Not implemented yet');
+                        %                     obj.post{perm} = obj.CalcIterativeBayesPost_Gaussian(mean(obj.likeTrlSpikes{perm},3, 'omitnan'), std(obj.likeTrlSpikes{perm},0,3), obj.obsvTrlSpikes{perm});
+                    end
+                end
             end
-            obj.postTrlIDs = permute(obj.obsvTrlIDs(1,end,:), [1,3,2]);
         end
     end
     methods % MLB Algorithms
