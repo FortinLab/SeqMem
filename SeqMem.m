@@ -650,8 +650,11 @@ classdef SeqMem < handle
             else
                 numBins = 100;
             end
-%             dtaMean = median(data, repDim, 'omitnan');
-            dtaMean = mean(data, repDim, 'omitnan');
+            if sum(strcmp(varargin, 'median'))>=1
+                dtaMean = median(data, repDim, 'omitnan');
+            else
+                dtaMean = mean(data, repDim, 'omitnan');
+            end
             dtaSEM = obj.SEMcalc(data,0,repDim);
              if ~exist('pCrit','var')
                 dtaCI = tinv(0.975, size(data,repDim)-1).*dtaSEM;
