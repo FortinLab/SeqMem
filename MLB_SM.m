@@ -362,19 +362,31 @@ classdef MLB_SM < SeqMem
             end
         end
         %% Process via Leave-1-Out Iteratively
-        function Process_IterativeLikelyL1O(obj)
-            obj.post = cell(size(obj.likeTrlSpikes));
+        function Process_IterativeLikelyL1O(obj, shuffType)
+            if nargin == 1
+                shuffYN = false;
+            elseif nargin ==2
+                shuffYN = true;
+            end
+            tempPost = cell(size(obj.likeTrlSpikes));
             obj.postTrlIDs = permute(cellfun(@(a)a(1,end),obj.likeIDvects), [1,3,2]);
-            for pos = 1:size(obj.likeTrlSpikes,1)
-                for seq = 1:size(obj.likeTrlSpikes,3)
+            tempObsvs = obj.likeTrlSpikes;
+            if shuffYN 
+                [tempLikes, tempTrlIDs] = obj.RandPermLikes(shuffType);
+            else
+                tempLikes = obj.likeTrlSpikes;
+                tempTrlIDs = obj.postTrlIDs;
+            end
+            for pos = 1:size(tempLikes,1)
+                for seq = 1:size(tempLikes,3)
                     if ~isnan(obj.postTrlIDs(pos,seq))
-                        tempObsv = obj.likeTrlSpikes{pos,1,seq};
-                        tempLike = obj.likeTrlSpikes;
-                        tempLike{pos,:,seq} = nan(size(tempLike{1}));
-                        tempLike = cell2mat(tempLike);
-                        tempProb = sum(~isnan(tempLike(:,1,:)),3)./sum(sum(~isnan(tempLike(:,1,:))));
+                        cur_TempObsv = tempObsvs{pos,1,seq};
+                        cur_TempLike = tempLikes;
+                        cur_TempLike{find(tempTrlIDs==obj.postTrlIDs(pos,seq))} = nan(size(cur_TempObsv)); %#ok<FNDSB> 
+                        cur_TempLike = cell2mat(cur_TempLike);
+                        tempProb = sum(~isnan(cur_TempLike(:,1,:)),3)./sum(sum(~isnan(cur_TempLike(:,1,:))));
                         if obj.bayesType == 1 || strcmp(obj.bayesType, 'Poisson') || strcmp(obj.bayesType, 'poisson') || strcmp(obj.bayesType, 'P') || strcmp(obj.bayesType, 'p')
-                            obj.post{pos,seq} = obj.CalcIterativeBayesPost_Poisson(mean(tempLike,3, 'omitnan'), tempObsv, obj.decodeIDvects(:,1), obj.decodeIDvects(:,4), tempProb);
+                            tempPost{pos,seq} = obj.CalcIterativeBayesPost_Poisson(mean(cur_TempLike,3, 'omitnan'), cur_TempObsv, obj.decodeIDvects(:,1), obj.decodeIDvects(:,4), tempProb);
                         elseif obj.bayesType == 2 || strcmp(obj.bayesType, 'Bernoulli') || strcmp(obj.bayesType, 'bernoulli') || strcmp(obj.bayesType, 'B') || strcmp(obj.bayesType, 'b')
                             error('Not Implemented Yet');
                         elseif obj.bayesType == 3 || strcmp(obj.bayesType, 'Gaussian') || strcmp(obj.bayesType, 'gaussian') || strcmp(obj.bayesType, 'G') || strcmp(obj.bayesType, 'g')
@@ -383,6 +395,7 @@ classdef MLB_SM < SeqMem
                     end
                 end
             end
+            obj.post = tempPost;
         end
         %% Process all Observations
         function Process_Observes(obj, shuffType)
