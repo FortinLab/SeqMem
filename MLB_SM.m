@@ -762,34 +762,6 @@ classdef MLB_SM < SeqMem
                 end
             end
         end
-        %% Unsure if will need later... no use for right now
-%         function [ssnDovT, trlDovT] = CalcDprmVectFromPosts(obj, decodeMtx, trlIDvect)
-%             unq = unique(decodeMtx);
-%             minProb = unq(2);
-%             maxProb = unq(end-1);
-%             ssnDovT = cell(obj.seqLength,1);
-%             trlDovT = cell(obj.seqLength,1);
-%             for pos = 1:obj.seqLength
-%                 curPosTrls = permute(decodeMtx(:,:,pos,trlIDvect==pos), [1,2,4,3]);
-%                 curNonPosTrls = permute(decodeMtx(:,:,pos,trlIDvect~=pos), [1,2,4,3]);
-%
-%                 meanHR = median(curPosTrls,3);
-%                 meanHR(meanHR==0) = minProb;
-%                 meanHR(meanHR==1) = maxProb;
-%                 meanFAR = median(curNonPosTrls,3);
-%                 meanFAR(meanFAR==0) = minProb;
-%                 meanFAR(meanFAR==1) = maxProb;
-%                 ssnDovT{pos} = arrayfun(@(a,b)norminv(a)-norminv(b), meanHR, meanFAR);
-%                 tempTrlDovT = nan(size(curPosTrls));
-%                 for t = 1:size(curPosTrls,3)
-%                     tempHR = curPosTrls(:,:,t);
-%                     tempHR(tempHR==0) = minProb;
-%                     tempHR(tempHR==1) = maxProb;
-%                     tempTrlDovT = arrayfun(@(a,b)norminv(a)-norminv(b), tempHR, meanFAR);
-%                 end
-%                 trlDovT{pos} = tempTrlDovT;
-%             end
-%         end
         %% Calculate d' vector from decodings
         function dOvrT = CalcDprmVectFromDecode(obj, decodeMtx, trlIDvect)
             % decodeMtx here is a matrix NxM where N=time and M=trials
@@ -810,7 +782,7 @@ classdef MLB_SM < SeqMem
         end
         %% Calculate d' matrix from decodings
         function [dOvrTraw, dOvrTchance] = CalcDprmMtxFromDecode(obj, decodeMtx, trlIDvect)
-            % decodeMtx here is a NxMxP matrix (tensor?) where N = observation time, M = likelihood time and P = trials
+            % decodeMtx here is a NxMxP array where N = observation time, M = likelihood time and P = trials
             % trlIDvect here is a 1xP matrix containing the trial IDs
             %             trlIDs = sort(obj.odrSeqs(:));
             trlIDs = unique(trlIDvect);
@@ -850,9 +822,135 @@ classdef MLB_SM < SeqMem
             end
             int(isnan(int)) = [];
         end
+        %% Calculate d', HR, FAR from posteriors
+        function [tMat_HR, tMat_FAR, tMat_D] = CalcTransMatDecodabilityFromPost(obj)
+            tMat_HR = cell(obj.seqLength, obj.seqLength);
+            tMat_FAR = cell(obj.seqLength, obj.seqLength);
+            tMat_D = cell(obj.seqLength, obj.seqLength);
+            % To avoid nans and infs any values ==1 or ==0 need to be replaced with the next nearest value
+            allVals = unique([obj.post{:}]);
+            if min(allVals)==0
+                minVal = allVals(2);
+            else
+                minVal = allVals(1);
+            end
+            if max(allVals)==1
+                maxVal = allVals(end-1);
+            else
+                maxVal = allVals(end);
+            end
+            clear allVals;
+            for trlPos = 1:obj.seqLength
+                for decPos = 1:obj.seqLength
+                    tempHRs = obj.post(trlPos,1,:);
+                    tempHRs(cellfun(@(a)isempty(a),tempHRs)) = [];
+                    temp_tempHRs = cell2mat(cellfun(@(a){a(:,:,decPos)}, tempHRs));
+                    temp_tempHRs(temp_tempHRs==0) = minVal;
+                    temp_tempHRs(temp_tempHRs==1) = maxVal;
+                    tMat_HR{trlPos, decPos} = temp_tempHRs;
+
+                    faLog = (1:obj.seqLength ~= trlPos);
+                    tempFARs = reshape(squeeze(obj.post(faLog,1,:)), [1,1,numel(obj.post)-(size(obj.post,3)*sum(~faLog))]);
+                    tempFARs(cellfun(@(a)isempty(a),tempFARs)) = [];
+                    temp_tempFARs = repmat(mean(cell2mat(cellfun(@(a){a(:,:,decPos)},tempFARs)),3,'omitnan'), [1,1,size(temp_tempHRs,3)]);
+                    temp_tempFARs(temp_tempFARs==0) = minVal;
+                    temp_tempFARs(temp_tempFARs==1) = maxVal;
+                    tMat_FAR{trlPos,decPos} = temp_tempFARs;
+
+                    tMat_D{trlPos,decPos} = norminv(temp_tempHRs) - norminv(temp_tempFARs);
+                end
+            end
+        end
+        %% Organize Posteriors into 3D TransMat
+        function [tm_HR, tm_D, tm_TrialInfo] = OrganizeTrialHistoryTransMat(obj,hr,d)
+            if nargin == 1
+                [hr, ~, d] = obj.CalcTransMatDecodabilityFromPost;
+            end
+            tm_HR = cell(obj.seqLength,obj.seqLength,obj.seqLength,obj.seqLength);
+            tm_D = cell(obj.seqLength,obj.seqLength,obj.seqLength,obj.seqLength);
+            tm_TrialInfo = cell(obj.seqLength,obj.seqLength,obj.seqLength);
+            seqStarts = find([obj.trialInfo.Position]==1);
+            for trlOP = 1:obj.seqLength
+                curTrls = obj.postTrlIDs(trlOP,:);
+                curTrls(isnan(curTrls)) = [];
+                for trl = 1:length(curTrls)
+                    cur_TrialInfo = obj.trialInfo(curTrls(trl));
+                    if curTrls(trl) ~= 1
+                        cur_TrialInfo.PrevTrlEnd = obj.trialInfo(curTrls(trl)-1).PokeOutIndex;
+                    else
+                        cur_TrialInfo.PrevTrlEnd = nan;
+                    end
+                    if curTrls(trl) ~= length(obj.trialInfo)
+                        cur_TrialInfo.NextTrlStart = obj.trialInfo(curTrls(trl)+1).PokeInIndex;
+                    else
+                        cur_TrialInfo.NextTrlStart = nan;
+                    end
+                    curSeqStart = seqStarts(find(seqStarts<=cur_TrialInfo.TrialNum,1,'last'));
+                    curSeqVect = [obj.trialInfo(curSeqStart:cur_TrialInfo.TrialNum).Odor];
+                    osLog = mod(curSeqVect,10)~=1:trlOP;
+                    if sum(osLog)==0
+                        osPos = trlOP;
+                        osOdr = trlOP;
+                    else
+                        osPos = find(osLog);
+                        osOdr = mod(curSeqVect(osPos),10);
+                    end
+                    tm_TrialInfo{osOdr,osPos,trlOP} = cat(2,tm_TrialInfo{osOdr,osPos,trlOP}, cur_TrialInfo);
+                    for decPos = 1:obj.seqLength
+                        tm_HR{osOdr,osPos,trlOP,decPos} = cat(3,tm_HR{osOdr,osPos,trlOP,decPos}, hr{trlOP,decPos}(:,:,decPos));
+                        tm_D{osOdr,osPos,trlOP,decPos} = cat(3,tm_D{osOdr,osPos,trlOP,decPos}, d{trlOP,decPos}(:,:,decPos));
+                    end
+                end
+            end
+% 
+        end
+    end
+    %% Analyses
+    methods
+        %% Calc Decoding Peaks
+        function [tm_PeakNdx, tm_PeakVal, tm_PeakWid] = CalcDecodingPeaks_XTD(obj,data)
+            if nargin==1
+                [data, ~, ~] = obj.OrganizeTrialHistoryTransMat;
+            end
+            tm_PeakNdx = cell(obj.seqLength, obj.seqLength, obj.seqLength);
+            tm_PeakVal = cell(obj.seqLength, obj.seqLength, obj.seqLength);
+            tm_PeakWid = cell(obj.seqLength, obj.seqLength, obj.seqLength);
+            for odrPos = 1:obj.seqLength
+                for histOSpos = 1:obj.seqLength
+                    for trlPos = 1:obj.seqLength
+                        temp_Data = squeeze(data(odrPos,histOSpos,trlPos,:));
+                        if ~isempty(temp_Data)
+                            temp_PeakNdx = nan(obj.seqLength,size(temp_Data{1},2),size(temp_Data{1},3));
+                            temp_PeakVal = nan(obj.seqLength,size(temp_Data{1},2),size(temp_Data{1},3));
+                            temp_PeakWid = nan(obj.seqLength,size(temp_Data{1},2),size(temp_Data{1},3));
+                            for pos = 1:size(temp_Data,1)
+                                cur_temp_Data = temp_Data{pos};
+                                for t = 1:size(cur_temp_Data,2)
+                                    for trl = 1:size(cur_temp_Data,3)
+                                        [pks,loc,wid,prom] = findpeaks(cur_temp_Data(:,t),'minpeakdistance', obj.binSize/obj.dsRate);
+                                        if ~isempty(pks)
+                                            featWeightPeaks = pks.*wid.*prom;
+                                            temp_PeakNdx(pos,t,trl) = loc(featWeightPeaks==max(featWeightPeaks));
+                                            temp_PeakVal(pos,t,trl) = pks(featWeightPeaks==max(featWeightPeaks));
+                                            temp_PeakWid(pos,t,trl) = wid(featWeightPeaks==max(featWeightPeaks));
+                                        end
+                                    end
+                                end
+                            end
+                            tm_PeakNdx{odrPos,histOSpos,trlPos} = temp_PeakNdx;
+                            tm_PeakVal{odrPos,histOSpos,trlPos} = temp_PeakVal;
+                            tm_PeakWid{odrPos,histOSpos,trlPos} = temp_PeakWid;
+                        end
+                    end
+                end                
+            end
+        end
+        %% Calc Masked Decoding Peaks
+        function [tm_PeakNdx, tm_PeakVal, tm_PeakWid] = CalcDecodingPeaks_XTD_Mask(obj,data,mask)
+        end
     end
     %% Visualizations
-    methods 
+    methods
         %% Trial-wise probability density matrix
         function PlotTrialPDF(obj, realTrialMtx, varargin)
             if sum(strcmp(varargin, 'x') | strcmp(varargin, 'X'))>=1
@@ -956,7 +1054,8 @@ classdef MLB_SM < SeqMem
             end
         end
     end
-    methods % Analyses
+    %% Analyses
+    methods
         %% Quantify Persistance
         function [avg, up, down, left, right] = QuantPersist(obj, mtx, threshold)
             % Designed to run with output of decoding of iterative bayes
