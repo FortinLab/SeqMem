@@ -34,7 +34,8 @@ classdef MLB_SM < SeqMem
             obj.PP_IdentifyFISCseqs
         end
     end
-    methods % Data Pre-Processing Methods
+    %% Data Pre-Processing Methods
+    methods
         %% Pre-Process Trial Spiking Data
         function [dataMtx, timeVect] = PP_TrialMatrix_Spiking(obj, window, alignment)
             if isempty(obj.binSize)
@@ -207,7 +208,8 @@ classdef MLB_SM < SeqMem
             end
         end
     end
-    methods % Configuration Methods
+    %% MLB Configuration Methods
+    methods
         %% Set Likelihoods as Fully InSeq Correct
         function SetLikes_FISC(obj)
             % Set likelihoods & observations using FISC trials where FISC are likelihoods and all other trials are observations
@@ -291,8 +293,13 @@ classdef MLB_SM < SeqMem
             obj.obsvTrlIDs = ssnID(:,:,nonIscLog);
             obj.obsvTimeVect = ssnID(:,1,1);
         end
+        %% Set Observations as OutSeq Correct
+        function SetObsvs_OSC(obj)
+            % I need to be made!!!
+        end
     end
-    methods % MLB Processing Methods
+    %% MLB Processing Methods
+    methods 
         %% Permute the likelihood spiking data
         function [permLikes, permLikesTrlIDs] = RandPermLikes(obj, shuffType)
             tempLikes = obj.likeTrlSpikes;
@@ -456,7 +463,8 @@ classdef MLB_SM < SeqMem
             end
         end
     end
-    methods % MLB Algorithms
+    %% MLB Algorithms
+    methods
         %% Calculate Static MLB Poisson
         function post = CalcStaticBayesPost_Poisson(obj,likely, obsv, prob)
 %             tic;
@@ -589,7 +597,8 @@ classdef MLB_SM < SeqMem
         function post = CalcIterativeBayesPost_Gaussian(obj, likely, obsv, depVar, grpVar)
         end
     end
-    methods % Decoding Methods
+    %% Posterior Processing Methods
+    methods
         %% Decode MLB
         function [decode, maxPost] = DecodeBayesPost(obj, post, id)
             if ~iscell(post)
@@ -753,8 +762,97 @@ classdef MLB_SM < SeqMem
                 end
             end
         end
+        %% Unsure if will need later... no use for right now
+%         function [ssnDovT, trlDovT] = CalcDprmVectFromPosts(obj, decodeMtx, trlIDvect)
+%             unq = unique(decodeMtx);
+%             minProb = unq(2);
+%             maxProb = unq(end-1);
+%             ssnDovT = cell(obj.seqLength,1);
+%             trlDovT = cell(obj.seqLength,1);
+%             for pos = 1:obj.seqLength
+%                 curPosTrls = permute(decodeMtx(:,:,pos,trlIDvect==pos), [1,2,4,3]);
+%                 curNonPosTrls = permute(decodeMtx(:,:,pos,trlIDvect~=pos), [1,2,4,3]);
+%
+%                 meanHR = median(curPosTrls,3);
+%                 meanHR(meanHR==0) = minProb;
+%                 meanHR(meanHR==1) = maxProb;
+%                 meanFAR = median(curNonPosTrls,3);
+%                 meanFAR(meanFAR==0) = minProb;
+%                 meanFAR(meanFAR==1) = maxProb;
+%                 ssnDovT{pos} = arrayfun(@(a,b)norminv(a)-norminv(b), meanHR, meanFAR);
+%                 tempTrlDovT = nan(size(curPosTrls));
+%                 for t = 1:size(curPosTrls,3)
+%                     tempHR = curPosTrls(:,:,t);
+%                     tempHR(tempHR==0) = minProb;
+%                     tempHR(tempHR==1) = maxProb;
+%                     tempTrlDovT = arrayfun(@(a,b)norminv(a)-norminv(b), tempHR, meanFAR);
+%                 end
+%                 trlDovT{pos} = tempTrlDovT;
+%             end
+%         end
+        %% Calculate d' vector from decodings
+        function dOvrT = CalcDprmVectFromDecode(obj, decodeMtx, trlIDvect)
+            % decodeMtx here is a matrix NxM where N=time and M=trials
+            % trlIDvect here is a vector 1xM containing the trial IDs
+            %             trlIDs = sort(obj.odrSeqs(:));
+            trlIDs = 1:obj.seqLength;
+            dOvrT = nan(size(decodeMtx,1),length(trlIDs));
+            for trl = 1:length(trlIDs)
+                tempTrlLogVect = trlIDvect==trlIDs(trl);
+                for t = 1:size(decodeMtx,1)
+                    decodeCounts(1,1) = sum(decodeMtx(t,tempTrlLogVect)==trlIDs(trl));
+                    decodeCounts(1,2) = sum(decodeMtx(t,tempTrlLogVect)~=trlIDs(trl));
+                    decodeCounts(2,1) = sum(decodeMtx(t,~tempTrlLogVect)==trlIDs(trl));
+                    decodeCounts(2,2) = sum(decodeMtx(t,~tempTrlLogVect)~=trlIDs(trl));
+                    dOvrT(t,trl) = obj.CalculateDprime(decodeCounts);
+                end
+            end
+        end
+        %% Calculate d' matrix from decodings
+        function [dOvrTraw, dOvrTchance] = CalcDprmMtxFromDecode(obj, decodeMtx, trlIDvect)
+            % decodeMtx here is a NxMxP matrix (tensor?) where N = observation time, M = likelihood time and P = trials
+            % trlIDvect here is a 1xP matrix containing the trial IDs
+            %             trlIDs = sort(obj.odrSeqs(:));
+            trlIDs = unique(trlIDvect);
+            rndDecodeMtx = nan(size(decodeMtx));
+            for trl = 1:size(decodeMtx,3)
+                tempDecode = decodeMtx(:,:,trl);
+                shuffDecode = sortrows([randperm(numel(tempDecode))',tempDecode(:)]);
+                rndDecodeMtx(:,:,trl) = reshape(shuffDecode(:,2), [size(decodeMtx,1),size(decodeMtx,2)]);
+            end
+            dOvrTraw = repmat({nan(size(decodeMtx,1),size(decodeMtx,2))},length(trlIDs),length(trlIDs));
+            dOvrTchance = repmat({nan(size(decodeMtx,1),size(decodeMtx,2))},length(trlIDs),length(trlIDs));
+            for trl1 = 1:length(trlIDs)
+                tempTrlLogVect = trlIDvect==trlIDs(trl1);
+                for trl2 = 1:length(trlIDs)
+                    for to = 1:size(decodeMtx,1)
+                        for tl = 1:size(decodeMtx,2)
+                            decodeCounts(1,1) = sum(decodeMtx(to,tl,tempTrlLogVect)==trlIDs(trl2));
+                            decodeCounts(1,2) = sum(decodeMtx(to,tl,tempTrlLogVect)~=trlIDs(trl2));
+                            decodeCounts(2,1) = sum(decodeMtx(to,tl,~tempTrlLogVect)==trlIDs(trl2));
+                            decodeCounts(2,2) = sum(decodeMtx(to,tl,~tempTrlLogVect)~=trlIDs(trl2));
+                            dOvrTraw{trl1,trl2}(to,tl) = obj.CalculateDprime(decodeCounts);
+                            randCounts(1,1) = sum(rndDecodeMtx(to,tl,tempTrlLogVect)==trlIDs(trl2));
+                            randCounts(1,2) = sum(rndDecodeMtx(to,tl,tempTrlLogVect)~=trlIDs(trl2));
+                            randCounts(2,1) = sum(rndDecodeMtx(to,tl,~tempTrlLogVect)==trlIDs(trl2));
+                            randCounts(2,2) = sum(rndDecodeMtx(to,tl,~tempTrlLogVect)~=trlIDs(trl2));
+                            dOvrTchance{trl1,trl2}(to,tl) = obj.CalculateDprime(randCounts);
+                        end
+                    end
+                end
+            end
+        end
+        %% Integrate Anti-diagonal
+        function int = IntegrateAntiDiagonal(~, mtx)
+            int = nan(1,size(mtx,1)*2);
+            for t = 1:2:size(mtx,1)*2
+                int(t) = trapz(diag(flip(mtx), t-size(mtx,1)));
+            end
+            int(isnan(int)) = [];
+        end
     end
-    methods % Visualizations
+    %% Visualizations
+    methods 
         %% Trial-wise probability density matrix
         function PlotTrialPDF(obj, realTrialMtx, varargin)
             if sum(strcmp(varargin, 'x') | strcmp(varargin, 'X'))>=1
@@ -830,97 +928,35 @@ classdef MLB_SM < SeqMem
         %% Line Plots w/Chance
         function PlotLinesWithChance(obj)
         end
+        %% Visualize Trial Data
+        function PlotTrial(obj, spkMtx, lfpMtx, trlInfo)
+            for t = 1:length(trlInfo)
+                rwdLat = (trlInfo(t).RewardIndex-trlInfo(t).PokeInIndex)/obj.sampleRate;
+                figure;
+                subplot(4,1,1);
+                plot(obj.obsvTimeVect, lfpMtx(:,:,t), '-k');
+                set(gca, 'ylim', [min(lfpMtx(:)) max(lfpMtx(:))]);
+                hold on;
+                box off;
+                plot([0 0], get(gca, 'ylim'), '--k', 'linewidth', 2);
+                plot(repmat(trlInfo(t).TargetDuration, [1,2]), get(gca, 'ylim'), '-k', 'linewidth', 2);
+                plot(repmat(trlInfo(t).PokeDuration, [1,2]), get(gca, 'ylim'), '--k', 'linewidth', 2);
+                plot(repmat(rwdLat, [1,2]), get(gca, 'ylim'), ':k', 'linewidth', 2);
+                title(sprintf('Trial#=%i; Odor=%i; Position=%i; Performance=%i', trlInfo(t).TrialNum, trlInfo(t).Odor, trlInfo(t).Position, trlInfo(t).Performance));
+
+                subplot(4,1,2:4);
+                imagesc(obj.obsvTimeVect, 1:size(spkMtx,2), spkMtx(:,:,t)', [0 10*(1/(obj.binSize/obj.sampleRate))]);
+                %                 set(gca, 'ydir', 'normal');
+                hold on;
+                plot([0 0], [1, size(spkMtx,2)], '--k', 'linewidth', 2);
+                plot(repmat(trlInfo(t).TargetDuration, [1,2]), [1,size(spkMtx,2)], '-k', 'linewidth', 2);
+                plot(repmat(trlInfo(t).PokeDuration, [1,2]), [1,size(spkMtx,2)], '--k', 'linewidth', 2);
+                plot(repmat(rwdLat, [1,2]), [1,size(spkMtx,2)], ':k', 'linewidth', 2);
+                drawnow;
+            end
+        end
     end
-        %% 
-    methods % "Analyses"
-        %% Unsure if will need later... no use for right now
-%         function [ssnDovT, trlDovT] = CalcDprmVectFromPosts(obj, decodeMtx, trlIDvect)
-%             unq = unique(decodeMtx);
-%             minProb = unq(2);
-%             maxProb = unq(end-1);
-%             ssnDovT = cell(obj.seqLength,1);
-%             trlDovT = cell(obj.seqLength,1);
-%             for pos = 1:obj.seqLength
-%                 curPosTrls = permute(decodeMtx(:,:,pos,trlIDvect==pos), [1,2,4,3]);
-%                 curNonPosTrls = permute(decodeMtx(:,:,pos,trlIDvect~=pos), [1,2,4,3]);
-%                 
-%                 meanHR = median(curPosTrls,3);
-%                 meanHR(meanHR==0) = minProb;
-%                 meanHR(meanHR==1) = maxProb;
-%                 meanFAR = median(curNonPosTrls,3);
-%                 meanFAR(meanFAR==0) = minProb;
-%                 meanFAR(meanFAR==1) = maxProb;
-%                 ssnDovT{pos} = arrayfun(@(a,b)norminv(a)-norminv(b), meanHR, meanFAR);
-%                 tempTrlDovT = nan(size(curPosTrls));
-%                 for t = 1:size(curPosTrls,3)
-%                     tempHR = curPosTrls(:,:,t);
-%                     tempHR(tempHR==0) = minProb;
-%                     tempHR(tempHR==1) = maxProb;
-%                     tempTrlDovT = arrayfun(@(a,b)norminv(a)-norminv(b), tempHR, meanFAR);
-%                 end
-%                 trlDovT{pos} = tempTrlDovT;
-%             end
-%         end
-        %%
-        function dOvrT = CalcDprmVectFromDecode(obj, decodeMtx, trlIDvect)
-            % decodeMtx here is a matrix NxM where N=time and M=trials
-            % trlIDvect here is a vector 1xM containing the trial IDs
-%             trlIDs = sort(obj.odrSeqs(:));
-            trlIDs = 1:obj.seqLength;
-            dOvrT = nan(size(decodeMtx,1),length(trlIDs));
-            for trl = 1:length(trlIDs)
-                tempTrlLogVect = trlIDvect==trlIDs(trl);
-                for t = 1:size(decodeMtx,1)
-                    decodeCounts(1,1) = sum(decodeMtx(t,tempTrlLogVect)==trlIDs(trl));
-                    decodeCounts(1,2) = sum(decodeMtx(t,tempTrlLogVect)~=trlIDs(trl));
-                    decodeCounts(2,1) = sum(decodeMtx(t,~tempTrlLogVect)==trlIDs(trl));
-                    decodeCounts(2,2) = sum(decodeMtx(t,~tempTrlLogVect)~=trlIDs(trl));
-                    dOvrT(t,trl) = obj.CalculateDprime(decodeCounts);
-                end
-            end
-        end
-        %%
-        function [dOvrTraw, dOvrTchance] = CalcDprmMtxFromDecode(obj, decodeMtx, trlIDvect)
-            % decodeMtx here is a NxMxP matrix (tensor?) where N = observation time, M = likelihood time and P = trials
-            % trlIDvect here is a 1xP matrix containing the trial IDs
-%             trlIDs = sort(obj.odrSeqs(:));
-            trlIDs = unique(trlIDvect);
-            rndDecodeMtx = nan(size(decodeMtx));
-            for trl = 1:size(decodeMtx,3)
-                tempDecode = decodeMtx(:,:,trl);
-                shuffDecode = sortrows([randperm(numel(tempDecode))',tempDecode(:)]);
-                rndDecodeMtx(:,:,trl) = reshape(shuffDecode(:,2), [size(decodeMtx,1),size(decodeMtx,2)]);
-            end
-            dOvrTraw = repmat({nan(size(decodeMtx,1),size(decodeMtx,2))},length(trlIDs),length(trlIDs));
-            dOvrTchance = repmat({nan(size(decodeMtx,1),size(decodeMtx,2))},length(trlIDs),length(trlIDs));
-            for trl1 = 1:length(trlIDs)
-                tempTrlLogVect = trlIDvect==trlIDs(trl1);
-                for trl2 = 1:length(trlIDs)
-                    for to = 1:size(decodeMtx,1)
-                        for tl = 1:size(decodeMtx,2)
-                            decodeCounts(1,1) = sum(decodeMtx(to,tl,tempTrlLogVect)==trlIDs(trl2));
-                            decodeCounts(1,2) = sum(decodeMtx(to,tl,tempTrlLogVect)~=trlIDs(trl2));
-                            decodeCounts(2,1) = sum(decodeMtx(to,tl,~tempTrlLogVect)==trlIDs(trl2));
-                            decodeCounts(2,2) = sum(decodeMtx(to,tl,~tempTrlLogVect)~=trlIDs(trl2));
-                            dOvrTraw{trl1,trl2}(to,tl) = obj.CalculateDprime(decodeCounts);
-                            randCounts(1,1) = sum(rndDecodeMtx(to,tl,tempTrlLogVect)==trlIDs(trl2));
-                            randCounts(1,2) = sum(rndDecodeMtx(to,tl,tempTrlLogVect)~=trlIDs(trl2));
-                            randCounts(2,1) = sum(rndDecodeMtx(to,tl,~tempTrlLogVect)==trlIDs(trl2));
-                            randCounts(2,2) = sum(rndDecodeMtx(to,tl,~tempTrlLogVect)~=trlIDs(trl2));
-                            dOvrTchance{trl1,trl2}(to,tl) = obj.CalculateDprime(randCounts);
-                        end
-                    end
-                end
-            end
-        end
-        %% Integrate Anti-diagonal
-        function int = IntegrateAntiDiagonal(~, mtx)
-            int = nan(1,size(mtx,1)*2);
-            for t = 1:2:size(mtx,1)*2
-                int(t) = trapz(diag(flip(mtx), t-size(mtx,1)));
-            end
-            int(isnan(int)) = [];
-        end
+    methods % Analyses
         %% Quantify Persistance
         function [avg, up, down, left, right] = QuantPersist(obj, mtx, threshold)
             % Designed to run with output of decoding of iterative bayes
@@ -954,33 +990,8 @@ classdef MLB_SM < SeqMem
             avg = max([up(:),down(:),right(:),left(:)],[],2);
 %             avg = mean([up(:),down(:),right(:),left(:)], 2, 'omitnan');
         end
-        %% Visualize Trial Data
-        function PlotTrial(obj, spkMtx, lfpMtx, trlInfo)
-            for t = 1:length(trlInfo)
-                rwdLat = (trlInfo(t).RewardIndex-trlInfo(t).PokeInIndex)/obj.sampleRate;
-                figure;
-                subplot(4,1,1);
-                plot(obj.obsvTimeVect, lfpMtx(:,:,t), '-k');
-                set(gca, 'ylim', [min(lfpMtx(:)) max(lfpMtx(:))]);
-                hold on;
-                box off;
-                plot([0 0], get(gca, 'ylim'), '--k', 'linewidth', 2);
-                plot(repmat(trlInfo(t).TargetDuration, [1,2]), get(gca, 'ylim'), '-k', 'linewidth', 2);
-                plot(repmat(trlInfo(t).PokeDuration, [1,2]), get(gca, 'ylim'), '--k', 'linewidth', 2);
-                plot(repmat(rwdLat, [1,2]), get(gca, 'ylim'), ':k', 'linewidth', 2);
-                title(sprintf('Trial#=%i; Odor=%i; Position=%i; Performance=%i', trlInfo(t).TrialNum, trlInfo(t).Odor, trlInfo(t).Position, trlInfo(t).Performance));
-                                
-                subplot(4,1,2:4);
-                imagesc(obj.obsvTimeVect, 1:size(spkMtx,2), spkMtx(:,:,t)', [0 10*(1/(obj.binSize/obj.sampleRate))]);
-%                 set(gca, 'ydir', 'normal');
-                hold on;
-                plot([0 0], [1, size(spkMtx,2)], '--k', 'linewidth', 2);
-                plot(repmat(trlInfo(t).TargetDuration, [1,2]), [1,size(spkMtx,2)], '-k', 'linewidth', 2);
-                plot(repmat(trlInfo(t).PokeDuration, [1,2]), [1,size(spkMtx,2)], '--k', 'linewidth', 2);
-                plot(repmat(rwdLat, [1,2]), [1,size(spkMtx,2)], ':k', 'linewidth', 2);
-                drawnow;
-            end
-        end
+    end
+    methods % PCA stuff... prototyped.... may not currently work...
         %% Visualize PCA
         % NOTE: This will move to it's own class eventually
         function PFC_PCA(obj)

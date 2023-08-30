@@ -375,6 +375,101 @@ classdef SeqMem < handle
                 end
             end
         end
+        %% Build_MtxMaskArray
+        function [mask] = Build_MtxMaskArray(~,rowAnchors,rowRanges,rowSz,colAnchors,colRanges,colSz)
+            % Inputs:
+            %   rowAnchors = vector of length N with anchors for the masks
+            %   rowRanges = Ox2 matrix where column 2 = early row anchor offset and column 2 = late anchor offset
+            %   rowSz = number of rows in the matrix
+            %   colAnchors = vector of length N with anchors for the masks
+            %   colRanges = Ox2 matrix where column 2 = early column anchor offset and column 2 = late anchor offset
+            %   colSz = number of rows in the matrix
+            % Outpus:
+            %   mask = M (rowSz) x N (colSz) x O (# anchors) logical array of O MxN masks
+            if length(rowAnchors)~=length(colAnchors)
+                error('Row and Col anchors of unequal sizes');
+            end
+            mask = false(rowSz,colSz,length(rowAnchors));
+            for ndx = 1:length(colAnchors)
+                mask(rowAnchors(ndx)-rowRanges(ndx,1):rowAnchors(ndx)+rowRanges(ndx,2),...
+                    colAnchors(ndx)-colRanges(ndx,1):colAnchors(ndx)+colRanges(ndx,2),ndx) = true;
+            end
+        end
+        %% Build_VectMaskMtx
+        function [mask] = Build_VectMaskMtx(~,anchors,ranges,maskSz)
+            % Inputs:
+            %   anchors = vector of length N of anchor indices for the masks
+            %   ranges = Nx2 matrix where column 1 = early anchor offset and column 2 = late anchor offset
+            %   maskSz = the size of the data the mask will be applied to
+            % Outputs:
+            %   mask = MxN logical with M (maskSz) rows and N (# of anchors) columns
+            mask = false(length(anchors),maskSz);
+            for m = 1:maskSz
+                mask(anchors(m)+ranges(m,1):anchors(m)+ranges(m,2),m) = true;
+            end
+        end
+        %% ArrayMaskExtract
+        function [maskedData] = Mask_ArrayExtract(obj,data2mask,rowMask,colMask)
+            % Apply row and column masks across pages (dim 3) in an array.
+            % rowMask = mask applied over the rows, i.e. dim 1
+            % colMask = mask applied over the columns, i.e. dim 2
+            % Check the masks
+            mask4rows = obj.CheckMask(data2mask,rowMask,size(data2mask,1),size(data2mask,3));
+            mask4cols = obj.CheckMask(data2mask,colMask,size(data2mask,2),size(data2mask,3));
+            % Extract data according to the masks
+            maskedData = nan(sum(mask4rows(:,1)), sum(mask4cols(:,1)), size(data2mask,3));
+            for rep = 1:size(data2mask,3)
+                maskedData(:,:,rep) = data2mask(mask4rows(:,rep), mask4cols(:,rep),rep);
+            end
+        end
+        %% RowColMaskExtract
+        function [maskedData] = Mask_VectExtract(obj,data2mask,mask,dataDim,repDim)
+            mask = obj.CheckMask(data2mask,mask,size(data2mask,dataDim),size(data2mask,repDim));
+            maskedData = nan(sum(mask(:,1)),numReps);
+            for rep = 1:numReps
+                if dataDim == 1
+                    maskedData(:,rep) = data2mask(mask(:,rep),:);
+                elseif dataDim == 2
+                    maskedData(:,rep) = data2mask(mask(rep,:),:);
+                end
+            end
+        end
+        %% MaskChecker
+        function [newMask] = CheckMask(obj,data2mask,inputMask,dataLength,numReps)
+            if isempty(inputMask)
+                newMask = true(dataLength,numReps);
+            end
+            if isdouble(inputMask)
+                newMask = obj.CheckMask_Double(data2mask,inputMask,dataLength,numReps);
+            elseif iscell(inputMask)
+                temp_newMask = obj.CheckMask_Double(data2mask,inputMask{1},dataLength,numReps);
+                newMask = false(size(temp_newMask));
+                anchor = regexp(inputMask{2}, '[a-zA-Z]*', 'match');
+                range = regexp(inputMask{2}, '[+|-]\d', 'match');
+                if isempty(range)
+                    offset = [0 0];
+                elseif length(range)==1
+                    offset = [0 str2double(range)];
+                elseif length(range)==2
+                    offset = [str2double(range{1}), str2double(range{2})];
+                end
+                for c = 1:size(temp_newMask,2)
+                    ndx = find(temp_newMask(:,c),1,anchor{1});
+                    newMask(ndx+offset(1):ndx+offset(2),c) = true;
+                end
+            end
+        end
+
+        %% CheckDoubleMask
+        function [doubleMask] = CheckMask_Double(~,inputMask,dataLength,numReps)
+            if size(inputMask,2)==1 && size(inputMask,2)~=numReps
+                doubleMask = repmat(inputMask, [1,numReps]);
+            elseif size(inputMask,1) ~= dataLength
+                error('Mask Dimension Mismatch');
+            else
+                doubleMask = inputMask;
+            end
+        end
     end
     %% Data Pre-Processing
     methods
