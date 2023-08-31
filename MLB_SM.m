@@ -947,6 +947,9 @@ classdef MLB_SM < SeqMem
         end
         %% Calc Masked Decoding Peaks
         function [tm_PeakNdx, tm_PeakVal, tm_PeakWid] = CalcDecodingPeaks_XTD_Mask(obj,data,mask)
+            if nargin==1
+                [data, ~, ~] = obj.OrganizeTrialHistoryTransMat;
+            end
         end
     end
     %% Visualizations

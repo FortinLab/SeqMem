@@ -376,7 +376,7 @@ classdef SeqMem < handle
             end
         end
         %% Build_MtxMaskArray
-        function [mask] = Build_MtxMaskArray(~,rowAnchors,rowRanges,rowSz,colAnchors,colRanges,colSz)
+        function [mask] = BuildMtxMaskArray(~,rowAnchors,rowRanges,rowSz,colAnchors,colRanges,colSz)
             % Inputs:
             %   rowAnchors = vector of length N with anchors for the masks
             %   rowRanges = Ox2 matrix where column 2 = early row anchor offset and column 2 = late anchor offset
@@ -396,7 +396,7 @@ classdef SeqMem < handle
             end
         end
         %% Build_VectMaskMtx
-        function [mask] = Build_VectMaskMtx(~,anchors,ranges,maskSz)
+        function [mask] = BuildVectMaskMtx(~,anchors,ranges,maskSz)
             % Inputs:
             %   anchors = vector of length N of anchor indices for the masks
             %   ranges = Nx2 matrix where column 1 = early anchor offset and column 2 = late anchor offset
@@ -409,13 +409,13 @@ classdef SeqMem < handle
             end
         end
         %% ArrayMaskExtract
-        function [maskedData] = Mask_ArrayExtract(obj,data2mask,rowMask,colMask)
+        function [maskedData] = MaskArrayExtract(obj,data2mask,rowMask,colMask)
             % Apply row and column masks across pages (dim 3) in an array.
             % rowMask = mask applied over the rows, i.e. dim 1
             % colMask = mask applied over the columns, i.e. dim 2
             % Check the masks
-            mask4rows = obj.CheckMask(data2mask,rowMask,size(data2mask,1),size(data2mask,3));
-            mask4cols = obj.CheckMask(data2mask,colMask,size(data2mask,2),size(data2mask,3));
+            mask4rows = obj.CheckMask(rowMask,size(data2mask,1),size(data2mask,3));
+            mask4cols = obj.CheckMask(colMask,size(data2mask,2),size(data2mask,3));
             % Extract data according to the masks
             maskedData = nan(sum(mask4rows(:,1)), sum(mask4cols(:,1)), size(data2mask,3));
             for rep = 1:size(data2mask,3)
@@ -423,8 +423,8 @@ classdef SeqMem < handle
             end
         end
         %% RowColMaskExtract
-        function [maskedData] = Mask_VectExtract(obj,data2mask,mask,dataDim,repDim)
-            mask = obj.CheckMask(data2mask,mask,size(data2mask,dataDim),size(data2mask,repDim));
+        function [maskedData] = MaskVectExtract(obj,data2mask,mask,dataDim,repDim)
+            mask = obj.CheckMask(mask,size(data2mask,dataDim),size(data2mask,repDim));
             maskedData = nan(sum(mask(:,1)),numReps);
             for rep = 1:numReps
                 if dataDim == 1
@@ -435,14 +435,14 @@ classdef SeqMem < handle
             end
         end
         %% MaskChecker
-        function [newMask] = CheckMask(obj,data2mask,inputMask,dataLength,numReps)
+        function [newMask] = CheckMask(obj,inputMask,dataLength,numReps)
             if isempty(inputMask)
                 newMask = true(dataLength,numReps);
             end
             if isdouble(inputMask)
-                newMask = obj.CheckMask_Double(data2mask,inputMask,dataLength,numReps);
+                newMask = obj.CheckMask_Double(inputMask,dataLength,numReps);
             elseif iscell(inputMask)
-                temp_newMask = obj.CheckMask_Double(data2mask,inputMask{1},dataLength,numReps);
+                temp_newMask = obj.CheckMask_Double(inputMask{1},dataLength,numReps);
                 newMask = false(size(temp_newMask));
                 anchor = regexp(inputMask{2}, '[a-zA-Z]*', 'match');
                 range = regexp(inputMask{2}, '[+|-]\d', 'match');
@@ -459,7 +459,6 @@ classdef SeqMem < handle
                 end
             end
         end
-
         %% CheckDoubleMask
         function [doubleMask] = CheckMask_Double(~,inputMask,dataLength,numReps)
             if size(inputMask,2)==1 && size(inputMask,2)~=numReps
