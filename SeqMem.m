@@ -391,8 +391,27 @@ classdef SeqMem < handle
             end
             mask = false(rowSz,colSz,length(rowAnchors));
             for ndx = 1:length(colAnchors)
-                mask(rowAnchors(ndx)-rowRanges(ndx,1):rowAnchors(ndx)+rowRanges(ndx,2),...
-                    colAnchors(ndx)-colRanges(ndx,1):colAnchors(ndx)+colRanges(ndx,2),ndx) = true;
+                if rowAnchors(ndx)+rowRanges(ndx,1) < 0
+                    rowLow = 0;
+                else
+                    rowLow = rowAnchors(ndx)+rowRanges(ndx,1);
+                end
+                if rowAnchors(ndx)+rowRanges(ndx,2) > rowSz
+                    rowHigh = rowSz;
+                else
+                    rowHigh = rowAnchors(ndx)+rowRanges(ndx,2);
+                end
+                if colAnchors(ndx)+colRanges(ndx,1) < 0
+                    colLow = 0;
+                else
+                    colLow = colAnchors(ndx)+colRanges(ndx,1);
+                end
+                if colAnchors(ndx)+colRanges(ndx,2) > colSz
+                    colHigh = colSz;
+                else
+                    colHigh = colAnchors(ndx)+colRanges(ndx,2);
+                end
+                mask(rowLow:rowHigh,colLow:colHigh,ndx) = true;
             end
         end
         %% Build_VectMaskMtx
@@ -405,7 +424,17 @@ classdef SeqMem < handle
             %   mask = MxN logical with M (maskSz) rows and N (# of anchors) columns
             mask = false(length(anchors),maskSz);
             for m = 1:maskSz
-                mask(anchors(m)+ranges(m,1):anchors(m)+ranges(m,2),m) = true;
+                if anchors(m)+ranges(m,1) < 0
+                    low = 0;
+                else
+                    low = anchors(m)+ranges(m,1);
+                end
+                if anchors(m)+ranges(m,2) > maskSz
+                    high = maskSz;
+                else
+                    high = ahcnors(m)+ranges(m,2);
+                end
+                mask(low:high,m) = true;
             end
         end
         %% ArrayMaskExtract
@@ -439,7 +468,7 @@ classdef SeqMem < handle
             if isempty(inputMask)
                 newMask = true(dataLength,numReps);
             end
-            if isdouble(inputMask)
+            if isa(inputMask, 'double') || islogical(inputMask)
                 newMask = obj.CheckMask_Double(inputMask,dataLength,numReps);
             elseif iscell(inputMask)
                 temp_newMask = obj.CheckMask_Double(inputMask{1},dataLength,numReps);
