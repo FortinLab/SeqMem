@@ -422,23 +422,23 @@ classdef SeqMem < handle
             %   maskSz = the size of the data the mask will be applied to
             % Outputs:
             %   mask = MxN logical with M (maskSz) rows and N (# of anchors) columns
-            mask = false(length(anchors),maskSz);
-            for m = 1:maskSz
-                if anchors(m)+ranges(m,1) < 0
-                    low = 0;
+            mask = false(maskSz,length(anchors));
+            for m = 1:length(anchors)
+                if anchors(m)+ranges(m,1) <= 0
+                    low = 1;
                 else
                     low = anchors(m)+ranges(m,1);
                 end
                 if anchors(m)+ranges(m,2) > maskSz
                     high = maskSz;
                 else
-                    high = ahcnors(m)+ranges(m,2);
+                    high = anchors(m)+ranges(m,2);
                 end
                 mask(low:high,m) = true;
             end
         end
         %% ArrayMaskExtract
-        function [maskedData] = MaskArrayExtract(obj,data2mask,rowMask,colMask)
+        function [maskedData] = MaskArrayExtract(obj,data2mask,rowMask,colMask,varargin)
             % Apply row and column masks across pages (dim 3) in an array.
             % rowMask = mask applied over the rows, i.e. dim 1
             % colMask = mask applied over the columns, i.e. dim 2
@@ -446,20 +446,32 @@ classdef SeqMem < handle
             mask4rows = obj.CheckMask(rowMask,size(data2mask,1),size(data2mask,3));
             mask4cols = obj.CheckMask(colMask,size(data2mask,2),size(data2mask,3));
             % Extract data according to the masks
-            maskedData = nan(sum(mask4rows(:,1)), sum(mask4cols(:,1)), size(data2mask,3));
+            maskedData = nan(size(data2mask));
             for rep = 1:size(data2mask,3)
-                maskedData(:,:,rep) = data2mask(mask4rows(:,rep), mask4cols(:,rep),rep);
+                maskedData(mask4rows(:,rep),mask4cols(:,rep),rep) = data2mask(mask4rows(:,rep), mask4cols(:,rep),rep);
+            end
+            if strcmp(varargin,'extract') % I know this is super messy, so sue me
+                extractedData = cell(1,1,size(data2mask,3));
+                for rep = 1:size(data2mask,3)
+                    temp_maskedData = maskedData(:,:,rep);
+                    extractedData{rep} = temp_maskedData(~isnan(temp_maskedData));
+                end
+                maskedData = cell2mat(extractedData);
             end
         end
         %% RowColMaskExtract
         function [maskedData] = MaskVectExtract(obj,data2mask,mask,dataDim,repDim)
             mask = obj.CheckMask(mask,size(data2mask,dataDim),size(data2mask,repDim));
-            maskedData = nan(sum(mask(:,1)),numReps);
-            for rep = 1:numReps
+            if dataDim == 1
+                maskedData = nan(size(data2mask,2),size(data2mask,repDim));
+            else
+                maskedData = nan(size(data2mask,1),size(data2mask,repDim));
+            end
+            for rep = 1:size(data2mask,repDim)
                 if dataDim == 1
-                    maskedData(:,rep) = data2mask(mask(:,rep),:);
+                    maskedData(:,rep,:) = data2mask(mask(:,rep),:);
                 elseif dataDim == 2
-                    maskedData(:,rep) = data2mask(mask(rep,:),:);
+                    maskedData(:,rep,:) = data2mask(:,mask(:,rep));
                 end
             end
         end

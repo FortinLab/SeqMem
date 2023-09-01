@@ -24,6 +24,15 @@ classdef MLB_SM < SeqMem
         decode
         decodeIDvects
     end
+    properties % Trial Event Masks
+        mask_Trial
+        mask_Int
+        mask_IntMid
+        mask_PreInt
+        mask_PreIntCON
+        mask_PstInt
+        mask_PstIntCON
+    end
     methods
         function obj = MLB_SM(fileDir)
             if nargin == 0
@@ -823,7 +832,7 @@ classdef MLB_SM < SeqMem
             int(isnan(int)) = [];
         end
         %% Calculate d', HR, FAR from posteriors
-        function [tMat_HR, tMat_FAR, tMat_D] = CalcTransMatDecodabilityFromPost(obj)
+        function [tMat_HR, tMat_FAR, tMat_D] = CalcDecodabilityTransMatFromPost(obj)
             tMat_HR = cell(obj.seqLength, obj.seqLength);
             tMat_FAR = cell(obj.seqLength, obj.seqLength);
             tMat_D = cell(obj.seqLength, obj.seqLength);
@@ -862,9 +871,11 @@ classdef MLB_SM < SeqMem
             end
         end
         %% Organize Posteriors into 3D TransMat
-        function [tm_HR, tm_D, tm_TrialInfo] = OrganizeTrialHistoryTransMat(obj,hr,d)
+        function [tm_HR, tm_D, tm_TrialInfo] = OrganizeDecodabilityTrialHistoryTransMat(obj,hr,d)
             if nargin == 1
-                [hr, ~, d] = obj.CalcTransMatDecodabilityFromPost;
+                [hr, ~, d] = obj.CalcDecodabilityTransMatFromPost;
+            elseif nargin == 2
+                d = hr;
             end
             tm_HR = cell(obj.seqLength,obj.seqLength,obj.seqLength,obj.seqLength);
             tm_D = cell(obj.seqLength,obj.seqLength,obj.seqLength,obj.seqLength);
@@ -897,20 +908,108 @@ classdef MLB_SM < SeqMem
                     end
                     tm_TrialInfo{osOdr,osPos,trlOP} = cat(2,tm_TrialInfo{osOdr,osPos,trlOP}, cur_TrialInfo);
                     for decPos = 1:obj.seqLength
-                        tm_HR{osOdr,osPos,trlOP,decPos} = cat(3,tm_HR{osOdr,osPos,trlOP,decPos}, hr{trlOP,decPos}(:,:,decPos));
-                        tm_D{osOdr,osPos,trlOP,decPos} = cat(3,tm_D{osOdr,osPos,trlOP,decPos}, d{trlOP,decPos}(:,:,decPos));
+                        tm_HR{osOdr,osPos,trlOP,decPos} = cat(3,tm_HR{osOdr,osPos,trlOP,decPos}, hr{trlOP,decPos}(:,:,trl));
+                        tm_D{osOdr,osPos,trlOP,decPos} = cat(3,tm_D{osOdr,osPos,trlOP,decPos}, d{trlOP,decPos}(:,:,trl));
                     end
                 end
             end
 % 
         end
     end
+    %% Mask Creation Methods
+    methods
+        %% Create TrialInfo Mask
+        function Create_TrialInfoMasks(obj)
+            % Find trial start anchors
+            if strcmp(obj.alignments{1}, 'PokeIn')
+                tStart = zeros(size(obj.trialInfo));
+                startNdx = repmat(find(obj.obsvTimeVect==0), size(obj.trialInfo));
+                tEnd = [obj.trialInfo.PokeDuration];
+                endNdx = arrayfun(@(a){find(a<obj.obsvTimeVect,1,'first')},tEnd);
+                messedUpDur = find(cellfun(@(a)isempty(a),endNdx));
+                for mud = 1:length(messedUpDur)
+                    if obj.trialInfo(messedUpDur(mud)).Performance == 0
+                        obj.trialInfo(messedUpDur(mud)).PokeOutIndex = obj.trialInfo(messedUpDur(mud)).ErrorIndex;
+                        newDur = (obj.trialInfo(messedUpDur(mud)).ErrorIndex - obj.trialInfo(messedUpDur(mud)).PokeInIndex)/obj.sampleRate;
+                    elseif obj.trialInfo(messedUpDur(mud)).Performance == 1
+                        obj.trialInfo(messedUpDur(mud)).PokeOutIndex = obj.trialInfo(messedUpDur(mud)).RewardSignalIndex;
+                        newDur = (obj.trialInfo(messedUpDur(mud)).RewardSignalIndex - obj.trialInfo(messedUpDur(mud)).PokeInIndex)/obj.sampleRate;
+                    end
+                    tEnd(messedUpDur(mud)) = newDur;
+                    endNdx{messedUpDur(mud)} = find(newDur<obj.obsvTimeVect,1,'first');
+                end
+                endNdx = cell2mat(endNdx);
+            elseif strcmp(obj.alignments{1}, 'PokeOut')
+                tStart = [obj.trialInfo.PokeDuration]*-1;
+                startNdx = arrayfun(@(a){find(a<obj.obsvTimeVect,1,'first')}, tStart);
+                messedUpDur = find(cellfun(@(a)isempty(a),startNdx));
+                for mud = 1:length(messedUpDur)
+                    if obj.trialInfo(messedUpDur(mud)).Performance == 0
+                        obj.trialInfo(messedUpDur(mud)).PokeOutIndex = obj.trialInfo(messedUpDur(mud)).ErrorIndex;
+                        newDur = (obj.trialInfo(messedUpDur(mud)).ErrorIndex - obj.trialInfo(messedUpDur(mud)).PokeInIndex)/obj.sampleRate;
+                    elseif obj.trialInfo(messedUpDur(mud)).Performance == 1
+                        obj.trialInfo(messedUpDur(mud)).PokeOutIndex = obj.trialInfo(messedUpDur(mud)).RewardSignalIndex;
+                        newDur = (obj.trialInfo(messedUpDur(mud)).RewardSignalIndex - obj.trialInfo(messedUpDur(mud)).RewardSignalIndex)/obj.sampleRate;
+                    end
+                    tStart(messedUpDur(mud)) = newDur*-1;
+                    startNdx{messedUpDur(mud)} = find(newDur<obj.obsvTimeVect,1,'first');
+                end
+                startNdx = cell2mat(startNdx);
+                tEnd = zeros(size(obj.trialInfo));
+                endNdx = repmat(find(obj.obsvTimeVect==0), size(obj.trialInfo));
+            end
+            trlStarts = [obj.trialInfo.PokeInIndex];
+            trlEnds = [obj.trialInfo.PokeOutIndex];
+            pos1log = [obj.trialInfo.Position]==1;
+            pos1ndx = find(pos1log);
+            preTrlIntDur = [nan, trlStarts(2:end)-trlEnds(1:end-1)]/obj.sampleRate;            
+            pstTrlIntDur = [trlStarts(2:end) - trlEnds(1:end-1), nan]/obj.sampleRate;
+
+            meanNonP1Int = mean(preTrlIntDur(~pos1log));
+            preTrlIntDur(pos1log) = meanNonP1Int;
+            prevTrlStartNdx = arrayfun(@(a)find(a<obj.obsvTimeVect, 1, 'first'), preTrlIntDur*-1);
+            preTrlIntDurMids = tStart-(preTrlIntDur./2);
+            preTrlIntDurMidNdx = arrayfun(@(a)find(a<obj.obsvTimeVect,1,'first'), preTrlIntDurMids);
+            pstTrlIntDur([pos1ndx(2:end)-1,end]) = meanNonP1Int;
+            nextTrlStartNdx = arrayfun(@(a)find(a>obj.obsvTimeVect, 1, 'last'), pstTrlIntDur);
+            pstTrlIntDurMids = tEnd+(pstTrlIntDur./2);
+            pstTrlIntDurMidNdx = arrayfun(@(a)find(a>obj.obsvTimeVect, 1, 'last'), pstTrlIntDurMids);
+
+            obj.mask_Trial = obj.BuildVectMaskMtx(startNdx,[startNdx', endNdx']-startNdx',length(obj.obsvTimeVect));
+            if strcmp(obj.alignments{1}, 'PokeIn')
+                obj.mask_Int = obj.BuildVectMaskMtx(startNdx, [prevTrlStartNdx', startNdx']-startNdx', length(obj.obsvTimeVect));
+                obj.mask_IntMid = obj.BuildVectMaskMtx(startNdx, repmat(preTrlIntDurMidNdx', [1,2]), length(obj.obsvTimeVect));
+            elseif strcmp(obj.alignments{1}, 'PokeOut')
+                obj.mask_Int = obj.BuildVectMaskMtx(startNdx, [startNdx', nextTrlStartNdx]-startNdx', length(obj.obsvTimeVect));
+                obj.mask_IntMid = obj.BuildVectMaskMtx(startNdx, repmat(pstTrlIntDurMidNdx', [1,2]), length(obj.obsvTimeVect));
+            else
+                error('What, poke in and poke out alignments aren''t good enough for you you? Get outta here and code if yourself ya lazy bum!' )
+            end
+            obj.mask_PreInt = obj.BuildVectMaskMtx(startNdx,[preTrlIntDurMidNdx', startNdx']-startNdx',length(obj.obsvTimeVect));
+            obj.mask_PreIntCON = obj.BuildVectMaskMtx(startNdx,[preTrlIntDurMidNdx', startNdx']-startNdx'-(floor((startNdx-preTrlIntDurMidNdx)/2))',length(obj.obsvTimeVect));
+            obj.mask_PstInt = obj.BuildVectMaskMtx(startNdx,[endNdx' pstTrlIntDurMidNdx']-startNdx',length(obj.obsvTimeVect));
+            obj.mask_PstIntCON = obj.BuildVectMaskMtx(startNdx,[endNdx' pstTrlIntDurMidNdx']-startNdx'+(floor((pstTrlIntDurMidNdx-endNdx)/2))',length(obj.obsvTimeVect));
+        end
+    end
     %% Analyses
     methods
         %% Calc Decoding Peaks
-        function [tm_PeakNdx, tm_PeakVal, tm_PeakWid] = CalcDecodingPeaks_XTD(obj,data)
-            if nargin==1
-                [data, ~, ~] = obj.OrganizeTrialHistoryTransMat;
+        function [tm_PeakNdx, tm_PeakVal, tm_PeakWid] = CalcDecodabilityPeaks_XTD(obj,data,dataType)
+            if nargin<2
+                [data, ~, ~] = obj.OrganizeDecodabilityTrialHistoryTransMat;
+            elseif nargin==2 && ismatrix(data)
+                [data,~,~] = obj.OrganizeDecodabilityTrialHistoryTransMat(data);
+            elseif nargin==3 
+                if isempty(data) && ~isempty(dataType)
+                    [hr,d,~] = obj.OrganizeDecodabilityTrialHistoryTransMat;
+                    if strcmp(dataType, 'd') || strcmp(dataType, 'D')
+                        data = d;
+                    else
+                        data = hr;
+                    end
+                else
+                    [data, ~, ~] = obj.OrganizeDecodabilityTrialHistoryTransMat;
+                end
             end
             tm_PeakNdx = cell(obj.seqLength, obj.seqLength, obj.seqLength);
             tm_PeakVal = cell(obj.seqLength, obj.seqLength, obj.seqLength);
@@ -930,7 +1029,7 @@ classdef MLB_SM < SeqMem
                                         [pks,loc,wid,prom] = findpeaks(cur_temp_Data(:,t),'minpeakdistance', obj.binSize/obj.dsRate);
                                         if ~isempty(pks)
                                             featWeightPeaks = pks.*wid.*prom;
-                                            temp_PeakNdx(pos,t,trl) = loc(featWeightPeaks==max(featWeightPeaks));
+                                            temp_PeakNdx(pos,t,trl) = obj.obsvTimeVect(loc(featWeightPeaks==max(featWeightPeaks)));
                                             temp_PeakVal(pos,t,trl) = pks(featWeightPeaks==max(featWeightPeaks));
                                             temp_PeakWid(pos,t,trl) = wid(featWeightPeaks==max(featWeightPeaks));
                                         end
@@ -945,12 +1044,170 @@ classdef MLB_SM < SeqMem
                 end                
             end
         end
+        %% Calc Windowed Decoding Peaks
+        function [tm_PeakNdx, tm_PeakVal, tm_PeakWid] = CalcDecodablityPeaks_XTD_Windowed(obj,data,window)
+            if nargin==1 || isempty(data)
+                [data, ~, ~] = obj.OrganizeDecodabilityTrialHistoryTransMat;
+                window = [min(obj.obsvTimeVect), max(obj.obsvTimeVect)];
+            end
+            if max(abs(window))>obj.sampleRate
+                window = window./obj.sampleRate;
+            end
+            windowLog = obj.obsvTimeVect>=window(1) & obj.obsvTimeVect<=window(2);
+            tempData = cell(size(data));
+            for d = 1:numel(data)
+                if ~isempty(data{d})
+                    tempData{d} = obj.MaskArrayExtract(data{d},windowLog, windowLog);
+                end
+            end
+            [tm_PeakNdx, tm_PeakVal, tm_PeakWid] = obj.CalcDecodabilityPeaks_XTD(tempData);
+            
+        end
         %% Calc Masked Decoding Peaks
-        function [tm_PeakNdx, tm_PeakVal, tm_PeakWid] = CalcDecodingPeaks_XTD_Mask(obj,data,mask)
+        function [tm_PeakNdx, tm_PeakVal, tm_PeakWid] = CalcDecodabilityPeaks_XTD_Mask(obj,data,trialInfo,mask1,mask2)
+            if nargin==1 || isempty(data)
+                [data,~,trialInfo] = obj.OrganizeDecodabilityTrialHistoryTransMat;
+                mask1 = obj.mask_Trial;
+                mask2 = obj.mask_Trial;
+            end
+            if isempty(trialInfo)
+                [~,~,trialInfo] = obj.OrganizeDecodabilityTrialHistoryTransMat;
+            end
+            if nargin==3
+                mask1 = obj.mask_Trial;
+                mask2 = obj.mask_Trial;
+            elseif nargin==4
+                mask2 = mask1;
+            end
+            tempData = cell(size(data));
+            
+            for odrPos = 1:obj.seqLength
+                for histOSpos = 1:obj.seqLength
+                    for trlPos = 1:obj.seqLength
+                        temp_tempData = squeeze(data(odrPos,histOSpos,trlPos,:));
+                        if ~isempty(temp_tempData{1})
+                            temp_trialIDs = [trialInfo{odrPos,histOSpos,trlPos}.TrialNum];
+                            for p = 1:length(temp_tempData)
+                                tempData{odrPos,histOSpos,trlPos,p} = obj.MaskArrayExtract(temp_tempData{p},mask1(:,temp_trialIDs),mask2(:,temp_trialIDs));
+                            end
+                        end
+                    end
+                end
+            end
+            [tm_PeakNdx, tm_PeakVal, tm_PeakWid] = CalcDecodabilityPeaks_XTD(obj,tempData);
+        end
+        %% Extract Exemplar XTD Models
+        function [intDecMod, preDecMod, pstDecMod] = ExtractExemplarXTDmodels(obj,data,dataType,trialInfo,varargin)
             if nargin==1
-                [data, ~, tm_TrialInfo] = obj.OrganizeTrialHistoryTransMat;
+                [data, ~, trialInfo] = obj.OrganizeDecodabilityTrialHistoryTransMat;
+            elseif nargin==2 || ismatrix(data)
+                [data,~,trialInfo] = obj.OrganizeDecodabilityTrialHistoryTransMat(data);
+            elseif nargin==3 && isempty(data)
+                [hr,d,trialInfo] = obj.OrganizeDecodabilityTrialHistoryTransMat;
+                if ~isempty(dataType) && (strcmp(dataType, 'd') || strcmp(dataType, 'D'))
+                    data = d;
+                else
+                    data = hr;
+                end            
+            end
+            if sum(strcmp(varargin, 'aniOffset'))>=1
+                oscLog = [obj.trialInfo.Performance] == 1 & [obj.trialInfo.TranspositionDistance]~=0;
+                decLat = mean([obj.trialInfo(oscLog).PokeDuration]);
+                decLatOffset = floor(decLat*obj.sampleRate/obj.dsRate);
+                preDecOffset = floor(decLatOffset/2);
+                pstDecOffset = floor(decLatOffset*1.5);
+            else
+                preDecOffset = 9;
+                pstDecOffset = 17;
+            end
+            if sum(strcmp(varargin,'windowed'))>=1
+                tempWindow = varargin{find(strcmp(varargin,'windowed'))+1};
+                if max(abs(tempWindow))>obj.sampleRate
+                    tempWindow = tempWindow./obj.sampleRate;
+                end
+                trlLog = obj.obsvTimeVect>tempWindow(1) & obj.obsvTimeVect<tempWindow(2);
+            else
+                trlLog = true(size(obj.obsvTimeVect));
+            end
+
+            intDecMod = cell(obj.seqLength,obj.seqLength,obj.seqLength);
+            preDecMod = cell(obj.seqLength,obj.seqLength,obj.seqLength);
+            pstDecMod = cell(obj.seqLength,obj.seqLength,obj.seqLength);
+
+            for odrPos = 1:obj.seqLength
+                for histOSpos = 1:obj.seqLength
+                    for trlPos = 1:obj.seqLength
+                        if ~isempty(data{odrPos,histOSpos,trlPos,1})
+                            cur_tempData = squeeze(data(odrPos,histOSpos,trlPos,:));
+                            temp_intDecMod = nan(size(obj.mask_IntMid,1),length(cur_tempData),size(cur_tempData{1},3));
+                            temp_preDecMod = nan(size(obj.mask_Trial,1),length(cur_tempData),size(cur_tempData{1},3));
+                            temp_pstDecMod = nan(size(obj.mask_Trial,1),length(cur_tempData),size(cur_tempData{1},3));
+                            temp_trialIDs = [trialInfo{odrPos,histOSpos,trlPos}.TrialNum];
+                            for p = 1:length(cur_tempData)
+                                temp_intDecMod(trlLog,p,:) = obj.MaskArrayExtract(cur_tempData{p},trlLog,obj.mask_IntMid(:,temp_trialIDs),'extract');
+                                temp_preDecMod(trlLog,p,:) = obj.MaskArrayExtract(cur_tempData{p},trlLog,[{obj.mask_Trial(:,temp_trialIDs)}, {sprintf('first+%i+%i',preDecOffset,preDecOffset)}], 'extract');
+                                temp_pstDecMod(trlLog,p,:) = obj.MaskArrayExtract(cur_tempData{p},trlLog,[{obj.mask_Trial(:,temp_trialIDs)}, {sprintf('first+%i+%i',pstDecOffset,pstDecOffset)}], 'extract');
+                            end
+                            intDecMod{odrPos,histOSpos,trlPos} = temp_intDecMod;
+                            preDecMod{odrPos,histOSpos,trlPos} = temp_preDecMod;
+                            pstDecMod{odrPos,histOSpos,trlPos} = temp_pstDecMod;
+                        end
+                    end
+                end
             end
         end
+        %% Extract Exemplar XTD Model Peaks
+        function [intNdx, intVals, intWids,...
+                    preDecNdx, preDecVals, preDecWids,...
+                    pstDecNdx, pstDecVals, pstDecWids] = CalcDecodabilityPeaks_ExemplarXTDmodels(obj,data,dataType,trialInfo,window,varargin)
+             if nargin==1
+                [data, ~, trialInfo] = obj.OrganizeDecodabilityTrialHistoryTransMat;
+            elseif nargin==2 || ismatrix(data)
+                [data,~,trialInfo] = obj.OrganizeDecodabilityTrialHistoryTransMat(data);
+            elseif nargin==3 && isempty(data)
+                [hr,d,trialInfo] = obj.OrganizeDecodabilityTrialHistoryTransMat;
+                if ~isempty(dataType) && (strcmp(dataType, 'd') || strcmp(dataType, 'D'))
+                    data = d;
+                else
+                    data = hr;
+                end            
+             end
+             if sum(strcmp(varargin, 'aniOffset'))>=1
+                oscLog = [obj.trialInfo.Performance] == 1 & [obj.trialInfo.TranspositionDistance]~=0;
+                decLat = mean([obj.trialInfo(oscLog).PokeDuration]);
+                decLatOffset = floor(decLat*obj.sampleRate/obj.dsRate);
+                preDecOffset = floor(decLatOffset/2);
+                pstDecOffset = floor(decLatOffset*1.5);
+            else
+                preDecOffset = 9;
+                pstDecOffset = 17;
+            end
+            [tempPeakNdx, tempPeakVals, tempPeakWids] = obj.CalcDecodablityPeaks_XTD_Windowed(data,window);
+            intNdx = cell(size(tempPeakNdx));
+            intVals = cell(size(tempPeakVals));
+            intWids = cell(size(tempPeakWids));
+            preDecNdx = cell(size(tempPeakNdx));
+            preDecVals = cell(size(tempPeakVals));
+            preDecWids = cell(size(tempPeakWids));
+            pstDecNdx = cell(size(tempPeakNdx));
+            pstDecVals = cell(size(tempPeakVals));
+            pstDecWids = cell(size(tempPeakWids));
+            for p = 1:numel(tempPeakNdx)
+                if ~isempty(tempPeakNdx{p})
+                    temp_trialIDs = [trialInfo{p}.TrialNum];
+                    intNdx{p} = obj.MaskVectExtract(tempPeakNdx{p},obj.mask_IntMid(:,temp_trialIDs),2,3);
+                    intVals{p} = obj.MaskVectExtract(tempPeakVals{p},obj.mask_IntMid(:,temp_trialIDs),2,3);
+                    intWids{p} = obj.MaskVectExtract(tempPeakWids{p},obj.mask_IntMid(:,temp_trialIDs),2,3);
+                    preDecNdx{p} = obj.MaskVectExtract(tempPeakNdx{p},[{obj.mask_Trial(:,temp_trialIDs)}, {sprintf('first+%i+%i',preDecOffset,preDecOffset)}],2,3);
+                    preDecVals{p} = obj.MaskVectExtract(tempPeakVals{p},[{obj.mask_Trial(:,temp_trialIDs)}, {sprintf('first+%i+%i',preDecOffset,preDecOffset)}],2,3);
+                    preDecWids{p} = obj.MaskVectExtract(tempPeakWids{p},[{obj.mask_Trial(:,temp_trialIDs)}, {sprintf('first+%i+%i',preDecOffset,preDecOffset)}],2,3);
+                    pstDecNdx{p} = obj.MaskVectExtract(tempPeakNdx{p},[{obj.mask_Trial(:,temp_trialIDs)}, {sprintf('first+%i+%i',pstDecOffset,pstDecOffset)}],2,3);
+                    pstDecVals{p} = obj.MaskVectExtract(tempPeakVals{p},[{obj.mask_Trial(:,temp_trialIDs)}, {sprintf('first+%i+%i',pstDecOffset,pstDecOffset)}],2,3);
+                    pstDecWids{p} = obj.MaskVectExtract(tempPeakWids{p},[{obj.mask_Trial(:,temp_trialIDs)}, {sprintf('first+%i+%i',pstDecOffset,pstDecOffset)}],2,3);
+                end
+            end
+        end
+               
     end
     %% Visualizations
     methods
