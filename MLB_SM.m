@@ -993,6 +993,64 @@ classdef MLB_SM < SeqMem
     end
     %% Analyses
     methods
+        %% Calc Model Persistence Fits
+        function [trlFits, intFits] = CalcModelPersistenceFit_XTD(obj,data,trialInfo, varargin)
+             if nargin==1
+                [data, ~, trialInfo] = obj.OrganizeDecodabilityTrialHistoryTransMat;
+             end
+             trlFits = cell(obj.seqLength, obj.seqLength, obj.seqLength);
+             intFits = cell(obj.seqLength, obj.seqLength, obj.seqLength);
+             for odrPos = 1:obj.seqLength
+                 for histOSpos = 1:obj.seqLength
+                     for trlPos = 1:obj.seqLength
+                         tempData = data{odrPos,histOSpos,trlPos,trlPos};
+                         tempTrialInfo = trialInfo{odrPos,histOSpos,trlPos};
+
+                         temp_trlFits = nan(size(tempData,3), length(obj.obsvTimeVect));
+                         temp_intFits = nan(size(tempData,3), length(obj.obsvTimeVect));
+                         if ~isempty(tempData)
+                             for trl = 1:size(tempData,3)
+                                 cur_tempData = tempData(:,:,trl);
+                                 
+                                 curTrialMask = obj.mask_Trial(:,tempTrialInfo(trl).TrialNum);
+                                 trialDynCap = sum(curTrialMask)-1;
+                                 trialPeriod = zscore(cur_tempData(curTrialMask,curTrialMask),0,'all');
+                                 for d = 1:trialDynCap-1
+                                     tempDyn = zscore(triu(true(sum(curTrialMask)), d*-1) & tril(true(sum(curTrialMask)), d), 0, 'all');
+                                     temp_trlFits(trl,d) = pdist([trialPeriod(:)';tempDyn(:)'],'cosine');
+                                 end
+
+                                 curIntMask = obj.mask_Int(:,tempTrialInfo(trl).TrialNum);
+                                 intDynCap = sum(curIntMask)-1;
+                                 intPeriod = zscore(cur_tempData(curIntMask,curIntMask),0,'all');
+                                 for d = 1:intDynCap-1
+                                     tempDyn = zscore(triu(true(sum(curIntMask)), d*-1) & tril(true(sum(curIntMask)), d), 0, 'all');
+                                     temp_intFits(trl,d) = pdist([intPeriod(:)';tempDyn(:)'],'cosine');
+                                 end
+                             end
+                         end
+                         trlFits{odrPos,histOSpos,trlPos} = temp_trlFits;
+                         intFits{odrPos,histOSpos,trlPos} = temp_intFits;
+                     end
+                 end
+             end
+             if strcmp(varargin, 'latency')>=1
+                 tempTrialFits = cell(size(trlFits));
+                 tempIntFits = cell(size(intFits));
+                 for p = 1:numel(tempTrialFits)
+                     if ~isempty(trlFits{p})
+                         curTrlFits = trlFits{p};
+                         [~,tempTrialFitLats]=find(curTrlFits==repmat(min(curTrlFits,[],2),[1,size(curTrlFits,2)]));
+                         tempTrialFits{p} = obj.obsvTimeVect(tempTrialFitLats);
+                         curIntFIts = intFits{p};                         
+                         [~,tempIntFitLats]=find(curIntFIts==repmat(min(curIntFIts,[],2),[1,size(curIntFIts,2)]));
+                         tempIntFits{p} = obj.obsvTimeVect(tempIntFitLats);
+                     end
+                 end
+                 trlFits = tempTrialFits;
+                 intFits = tempIntFits;
+             end
+        end
         %% Calc Decoding Peaks
         function [tm_PeakNdx, tm_PeakVal, tm_PeakWid] = CalcDecodabilityPeaks_XTD(obj,data,dataType)
             if nargin<2
@@ -1097,8 +1155,8 @@ classdef MLB_SM < SeqMem
             [tm_PeakNdx, tm_PeakVal, tm_PeakWid] = CalcDecodabilityPeaks_XTD(obj,tempData);
         end
         %% Extract Exemplar XTD Models
-        function [intDecMod, preDecMod, pstDecMod] = ExtractExemplarXTDmodels(obj,data,dataType,trialInfo,varargin)
-            if nargin==1
+        function [intDecMod, preDecMod, pstDecMod, offsets] = ExtractExemplarXTDmodels(obj,data,dataType,trialInfo,varargin)
+            if nargin==1 || isempty(data)
                 [data, ~, trialInfo] = obj.OrganizeDecodabilityTrialHistoryTransMat;
             elseif nargin==2 || ismatrix(data)
                 [data,~,trialInfo] = obj.OrganizeDecodabilityTrialHistoryTransMat(data);
@@ -1129,6 +1187,7 @@ classdef MLB_SM < SeqMem
             else
                 trlLog = true(size(obj.obsvTimeVect));
             end
+            offsets = [preDecOffset, pstDecOffset];
 
             intDecMod = cell(obj.seqLength,obj.seqLength,obj.seqLength);
             preDecMod = cell(obj.seqLength,obj.seqLength,obj.seqLength);
@@ -1157,10 +1216,8 @@ classdef MLB_SM < SeqMem
             end
         end
         %% Extract Exemplar XTD Model Peaks
-        function [intNdx, intVals, intWids,...
-                    preDecNdx, preDecVals, preDecWids,...
-                    pstDecNdx, pstDecVals, pstDecWids] = CalcDecodabilityPeaks_ExemplarXTDmodels(obj,data,dataType,trialInfo,window,varargin)
-             if nargin==1
+        function [intNdx, intVals, intWids, preDecNdx, preDecVals, preDecWids,pstDecNdx, pstDecVals, pstDecWids] = CalcDecodabilityPeaks_ExemplarXTDmodels(obj,data,dataType,trialInfo,window,varargin)
+             if nargin==1 || isempty(data)
                 [data, ~, trialInfo] = obj.OrganizeDecodabilityTrialHistoryTransMat;
             elseif nargin==2 || ismatrix(data)
                 [data,~,trialInfo] = obj.OrganizeDecodabilityTrialHistoryTransMat(data);
@@ -1206,8 +1263,7 @@ classdef MLB_SM < SeqMem
                     pstDecWids{p} = obj.MaskVectExtract(tempPeakWids{p},[{obj.mask_Trial(:,temp_trialIDs)}, {sprintf('first+%i+%i',pstDecOffset,pstDecOffset)}],2,3);
                 end
             end
-        end
-               
+        end              
     end
     %% Visualizations
     methods
