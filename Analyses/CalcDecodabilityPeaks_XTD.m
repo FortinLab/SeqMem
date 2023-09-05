@@ -14,7 +14,7 @@ for odrPos = 1:size(data,1)
                 for pos = 1:size(temp_Data,1)
                     cur_temp_Data = temp_Data{pos};
                     for t = 1:size(cur_temp_Data,2)
-                        parfor trl = 1:size(cur_temp_Data,3)
+                        for trl = 1:size(cur_temp_Data,3)
                             [pks,loc,wid,prom] = findpeaks(cur_temp_Data(:,t));
                             if ~isempty(pks)
                                 featWeightPeaks = pks.*wid.*prom;
