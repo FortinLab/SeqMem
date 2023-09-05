@@ -1060,56 +1060,56 @@ classdef MLB_SM < SeqMem
              end
         end
         %% Calc Decoding Peaks
-        function [tm_PeakNdx, tm_PeakVal, tm_PeakWid] = CalcDecodabilityPeaks_XTD(obj,data,dataType)
-            if nargin<2
-                [data, ~, ~] = obj.OrganizeDecodabilityTrialHistoryTransMat;
-            elseif nargin==2 && ismatrix(data)
-                [data,~,~] = obj.OrganizeDecodabilityTrialHistoryTransMat(data);
-            elseif nargin==3 
-                if isempty(data) && ~isempty(dataType)
-                    [hr,d,~] = obj.OrganizeDecodabilityTrialHistoryTransMat;
-                    if strcmp(dataType, 'd') || strcmp(dataType, 'D')
-                        data = d;
-                    else
-                        data = hr;
-                    end
-                else
-                    [data, ~, ~] = obj.OrganizeDecodabilityTrialHistoryTransMat;
-                end
-            end
-            tm_PeakNdx = cell(obj.seqLength, obj.seqLength, obj.seqLength);
-            tm_PeakVal = cell(obj.seqLength, obj.seqLength, obj.seqLength);
-            tm_PeakWid = cell(obj.seqLength, obj.seqLength, obj.seqLength);
-            for odrPos = 1:obj.seqLength
-                for histOSpos = 1:obj.seqLength
-                    for trlPos = 1:obj.seqLength
-                        temp_Data = squeeze(data(odrPos,histOSpos,trlPos,:));
-                        if ~isempty(temp_Data)
-                            temp_PeakNdx = nan(obj.seqLength,size(temp_Data{1},2),size(temp_Data{1},3));
-                            temp_PeakVal = nan(obj.seqLength,size(temp_Data{1},2),size(temp_Data{1},3));
-                            temp_PeakWid = nan(obj.seqLength,size(temp_Data{1},2),size(temp_Data{1},3));
-                            for pos = 1:size(temp_Data,1)
-                                cur_temp_Data = temp_Data{pos};
-                                for t = 1:size(cur_temp_Data,2)
-                                    for trl = 1:size(cur_temp_Data,3)
-                                        [pks,loc,wid,prom] = findpeaks(cur_temp_Data(:,t),'minpeakdistance', obj.binSize/obj.dsRate);
-                                        if ~isempty(pks)
-                                            featWeightPeaks = pks.*wid.*prom;
-                                            temp_PeakNdx(pos,t,trl) = obj.obsvTimeVect(loc(featWeightPeaks==max(featWeightPeaks)));
-                                            temp_PeakVal(pos,t,trl) = pks(featWeightPeaks==max(featWeightPeaks));
-                                            temp_PeakWid(pos,t,trl) = wid(featWeightPeaks==max(featWeightPeaks));
-                                        end
-                                    end
-                                end
-                            end
-                            tm_PeakNdx{odrPos,histOSpos,trlPos} = temp_PeakNdx;
-                            tm_PeakVal{odrPos,histOSpos,trlPos} = temp_PeakVal;
-                            tm_PeakWid{odrPos,histOSpos,trlPos} = temp_PeakWid;
-                        end
-                    end
-                end                
-            end
-        end
+%         function [tm_PeakNdx, tm_PeakVal, tm_PeakWid] = CalcDecodabilityPeaks_XTD(obj,data,dataType)
+%             if nargin<2
+%                 [data, ~, ~] = obj.OrganizeDecodabilityTrialHistoryTransMat;
+%             elseif nargin==2 && ismatrix(data)
+%                 [data,~,~] = obj.OrganizeDecodabilityTrialHistoryTransMat(data);
+%             elseif nargin==3 
+%                 if isempty(data) && ~isempty(dataType)
+%                     [hr,d,~] = obj.OrganizeDecodabilityTrialHistoryTransMat;
+%                     if strcmp(dataType, 'd') || strcmp(dataType, 'D')
+%                         data = d;
+%                     else
+%                         data = hr;
+%                     end
+%                 else
+%                     [data, ~, ~] = obj.OrganizeDecodabilityTrialHistoryTransMat;
+%                 end
+%             end
+%             tm_PeakNdx = cell(obj.seqLength, obj.seqLength, obj.seqLength);
+%             tm_PeakVal = cell(obj.seqLength, obj.seqLength, obj.seqLength);
+%             tm_PeakWid = cell(obj.seqLength, obj.seqLength, obj.seqLength);
+%             for odrPos = 1:obj.seqLength
+%                 for histOSpos = 1:obj.seqLength
+%                     for trlPos = 1:obj.seqLength
+%                         temp_Data = squeeze(data(odrPos,histOSpos,trlPos,:));
+%                         if ~isempty(temp_Data)
+%                             temp_PeakNdx = nan(obj.seqLength,size(temp_Data{1},2),size(temp_Data{1},3));
+%                             temp_PeakVal = nan(obj.seqLength,size(temp_Data{1},2),size(temp_Data{1},3));
+%                             temp_PeakWid = nan(obj.seqLength,size(temp_Data{1},2),size(temp_Data{1},3));
+%                             for pos = 1:size(temp_Data,1)
+%                                 cur_temp_Data = temp_Data{pos};
+%                                 for t = 1:size(cur_temp_Data,2)
+%                                     for trl = 1:size(cur_temp_Data,3)
+%                                         [pks,loc,wid,prom] = findpeaks(cur_temp_Data(:,t),'minpeakdistance', obj.binSize/obj.dsRate);
+%                                         if ~isempty(pks)
+%                                             featWeightPeaks = pks.*wid.*prom;
+%                                             temp_PeakNdx(pos,t,trl) = obj.obsvTimeVect(loc(featWeightPeaks==max(featWeightPeaks)));
+%                                             temp_PeakVal(pos,t,trl) = pks(featWeightPeaks==max(featWeightPeaks));
+%                                             temp_PeakWid(pos,t,trl) = wid(featWeightPeaks==max(featWeightPeaks));
+%                                         end
+%                                     end
+%                                 end
+%                             end
+%                             tm_PeakNdx{odrPos,histOSpos,trlPos} = temp_PeakNdx;
+%                             tm_PeakVal{odrPos,histOSpos,trlPos} = temp_PeakVal;
+%                             tm_PeakWid{odrPos,histOSpos,trlPos} = temp_PeakWid;
+%                         end
+%                     end
+%                 end                
+%             end
+%         end
         %% Calc Windowed Decoding Peaks
         function [tm_PeakNdx, tm_PeakVal, tm_PeakWid] = CalcDecodablityPeaks_XTD_Windowed(obj,data,window)
             if nargin==1 || isempty(data)
@@ -1119,6 +1119,9 @@ classdef MLB_SM < SeqMem
             if max(abs(window))>obj.sampleRate
                 window = window./obj.sampleRate;
             end
+            if ismatrix(data)
+                [data,~,~] = obj.OrganizeDecodabilityTrialHistoryTransMat(data);
+            end
             windowLog = obj.obsvTimeVect>=window(1) & obj.obsvTimeVect<=window(2);
             tempData = cell(size(data));
             for d = 1:numel(data)
@@ -1126,7 +1129,7 @@ classdef MLB_SM < SeqMem
                     tempData{d} = obj.MaskArrayExtract(data{d},windowLog, windowLog);
                 end
             end
-            [tm_PeakNdx, tm_PeakVal, tm_PeakWid] = obj.CalcDecodabilityPeaks_XTD(tempData);
+            [tm_PeakNdx, tm_PeakVal, tm_PeakWid] = CalcDecodabilityPeaks_XTD(tempData);
             
         end
         %% Calc Masked Decoding Peaks
