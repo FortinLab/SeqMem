@@ -995,8 +995,16 @@ classdef MLB_SM < SeqMem
     methods
         %% Calc Model Persistence Fits
         function [trlFits, intFits] = CalcModelPersistenceFit_XTD(obj,data,trialInfo, varargin)
-             if nargin==1
+             if nargin==1 || isempty(data)
                 [data, ~, trialInfo] = obj.OrganizeDecodabilityTrialHistoryTransMat;
+             elseif nargin==2
+                 [~,~,trialInfo] = obj.OrganizeDecodabilityTrialHistoryTransMat;
+             end
+             if isempty(trialInfo)
+                 [~,~,trialInfo] = obj.OrganizeDecodabilityTrialHistoryTransMat;
+             end
+             if ismatrix(data)
+                 [data,~,~] = obj.OrganizeDecodabilityTrialHistoryTransMat(data);
              end
              trlFits = cell(obj.seqLength, obj.seqLength, obj.seqLength);
              intFits = cell(obj.seqLength, obj.seqLength, obj.seqLength);
