@@ -1047,12 +1047,12 @@ classdef MLB_SM < SeqMem
                             decVect = smooth(cur_curData(t,:),'lowess');
                             temp_symDEC(trl,t) = obj.CompSymFromVect(decVect,curChance(:,t),t);
                             mnVect = mean([trVect(:), decVect(:)],2,'omitnan');
-                            temp_symMn(trl,t) = obj.CompSymFromVect(mnVect,curChance(:,t),t);
+                            temp_symMN(trl,t) = obj.CompSymFromVect(mnVect,curChance(:,t),t);
                         end
                     end
                     symTR{d} = temp_symTR;
-                    symDEC{d} = temp_symDec;
-                    symMN{d} = temp_symMn;
+                    symDEC{d} = temp_symDEC;
+                    symMN{d} = temp_symMN;
                 end
             end
         end
