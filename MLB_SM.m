@@ -994,7 +994,7 @@ classdef MLB_SM < SeqMem
     %% Analyses
     methods
         %% Calc Model Persistence Fits
-        function [trlFits, intFits] = CalcModelPersistenceFit_XTD(obj,data,trialInfo, varargin)
+        function [trlFits, intFits] = CalcModelPersistenceFit_XTD(obj,data,trialInfo,varargin)
              if nargin==1 || isempty(data)
                 [data, ~, trialInfo] = obj.OrganizeDecodabilityTrialHistoryTransMat;
              elseif nargin==2
@@ -1059,6 +1059,40 @@ classdef MLB_SM < SeqMem
                  intFits = tempIntFits;
              end
         end
+        %% Extract Cross-Interval Decoding
+        function [prePreInt, pstPstInt, prePstInt, pstPreInt] = CalcXintDiff(obj,data,trialInfo)
+            if nargin==1 || isempty(data)
+                [data, ~, trialInfo] = obj.OrganizeDecodabilityTrialHistoryTransMat;
+            elseif nargin==2
+                [~,~,trialInfo] = obj.OrganizeDecodabilityTrialHistoryTransMat;
+            end
+            if isempty(trialInfo)
+                [~,~,trialInfo] = obj.OrganizeDecodabilityTrialHistoryTransMat;
+            end
+            if ismatrix(data)
+                [data,~,~] = obj.OrganizeDecodabilityTrialHistoryTransMat(data);
+            end
+            % Identify Pre-Trial and Post-Trial Interval Masks
+            preMask = obj.mask_PreInt;
+            pstMask = obj.mask_PstInt;
+            % Create output variables
+            prePreInt = cell(size(data));
+            pstPstInt = cell(size(data));
+            prePstInt = cell(size(data));
+            pstPreInt = cell(size(data));
+            % Step through all the data
+            for d = 1:numel(data)
+                [r,c,p,~] = ind2sub(size(data),d);
+                if ~isempty(data{d})
+                    tempTrialInfo = trialInfo{r,c,p};
+                    % Calculate the mean Within Interval and Cross Interval Decodings
+                    prePreInt{d} = obj.MaskArrayExtract(data{d}, preMask(:,[tempTrialInfo.TrialNum]), preMask(:,[tempTrialInfo.TrialNum]));
+                    pstPstInt{d} = obj.MaskArrayExtract(data{d}, pstMask(:,[tempTrialInfo.TrialNum]), pstMask(:,[tempTrialInfo.TrialNum]));
+                    prePstInt{d} = obj.MaskArrayExtract(data{d}, pstMask(:,[tempTrialInfo.TrialNum]), preMask(:,[tempTrialInfo.TrialNum]));
+                    pstPreInt{d} = obj.MaskArrayExtract(data{d}, preMask(:,[tempTrialInfo.TrialNum]), pstMask(:,[tempTrialInfo.TrialNum]));
+                end
+            end
+        end
         %% Calc Decoding Peaks
         function [tm_PeakNdx, tm_PeakVal, tm_PeakWid] = CalcDecodabilityPeaks_XTD(obj,data,dataType)
             if nargin<2
@@ -1095,9 +1129,11 @@ classdef MLB_SM < SeqMem
                                         [pks,loc,wid,prom] = findpeaks(cur_temp_Data(:,t),'minpeakdistance', obj.binSize/obj.dsRate);
                                         if ~isempty(pks)
                                             featWeightPeaks = pks.*wid.*prom;
-                                            temp_PeakNdx(pos,t,trl) = obj.obsvTimeVect(loc(featWeightPeaks==max(featWeightPeaks)));
-                                            temp_PeakVal(pos,t,trl) = pks(featWeightPeaks==max(featWeightPeaks));
-                                            temp_PeakWid(pos,t,trl) = wid(featWeightPeaks==max(featWeightPeaks));
+                                            pkNdx = find(featWeightPeaks==max(featWeightPeaks));
+                                            pkNdx = pkNdx(randi(length(pkNdx)));
+                                            temp_PeakNdx(pos,t,trl) = obj.obsvTimeVect(loc(pkNdx));
+                                            temp_PeakVal(pos,t,trl) = pks(pkNdx);
+                                            temp_PeakWid(pos,t,trl) = wid(pkNdx);
                                         end
                                     end
                                 end
@@ -1129,7 +1165,7 @@ classdef MLB_SM < SeqMem
                     tempData{d} = obj.MaskArrayExtract(data{d},windowLog, windowLog);
                 end
             end
-            [tm_PeakNdx, tm_PeakVal, tm_PeakWid] = CalcDecodabilityPeaks_XTD(tempData);
+            [tm_PeakNdx, tm_PeakVal, tm_PeakWid] = obj.CalcDecodabilityPeaks_XTD(tempData);
             
         end
         %% Calc Masked Decoding Peaks
