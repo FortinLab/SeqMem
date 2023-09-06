@@ -916,7 +916,7 @@ classdef MLB_SM < SeqMem
 % 
         end
     end
-    %% Mask Creation Methods
+    %% Mask Creation Method
     methods
         %% Create TrialInfo Mask
         function Create_TrialInfoMasks(obj)
@@ -993,6 +993,51 @@ classdef MLB_SM < SeqMem
     end
     %% Analyses
     methods
+        %% Calc Symmetry Fit
+        function [symTR, symDEC, symMN] = CalcSymmetry_D(obj,data)
+            if nargin<2
+                [~, data, ~] = obj.OrganizeDecodabilityTrialHistoryTransMat;
+            end
+            symTR = cell(size(data));
+            symDec = cell(size(data));
+            symMn = cell(size(data));
+            for d = 1:numel(data)
+                if ~isempty(data{d})
+                    curData = data{d};
+                    temp_symTR = nan(size(curData,3),length(obj.obsvTimeVect));
+                    temp_symDec = nan(size(curData,3), length(obj.obsvTimeVect));
+                    temp_symMn = nan(size(curData,3), length(obj.obsvTimeVect));
+                    for trl = 1:size(curData,3)
+                        cur_curData = curData(:,:,trl);
+                        for t = 10:length(mlb.obsvTimeVect)-10
+                            trVect = smooth(cur_curData(:,t),'lowess');
+                            temp_symTR(trl,t) = obj.CompSymFromVect(trVect,0,t);
+                            decVect = smooth(cur_curData(t,:),'lowess');
+                            temp_symDec(trl,t) = obj.CompSymFromVect(decVect,0,t);
+                            mnVect = mean([trVect(:), decVect(:)],2,'omitnan');
+                            temp_symMn(trl,t) = obj.CompSymFromVect(mnVect,0,t);
+                        end
+                    end
+                end
+            end
+        end
+
+        %% Compute Symmetry From Vect
+        function [symVal] = CompSymFromVect(~,dataVect,threshVal,anchorNdx)
+            if dataVect(anchorNdx)>threshVal
+                fwdLag = find(dataVect(anchorNdx:end)<=threshVal,1,'first');
+                if isempty(fwdLag)
+                    fwdLag = length(dataVect)-anchorNdx;
+                end
+                revLag = find(dataVect(1:anchorNdx)<=threshVal,1,'last');
+                if isempty(revLag)
+                    revLag = anchorNdx;
+                else
+                    revLag = anchorNdx - revLag;
+                end
+                symVal = fwdLag - revLag;
+            end
+        end
         %% Calc Model Persistence Fits
         function [trlFits, intFits] = CalcModelPersistenceFit_XTD(obj,data,trialInfo,varargin)
              if nargin==1 || isempty(data)
