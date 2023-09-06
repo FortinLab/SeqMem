@@ -999,8 +999,8 @@ classdef MLB_SM < SeqMem
                 [~, data, ~] = obj.OrganizeDecodabilityTrialHistoryTransMat;
             end
             symTR = cell(size(data));
-            symDec = cell(size(data));
-            symMn = cell(size(data));
+            symDEC = cell(size(data));
+            symMN = cell(size(data));
             for d = 1:numel(data)
                 if ~isempty(data{d})
                     curData = data{d};
@@ -1009,7 +1009,7 @@ classdef MLB_SM < SeqMem
                     temp_symMn = nan(size(curData,3), length(obj.obsvTimeVect));
                     for trl = 1:size(curData,3)
                         cur_curData = curData(:,:,trl);
-                        for t = 10:length(mlb.obsvTimeVect)-10
+                        for t = 10:length(cur_curData)-10
                             trVect = smooth(cur_curData(:,t),'lowess');
                             temp_symTR(trl,t) = obj.CompSymFromVect(trVect,0,t);
                             decVect = smooth(cur_curData(t,:),'lowess');
@@ -1018,6 +1018,9 @@ classdef MLB_SM < SeqMem
                             temp_symMn(trl,t) = obj.CompSymFromVect(mnVect,0,t);
                         end
                     end
+                    symTR{d} = temp_symTR;
+                    symDEC{d} = temp_symDec;
+                    symMN{d} = temp_symMn;
                 end
             end
         end
@@ -1036,6 +1039,8 @@ classdef MLB_SM < SeqMem
                     revLag = anchorNdx - revLag;
                 end
                 symVal = fwdLag - revLag;
+            else
+                symVal = nan;
             end
         end
         %% Calc Model Persistence Fits
