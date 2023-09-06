@@ -89,7 +89,7 @@ classdef SeqMem < handle
     %% Object Creation Method
     methods
         function obj = SeqMem(path)
-            fprintf('Compiling StatMatrix Data....');
+            fprintf('Compiling StatMatrix Data @%s....', datetime('now', 'Format', 'HH:mm:ss'));
             if nargin == 0
                 path = uigetdir;
             end

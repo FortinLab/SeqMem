@@ -993,7 +993,7 @@ classdef MLB_SM < SeqMem
     end
     %% Analyses
     methods
-        %% Calc Symmetry Fit
+        %% Calculate Symmetry From Decodability
         function [symTR, symDEC, symMN] = CalcSymmetry_D(obj,data)
             if nargin<2
                 [~, data, ~] = obj.OrganizeDecodabilityTrialHistoryTransMat;
@@ -1024,15 +1024,49 @@ classdef MLB_SM < SeqMem
                 end
             end
         end
-
+        %% Calculate Symmetry From Chance
+        function [symTR, symDEC, symMN] = CalcSymmetry_HR(obj,data,chance)
+            if nargin<3
+                error('Need data and chance values for this calculation');
+            end
+            symTR = cell(size(data));
+            symDEC = cell(size(data));
+            symMN = cell(size(data));
+            for d = 1:numel(data)
+                if ~isempty(data{d})
+                    curData = data{d};
+                    curChance = chance{d};
+                    temp_symTR = nan(size(curData,3), length(obj.obsvTimeVect));
+                    temp_symDEC = nan(size(curData,3), length(obj.obsvTimeVect));
+                    temp_symMN = nan(size(curData,3), length(obj.obsvTimeVect));
+                    for trl = 1:size(curData,3)
+                        cur_curData = curData(:,:,trl);
+                        for t = 10:length(cur_curData)-10
+                            trVect = smooth(cur_curData(:,t),'lowess');
+                            temp_symTR(trl,t) = obj.CompSymFromVect(trVect,curChance(:,t),t);
+                            decVect = smooth(cur_curData(t,:),'lowess');
+                            temp_symDEC(trl,t) = obj.CompSymFromVect(decVect,curChance(:,t),t);
+                            mnVect = mean([trVect(:), decVect(:)],2,'omitnan');
+                            temp_symMN(trl,t) = obj.CompSymFromVect(mnVect,curChance(:,t),t);
+                        end
+                    end
+                    symTR{d} = temp_symTR;
+                    symDEC{d} = temp_symDEC;
+                    symMN{d} = temp_symMN;
+                end
+            end
+        end
         %% Compute Symmetry From Vect
         function [symVal] = CompSymFromVect(~,dataVect,threshVal,anchorNdx)
-            if dataVect(anchorNdx)>threshVal
-                fwdLag = find(dataVect(anchorNdx:end)<=threshVal,1,'first');
+            if length(threshVal) == 1
+                threshVal = repmat(threshVal,size(dataVect));
+            end
+            if dataVect(anchorNdx)>threshVal(anchorNdx)
+                fwdLag = find(dataVect(anchorNdx:end)<=threshVal(anchorNdx:end),1,'first');
                 if isempty(fwdLag)
                     fwdLag = length(dataVect)-anchorNdx;
                 end
-                revLag = find(dataVect(1:anchorNdx)<=threshVal,1,'last');
+                revLag = find(dataVect(1:anchorNdx)<=threshVal(1:anchorNdx),1,'last');
                 if isempty(revLag)
                     revLag = anchorNdx;
                 else
