@@ -1,7 +1,11 @@
 function XTD_MLB_ChanceCompiler(fileDir,analysisWindow,numPerms)
     %% XTD_MLB_ChanceCompiler
     % m-file to compile the mlb cross-temporal data as well as chance data
-    if nargin == 1 || isempty(analysisWindow)
+    if nargin == 1
+        analysisWindow = [-1400 1400];
+        numPerms = 10;
+    end
+    if isempty(analysisWindow)
         analysisWindow = [-1400 1400];
     end
     %% Create MLB object
@@ -12,10 +16,10 @@ function XTD_MLB_ChanceCompiler(fileDir,analysisWindow,numPerms)
     mlb.bayesType = 1;
     mlb.alignments = {'PokeIn'};
     mlb.SetLikes_ISC;
-    fprintf('Processing Iterative Likelihoods via Leave-1-Out...')
+    fprintf('Processing Cross-Temporal Decoding with Leave-1-Out Validation @%s...',datetime('now', 'Format', 'HH:mm:ss'))
     mlb.Process_IterativeLikelyL1O;
     mlb.Create_TrialInfoMasks;
-    fprintf('complete\n');
+    fprintf('completed @%s\n',datetime('now', 'Format', 'HH:mm:ss'));
     % Extract out HR, Decodability and TrialInfo structures in the trial history transMat organization
     [xtdHR_Real, xtdD_Real, trialInfo] = mlb.OrganizeDecodabilityTrialHistoryTransMat;
     % Extract out the cross-interval decodings
@@ -454,7 +458,8 @@ function XTD_MLB_ChanceCompiler(fileDir,analysisWindow,numPerms)
                     modPstDec_PeakNdx_ChancePosCount modPstDec_PeakVals_ChancePosCount modPstDec_PeakWids_ChancePosCount
             end
         end
-    
+        %% Finish
+        fprintf('completed\n');
     end
     [hrSymTR_Full, hrSymDEC_Full, hrSymMN_Full] = mlb.CalcSymmetry_HR(xtdD_Real,xtdHR_ChanceFull);
     [hrSymTR_Pos, hrSymDEC_Pos, hrSymMN_Pos] = mlb.CalcSymmetry_HR(xtdD_Real,xtdHR_ChancePos);
