@@ -209,13 +209,13 @@ function XTD_MLB_ChanceCompiler(fileDir,analysisWindow,numPerms)
                 temp_trialIDs = [trialInfo{p}.TrialNum];
                 cr_modInt_PeakNdx{p} = mlb.MaskVectExtract(cr_decPeaksNdx{p},mlb.mask_IntMid(:,temp_trialIDs),2,3);
                 cr_modInt_PeakVals{p} = mlb.MaskVectExtract(cr_decPeaksVal{p},mlb.mask_IntMid(:,temp_trialIDs),2,3);
-                cr_modInt_PeakWids{p} = mlb.MaskVectExtract(cr_modPstDec_PosDec{p},mlb.mask_IntMid(:,temp_trialIDs),2,3);
+                cr_modInt_PeakWids{p} = mlb.MaskVectExtract(cr_decPeaksWid{p},mlb.mask_IntMid(:,temp_trialIDs),2,3);
                 cr_modPreDec_PeakNdx{p} = mlb.MaskVectExtract(cr_decPeaksNdx{p},[{mlb.mask_Trial(:,temp_trialIDs)}, {sprintf('first+%i+%i',offsets(1),offsets(1))}],2,3);
                 cr_modPreDec_PeakVals{p} = mlb.MaskVectExtract(cr_decPeaksVal{p},[{mlb.mask_Trial(:,temp_trialIDs)}, {sprintf('first+%i+%i',offsets(1),offsets(1))}],2,3);
-                cr_modPreDec_PeakWids{p} = mlb.MaskVectExtract(cr_modPstDec_PosDec{p},[{mlb.mask_Trial(:,temp_trialIDs)}, {sprintf('first+%i+%i',offsets(1),offsets(1))}],2,3);
+                cr_modPreDec_PeakWids{p} = mlb.MaskVectExtract(cr_decPeaksWid{p},[{mlb.mask_Trial(:,temp_trialIDs)}, {sprintf('first+%i+%i',offsets(1),offsets(1))}],2,3);
                 cr_modPstDec_PeakNdx{p} = mlb.MaskVectExtract(cr_decPeaksNdx{p},[{mlb.mask_Trial(:,temp_trialIDs)}, {sprintf('first+%i+%i',offsets(2),offsets(2))}],2,3);
                 cr_modPstDec_PeakVals{p} = mlb.MaskVectExtract(cr_decPeaksVal{p},[{mlb.mask_Trial(:,temp_trialIDs)}, {sprintf('first+%i+%i',offsets(2),offsets(2))}],2,3);
-                cr_modPstDec_PeakWids{p} = mlb.MaskVectExtract(cr_modPstDec_PosDec{p},[{mlb.mask_Trial(:,temp_trialIDs)}, {sprintf('first+%i+%i',offsets(2),offsets(2))}],2,3);
+                cr_modPstDec_PeakWids{p} = mlb.MaskVectExtract(cr_decPeaksWid{p},[{mlb.mask_Trial(:,temp_trialIDs)}, {sprintf('first+%i+%i',offsets(2),offsets(2))}],2,3);
             end
         end
         if perm == 1
@@ -405,13 +405,13 @@ function XTD_MLB_ChanceCompiler(fileDir,analysisWindow,numPerms)
                 temp_trialIDs = [trialInfo{p}.TrialNum];
                 cr_modInt_PeakNdx{p} = mlb.MaskVectExtract(cr_decPeaksNdx{p},mlb.mask_IntMid(:,temp_trialIDs),2,3);
                 cr_modInt_PeakVals{p} = mlb.MaskVectExtract(cr_decPeaksVal{p},mlb.mask_IntMid(:,temp_trialIDs),2,3);
-                cr_modInt_PeakWids{p} = mlb.MaskVectExtract(cr_modPstDec_PosDec{p},mlb.mask_IntMid(:,temp_trialIDs),2,3);
+                cr_modInt_PeakWids{p} = mlb.MaskVectExtract(cr_decPeaksWid{p},mlb.mask_IntMid(:,temp_trialIDs),2,3);
                 cr_modPreDec_PeakNdx{p} = mlb.MaskVectExtract(cr_decPeaksNdx{p},[{mlb.mask_Trial(:,temp_trialIDs)}, {sprintf('first+%i+%i',offsets(1),offsets(1))}],2,3);
                 cr_modPreDec_PeakVals{p} = mlb.MaskVectExtract(cr_decPeaksVal{p},[{mlb.mask_Trial(:,temp_trialIDs)}, {sprintf('first+%i+%i',offsets(1),offsets(1))}],2,3);
-                cr_modPreDec_PeakWids{p} = mlb.MaskVectExtract(cr_modPstDec_PosDec{p},[{mlb.mask_Trial(:,temp_trialIDs)}, {sprintf('first+%i+%i',offsets(1),offsets(1))}],2,3);
+                cr_modPreDec_PeakWids{p} = mlb.MaskVectExtract(cr_decPeaksWid{p},[{mlb.mask_Trial(:,temp_trialIDs)}, {sprintf('first+%i+%i',offsets(1),offsets(1))}],2,3);
                 cr_modPstDec_PeakNdx{p} = mlb.MaskVectExtract(cr_decPeaksNdx{p},[{mlb.mask_Trial(:,temp_trialIDs)}, {sprintf('first+%i+%i',offsets(2),offsets(2))}],2,3);
                 cr_modPstDec_PeakVals{p} = mlb.MaskVectExtract(cr_decPeaksVal{p},[{mlb.mask_Trial(:,temp_trialIDs)}, {sprintf('first+%i+%i',offsets(2),offsets(2))}],2,3);
-                cr_modPstDec_PeakWids{p} = mlb.MaskVectExtract(cr_modPstDec_PosDec{p},[{mlb.mask_Trial(:,temp_trialIDs)}, {sprintf('first+%i+%i',offsets(2),offsets(2))}],2,3);
+                cr_modPstDec_PeakWids{p} = mlb.MaskVectExtract(cr_decPeaksWid{p},[{mlb.mask_Trial(:,temp_trialIDs)}, {sprintf('first+%i+%i',offsets(2),offsets(2))}],2,3);
             end
         end
         if perm == 1
