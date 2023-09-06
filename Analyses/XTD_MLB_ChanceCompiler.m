@@ -474,7 +474,7 @@ end
 function [chanceData, chanceCounter] = UpdateChanceVar(chanceData, chanceCounter, permData)
     for d = 1:numel(chanceData)
         chanceData{d} = chanceData{d} + permData{d};
-        chanceCounter{d} = chanceCounter{d} + cellfun(@(a){~isnan(a)},permData);
+        chanceCounter{d} = chanceCounter{d} + ~isnan(permData{d});
     end
 end
 % Average Chance
