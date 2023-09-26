@@ -722,8 +722,8 @@ classdef SeqMem < handle
         %% Line Plot w/Mean, SEM & CI
         function [plt, mptValLog] = PlotMeanVarLine(obj,timeVect,data,repDim,pCrit,color)
             dtaMean = mean(data, repDim, 'omitnan');
+%             dtaMean = median(data, repDim, 'omitnan');
             if size(data,repDim)>=2
-                %             dtaMean = median(data, repDim, 'omitnan');
                 dtaMean = dtaMean(:);
                 dtaSEM = obj.SEMcalc(data,0,repDim);
                 dtaSEM = dtaSEM(:);
