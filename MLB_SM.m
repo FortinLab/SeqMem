@@ -1208,9 +1208,10 @@ classdef MLB_SM < SeqMem
                             temp_PeakWid = nan(obj.seqLength,size(temp_Data{1},2),size(temp_Data{1},3));
                             for pos = 1:size(temp_Data,1)
                                 cur_temp_Data = temp_Data{pos};
-                                for t = 1:size(cur_temp_Data,2)
-                                    for trl = 1:size(cur_temp_Data,3)
-                                        [pks,loc,wid,prom] = findpeaks(cur_temp_Data(:,t),'minpeakdistance', obj.binSize/obj.dsRate);
+                                for trl = 1:size(cur_temp_Data,3)
+                                    cur_Trl_Data = cur_temp_Data(:,:,trl);
+                                    for t = 1:size(cur_Trl_Data,2)
+                                        [pks,loc,wid,prom] = findpeaks(cur_Trl_Data(:,t),'minpeakdistance', obj.binSize/obj.dsRate);
                                         if ~isempty(pks)
                                             featWeightPeaks = pks.*wid.*prom;
                                             pkNdx = find(featWeightPeaks==max(featWeightPeaks));
