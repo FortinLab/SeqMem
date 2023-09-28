@@ -725,6 +725,7 @@ classdef SeqMem < handle
 %             dtaMean = median(data, repDim, 'omitnan');
             if size(data,repDim)>=2
                 dtaMean = dtaMean(:);
+%                 dtaSEM = std(data,0,repDim);
                 dtaSEM = obj.SEMcalc(data,0,repDim);
                 dtaSEM = dtaSEM(:);
                 mptValLog = isnan(dtaMean) | isnan(dtaSEM);
